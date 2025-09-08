@@ -13,114 +13,75 @@
 
     <!-- 录制内容区 -->
     <view class="content">
-      <!-- 录制提示 -->
-      <view class="prompt-section" v-if="prompts.length > 0">
-        <view class="prompt-card">
-          <view class="prompt-title">💭 引导问题</view>
-          <view class="prompt-list">
-            <text 
+      <!-- 引导问题 -->
+      <view class="prompts-section">
+        <view class="prompts-card">
+          <text class="prompts-title">引导问题</text>
+          <view class="prompts-list">
+            <view 
               v-for="(prompt, index) in prompts" 
               :key="index"
               class="prompt-item"
-            >{{ prompt }}</text>
+            >
+              <view class="prompt-number">{{ index + 1 }}</view>
+              <text class="prompt-text">{{ prompt }}</text>
+            </view>
           </view>
         </view>
       </view>
 
-      <!-- 文字编辑区 -->
-      <view class="editor-section">
-        <view class="editor-header">
-          <text class="editor-title">✍️ 文字记录</text>
-          <text class="word-count">{{ contentText.length }} 字</text>
-        </view>
-        <textarea 
-          class="text-editor"
-          placeholder="在这里写下您的故事，或者使用语音录制后编辑..."
-          v-model="contentText"
-          auto-height
-          :maxlength="5000"
-        ></textarea>
-      </view>
-
-      <!-- 语音录制区 -->
-      <view class="voice-section">
-        <view class="voice-header">
-          <text class="voice-title">🎤 语音录制</text>
-          <text class="voice-tip">点击录制，说出您的故事</text>
-        </view>
-        
-        <!-- 录制控制 -->
-        <view class="voice-controls">
-          <view class="record-area">
+      <!-- 语音录制区域 -->
+      <view class="recording-section">
+        <view class="recording-card">
+          <!-- 日期显示 -->
+          <view class="date-display">
+            <text class="date-text">{{ currentDate }}</text>
+          </view>
+          
+          <!-- 文本输入区域 -->
+          <view class="text-input-area">
+            <textarea 
+              class="text-input"
+              placeholder="开始记录您的回忆..."
+              :value="contentText"
+              @input="onTextInput"
+              auto-height
+              maxlength="5000"
+            ></textarea>
+          </view>
+          
+          <!-- 语音录制控制区域 -->
+          <view class="voice-control-area">
             <!-- 录制按钮 -->
-            <view 
-              class="record-btn" 
-              :class="{ 
-                'recording': isRecording,
-                'disabled': isProcessing 
-              }"
-              @touchstart="startRecording"
-              @touchend="stopRecording"
-            >
-              <view class="record-icon">
-                <text v-if="!isRecording && !isProcessing">🎤</text>
-                <text v-else-if="isRecording">⏹️</text>
-                <text v-else>⏳</text>
+            <view class="record-btn-container">
+              <view 
+                class="record-btn"
+                :class="{ 'recording': isRecording, 'processing': isProcessing }"
+                @touchstart="startRecording"
+                @touchend="stopRecording"
+                @touchcancel="stopRecording"
+              >
+                <view class="record-icon">
+                  <view v-if="isRecording" class="recording-animation">
+                    <view class="wave" v-for="i in 3" :key="i"></view>
+                  </view>
+                  <text v-else class="mic-icon">🎤</text>
+                </view>
               </view>
-              <text class="record-text">
-                {{ recordButtonText }}
-              </text>
+              <text class="record-text">{{ recordButtonText }}</text>
             </view>
             
-            <!-- 录制时长 -->
-            <view v-if="isRecording" class="recording-timer">
-              <text class="timer-text">{{ formatTime(recordingTime) }}</text>
-              <view class="wave-animation">
-                <view class="wave"></view>
-                <view class="wave"></view>
-                <view class="wave"></view>
-              </view>
+            <!-- 语言选择 -->
+            <view class="language-selector">
+              <text class="language-text">普通话</text>
+              <text class="language-arrow">▼</text>
             </view>
           </view>
-        </view>
-
-        <!-- 录音列表 -->
-        <view class="recordings-list" v-if="recordings.length > 0">
-          <view class="recordings-header">
-            <text class="recordings-title">录音片段</text>
+          
+          <!-- 录音计时 -->
+          <view v-if="isRecording" class="recording-timer">
+            <text class="timer-text">{{ formatTime(recordingTime) }}</text>
           </view>
-          <view 
-            v-for="(recording, index) in recordings" 
-            :key="index"
-            class="recording-item"
-          >
-            <view class="recording-info">
-              <text class="recording-name">录音 {{ index + 1 }}</text>
-              <text class="recording-duration">{{ formatTime(recording.duration) }}</text>
-            </view>
-            <view class="recording-actions">
-              <view class="action-btn" @click="playRecording(recording)">
-                <text class="action-icon">{{ recording.playing ? '⏸️' : '▶️' }}</text>
-              </view>
-              <view class="action-btn" @click="transcribeRecording(recording)">
-                <text class="action-icon">📝</text>
-              </view>
-              <view class="action-btn" @click="deleteRecording(index)">
-                <text class="action-icon">🗑️</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 章节完成度 -->
-      <view class="progress-section">
-        <view class="progress-card">
-          <text class="progress-title">完成度</text>
-          <view class="progress-bar">
-            <view class="progress-fill" :style="{ width: progressPercentage + '%' }"></view>
-          </view>
-          <text class="progress-text">{{ progressPercentage }}%</text>
         </view>
       </view>
     </view>
@@ -146,12 +107,11 @@ export default {
     recordButtonText() {
       if (this.isProcessing) return '处理中...';
       if (this.isRecording) return '松开结束';
-      return '按住录制';
+      return '按住说话';
     },
-    progressPercentage() {
-      const textScore = Math.min(this.contentText.length / 200, 1) * 50;
-      const recordingScore = Math.min(this.recordings.length / 2, 1) * 50;
-      return Math.round(textScore + recordingScore);
+    currentDate() {
+      const now = new Date();
+      return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
     }
   },
   onLoad(options) {
@@ -170,6 +130,10 @@ export default {
     goBack() {
       this.saveChapter(); // 自动保存
       uni.navigateBack();
+    },
+    
+    onTextInput(event) {
+      this.contentText = event.detail.value || event.target.value || '';
     },
     
     loadChapterPrompts() {
@@ -259,7 +223,7 @@ export default {
           text: this.contentText,
           recordings: this.recordings,
           lastModified: new Date().toISOString(),
-          completed: this.progressPercentage >= 50
+          completed: this.contentText.length > 0 || this.recordings.length > 0
         };
         
         // 保存章节内容
@@ -270,7 +234,6 @@ export default {
         const statusMap = JSON.parse(savedStatus);
         statusMap[this.chapterId] = {
           completed: content.completed,
-          progress: this.progressPercentage,
           lastModified: content.lastModified
         };
         uni.setStorageSync('chapter_status', JSON.stringify(statusMap));
@@ -334,9 +297,14 @@ export default {
         this.recordingTime = 0;
         
         uni.showToast({
-          title: '录制完成',
+          title: '录制完成，正在转换文字...',
           icon: 'success'
         });
+        
+        // 自动开始转录
+        setTimeout(() => {
+          this.transcribeRecording(newRecording);
+        }, 500);
       }, 1000);
     },
     
@@ -366,20 +334,31 @@ export default {
     transcribeRecording(recording) {
       // 转录录音为文字
       uni.showLoading({
-        title: '转录中...'
+        title: '语音转文字中...'
       });
       
-      // 模拟转录过程
+      // 模拟转录过程，实际应该调用语音识别API
       setTimeout(() => {
-        const sampleText = '这是一段示例转录文本，实际应该调用语音识别API进行转录。';
-        recording.transcription = sampleText;
+        const sampleTexts = [
+          '我出生在一个小城市，那里有着宁静的街道和温暖的邻里关系。',
+          '童年时最难忘的是和小伙伴们在院子里玩耍的美好时光。',
+          '那时候的生活虽然简单，但充满了纯真的快乐和无忧无虑。',
+          '家里的老房子虽然不大，但承载着我们一家人温馨的回忆。'
+        ];
         
-        // 将转录文本添加到编辑器
-        this.contentText += (this.contentText ? '\n\n' : '') + sampleText;
+        const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+        recording.transcription = randomText;
+        
+        // 将转录文本添加到文本输入框
+        if (this.contentText) {
+          this.contentText += '\n\n' + randomText;
+        } else {
+          this.contentText = randomText;
+        }
         
         uni.hideLoading();
         uni.showToast({
-          title: '转录完成',
+          title: '语音转文字完成',
           icon: 'success'
         });
       }, 2000);
@@ -466,285 +445,223 @@ export default {
   padding: 20px;
 }
 
-/* 提示区域 */
-.prompt-section {
-  margin-bottom: 20px;
+
+/* 引导问题区域 */
+.prompts-section {
+  margin-bottom: 60px;
 }
 
-.prompt-card {
+.prompts-card {
   background: white;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.prompt-title {
+.prompts-title {
   font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 12px;
-}
-
-.prompt-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.prompt-item {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.5;
-  padding: 8px 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-/* 文字编辑区 */
-.editor-section {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 16px;
 }
 
-.editor-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
+.prompts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.word-count {
-  font-size: 12px;
-  color: #666;
-}
-
-.text-editor {
-  width: 100%;
-  min-height: 120px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+.prompt-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   padding: 12px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: #333;
-  background: #fafafa;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #333;
 }
 
-/* 语音录制区 */
-.voice-section {
+.prompt-number {
+  background: #333;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.prompt-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  flex: 1;
+}
+
+/* 语音录制区域 */
+.recording-section {
+  margin-bottom: 40px;
+}
+
+.recording-card {
   background: white;
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  min-height: 400px;
 }
 
-.voice-header {
+.date-display {
   margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.voice-title {
-  display: block;
+.date-text {
   font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 4px;
 }
 
-.voice-tip {
-  font-size: 14px;
-  color: #666;
+.text-input-area {
+  margin-bottom: 30px;
+  min-height: 200px;
 }
 
-.voice-controls {
-  text-align: center;
-  margin-bottom: 24px;
+.text-input {
+  width: 100%;
+  min-height: 200px;
+  padding: 16px 0;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  background: transparent;
+  resize: none;
+  border-left: 3px solid #e0e0e0;
+  padding-left: 16px;
 }
 
-.record-area {
+.text-input:focus {
+  border-left-color: #007AFF;
+}
+
+.voice-control-area {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.record-btn-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 .record-btn {
-  width: 120px;
-  height: 120px;
-  border-radius: 60px;
-  background: linear-gradient(135deg, #FF6B47 0%, #FF8A47 100%);
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #007AFF 0%, #005FCC 100%);
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(255, 107, 71, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.3);
 }
 
 .record-btn.recording {
-  background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
-  animation: pulse 1.5s infinite;
+  background: linear-gradient(135deg, #FF3B30 0%, #CC1E14 100%);
+  box-shadow: 0 4px 20px rgba(255, 59, 48, 0.4);
+  animation: pulse 2s infinite;
 }
 
-.record-btn.disabled {
-  background: #ccc;
-  pointer-events: none;
+.record-btn.processing {
+  background: linear-gradient(135deg, #FF9500 0%, #CC7700 100%);
+  box-shadow: 0 4px 20px rgba(255, 149, 0, 0.4);
 }
 
 .record-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.record-text {
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.recording-timer {
-  text-align: center;
-}
-
-.timer-text {
-  font-size: 18px;
-  font-weight: 600;
-  color: #ff4757;
-  margin-bottom: 8px;
-}
-
-.wave-animation {
   display: flex;
+  align-items: center;
   justify-content: center;
+}
+
+.mic-icon {
+  font-size: 32px;
+  color: white;
+}
+
+.recording-animation {
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 
 .wave {
   width: 4px;
   height: 20px;
-  background: #ff4757;
+  background: white;
   border-radius: 2px;
-  animation: wave 1s infinite;
+  animation: wave 1.2s infinite ease-in-out;
 }
 
 .wave:nth-child(2) {
-  animation-delay: 0.2s;
+  animation-delay: 0.1s;
 }
 
 .wave:nth-child(3) {
-  animation-delay: 0.4s;
+  animation-delay: 0.2s;
 }
 
-/* 录音列表 */
-.recordings-list {
-  margin-top: 24px;
+.record-text {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
 }
 
-.recordings-header {
-  margin-bottom: 12px;
-}
-
-.recordings-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
-.recording-item {
+.language-selector {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  background: #fafafa;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 20px;
+  cursor: pointer;
 }
 
-.recording-info {
-  flex: 1;
-}
-
-.recording-name {
-  display: block;
+.language-text {
   font-size: 14px;
-  font-weight: 600;
   color: #333;
-  margin-bottom: 2px;
 }
 
-.recording-duration {
-  font-size: 12px;
+.language-arrow {
+  font-size: 10px;
   color: #666;
 }
 
-.recording-actions {
-  display: flex;
-  gap: 8px;
+.recording-timer {
+  text-align: center;
+  margin-top: 16px;
+  padding: 8px;
+  background: rgba(255, 59, 48, 0.1);
+  border-radius: 8px;
 }
 
-.action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.action-icon {
-  font-size: 14px;
-}
-
-/* 进度区域 */
-.progress-section {
-  margin-bottom: 40px;
-}
-
-.progress-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.progress-title {
+.timer-text {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 12px;
-}
-
-.progress-bar {
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #FF6B47 0%, #FF8A47 100%);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #FF6B47;
+  color: #FF3B30;
+  font-family: 'Courier New', monospace;
 }
 
 /* 动画 */
