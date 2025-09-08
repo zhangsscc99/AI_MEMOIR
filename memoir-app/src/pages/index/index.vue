@@ -82,7 +82,7 @@
       
       <!-- 提示文字 -->
       <view class="scroll-tip">
-        <text class="tip-text">👆 左右滑动浏览章节</text>
+        <text class="tip-text">左右滑动浏览章节</text>
       </view>
     </view>
   </view>

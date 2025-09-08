@@ -73,7 +73,7 @@
 
       <!-- 提示文字 -->
       <view class="tip-section">
-        <text class="tip-text">👆 左右滑动浏览章节，点击开始录制</text>
+        <text class="tip-text">左右滑动浏览章节，点击开始录制</text>
       </view>
     </view>
   </view>
