@@ -234,8 +234,14 @@ export default {
       }
     },
     
-    startRecording() {
+    startRecording(event) {
       if (this.isProcessing) return;
+      
+      // 防止事件影响页面滚动
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       
       this.isRecording = true;
       this.recordingTime = 0;
@@ -254,8 +260,14 @@ export default {
       });
     },
     
-    stopRecording() {
+    stopRecording(event) {
       if (!this.isRecording) return;
+      
+      // 确保事件不影响页面滚动
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       
       this.isRecording = false;
       this.isProcessing = true;
@@ -265,6 +277,12 @@ export default {
         clearInterval(this.recordingTimer);
         this.recordingTimer = null;
       }
+      
+      // 确保页面滚动恢复正常
+      this.$nextTick(() => {
+        // 强制触发页面重新渲染
+        this.$forceUpdate();
+      });
       
       // 模拟录音处理
       setTimeout(() => {
@@ -377,6 +395,8 @@ export default {
 .container {
   min-height: 100vh;
   background-color: #f8f8f8;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .nav-header {
@@ -563,6 +583,8 @@ export default {
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .record-btn.recording {
