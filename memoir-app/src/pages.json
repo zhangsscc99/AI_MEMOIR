@@ -9,7 +9,7 @@
 			}
 		},
 		{
-			"path": "pages/memoir/memoir",
+			"path": "pages/memoir/index",
 			"style": {
 				"navigationBarTitleText": "回忆录工坊",
 				"navigationBarBackgroundColor": "#ffffff",
@@ -17,7 +17,7 @@
 			}
 		},
 		{
-			"path": "pages/diary/diary",
+			"path": "pages/diary/index",
 			"style": {
 				"navigationBarTitleText": "生活随记",
 				"navigationBarBackgroundColor": "#ffffff",
@@ -25,7 +25,7 @@
 			}
 		},
 		{
-			"path": "pages/profile/profile",
+			"path": "pages/profile/index",
 			"style": {
 				"navigationBarTitleText": "个人空间",
 				"navigationBarBackgroundColor": "#ffffff",
@@ -33,7 +33,7 @@
 			}
 		},
 		{
-			"path": "pages/welcome/welcome",
+			"path": "pages/welcome/index",
 			"style": {
 				"navigationBarTitleText": "回忆录工坊",
 				"navigationBarBackgroundColor": "#ffffff",
@@ -41,7 +41,7 @@
 			}
 		},
 		{
-			"path": "pages/question/question",
+			"path": "pages/question/index",
 			"style": {
 				"navigationBarTitleText": "问答",
 				"navigationBarBackgroundColor": "#ffffff",
@@ -68,19 +68,19 @@
 				"text": "首页"
 			},
 			{
-				"pagePath": "pages/memoir/memoir",
+				"pagePath": "pages/memoir/index",
 				"iconPath": "static/icons/book.svg",
 				"selectedIconPath": "static/icons/book-filled.svg",
 				"text": "回忆录"
 			},
 			{
-				"pagePath": "pages/diary/diary",
+				"pagePath": "pages/diary/index",
 				"iconPath": "static/icons/edit.svg",
 				"selectedIconPath": "static/icons/edit-filled.svg",
 				"text": "随记"
 			},
 			{
-				"pagePath": "pages/profile/profile",
+				"pagePath": "pages/profile/index",
 				"iconPath": "static/icons/user.svg",
 				"selectedIconPath": "static/icons/user-filled.svg",
 				"text": "我的"

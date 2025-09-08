@@ -55,12 +55,12 @@ export default {
   methods: {
     goToWelcome() {
       uni.navigateTo({
-        url: '/pages/welcome/welcome'
+        url: '/pages/welcome/index'
       });
     },
     goToDiary() {
       uni.switchTab({
-        url: '/pages/diary/diary'
+        url: '/pages/diary/index'
       });
     }
   }
