@@ -258,6 +258,8 @@ export default {
   font-weight: 600;
   color: #333;
   margin-bottom: 8px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 2px;
 }
 
 .sub-text {
@@ -265,6 +267,8 @@ export default {
   font-size: 16px;
   color: #666;
   line-height: 1.5;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 1px;
 }
 
 .chapters-section {
@@ -272,11 +276,13 @@ export default {
 }
 
 .section-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: #333;
   margin-bottom: 16px;
   padding-left: 4px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 2px;
 }
 
 .chapters-grid {
@@ -331,6 +337,8 @@ export default {
   font-weight: 600;
   color: #333;
   margin-bottom: 4px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 1px;
 }
 
 .chapter-desc {
@@ -388,16 +396,22 @@ export default {
 
 .stat-number {
   display: block;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 700;
   color: #333;
   margin-bottom: 4px;
+  font-family: "SF Pro Display", "Helvetica Neue", "Segoe UI", "Roboto", "Inter", "system-ui", -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
 }
 
 .stat-label {
   display: block;
   font-size: 14px;
   color: #666;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 1px;
+  font-weight: 500;
 }
 
 .stat-divider {
