@@ -353,16 +353,19 @@ export default {
 }
 
 .input-field {
-  width: 240px;
+  width: calc(100% - 32px);
+  max-width: 280px;
   height: 44px;
   border: 1px solid #e1e5e9;
   border-radius: 12px;
   padding: 0 16px;
+  margin: 0 auto;
   font-size: 16px;
   color: #333;
   background: white;
   transition: all 0.3s ease;
   text-align: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .input-field:focus {
@@ -390,15 +393,16 @@ export default {
 }
 
 .register-btn {
-  width: 240px;
+  width: calc(100% - 32px);
+  max-width: 280px;
   height: 45px;
   background: rgba(255, 255, 255, 0.8);
   color: #333;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 25px;
+  border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   backdrop-filter: blur(15px);
 }
