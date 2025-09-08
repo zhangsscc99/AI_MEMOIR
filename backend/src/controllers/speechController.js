@@ -27,15 +27,35 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB限制
   },
   fileFilter: function (req, file, cb) {
-    // 允许的音频格式
-    const allowedTypes = /wav|mp3|m4a|aac|flac|opus/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    console.log('📄 检查上传文件:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    });
     
-    if (mimetype && extname) {
+    // 允许的音频格式扩展名
+    const allowedExtensions = /wav|mp3|m4a|aac|flac|opus|webm|ogg/;
+    // 允许的MIME类型
+    const allowedMimeTypes = /audio\/(wav|mpeg|mp4|aac|flac|opus|webm|ogg|x-wav|x-m4a)/;
+    
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    const hasValidExtension = allowedExtensions.test(fileExtension);
+    const hasValidMimeType = allowedMimeTypes.test(file.mimetype);
+    
+    console.log('🔍 文件验证:', {
+      fileExtension,
+      hasValidExtension,
+      hasValidMimeType,
+      mimetype: file.mimetype
+    });
+    
+    // 对于浏览器录制的文件，可能没有扩展名但有正确的MIME类型
+    if (hasValidMimeType || hasValidExtension) {
       return cb(null, true);
     } else {
-      cb(new Error('只支持音频文件格式: wav, mp3, m4a, aac, flac, opus'));
+      const errorMsg = `不支持的文件格式。文件: ${file.originalname}, MIME: ${file.mimetype}`;
+      console.error('❌ 文件格式不支持:', errorMsg);
+      cb(new Error(errorMsg));
     }
   }
 });

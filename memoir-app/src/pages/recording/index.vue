@@ -94,7 +94,11 @@ export default {
       recordingTime: 0,
       recordings: [],
       recordingTimer: null,
-      prompts: []
+      prompts: [],
+      // Web录音相关
+      mediaRecorder: null,
+      mediaStream: null,
+      audioChunks: []
     }
   },
   computed: {
@@ -120,7 +124,51 @@ export default {
       clearInterval(this.recordingTimer);
     }
   },
+  mounted() {
+    this.loadChapterData();
+    this.checkRecordingSupport();
+  },
   methods: {
+    // 调试方法：检查录音支持
+    checkRecordingSupport() {
+      console.log('=== 录音支持检查 ===');
+      console.log('navigator存在:', typeof navigator !== 'undefined');
+      console.log('mediaDevices存在:', typeof navigator?.mediaDevices !== 'undefined');
+      console.log('getUserMedia存在:', typeof navigator?.mediaDevices?.getUserMedia !== 'undefined');
+      console.log('MediaRecorder存在:', typeof MediaRecorder !== 'undefined');
+      
+      if (typeof MediaRecorder !== 'undefined') {
+        console.log('支持的MIME类型:');
+        console.log('audio/webm:', MediaRecorder.isTypeSupported('audio/webm'));
+        console.log('audio/webm;codecs=opus:', MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
+        console.log('audio/mp4:', MediaRecorder.isTypeSupported('audio/mp4'));
+      }
+      
+      console.log('uni存在:', typeof uni !== 'undefined');
+      console.log('uni.startRecord存在:', typeof uni?.startRecord !== 'undefined');
+      console.log('==================');
+    },
+
+    loadChapterData() {
+      // 获取传入的章节ID和标题
+      const pages = getCurrentPages();
+      if (pages.length > 0) {
+        const currentPage = pages[pages.length - 1];
+        const options = currentPage.options || {};
+        
+        this.chapterId = options.chapterId || '';
+        this.chapterTitle = options.title || '';
+        
+        console.log('加载章节数据:', this.chapterId, this.chapterTitle);
+        
+        // 设置引导问题
+        this.prompts = this.promptsMap[this.chapterId] || [];
+        
+        // 尝试加载已保存的内容
+        this.loadSavedContent();
+      }
+    },
+
     goBack() {
       this.saveChapter(); // 自动保存
       uni.navigateBack();
@@ -301,7 +349,7 @@ export default {
       }
     },
     
-    startRecording(event) {
+    async startRecording(event) {
       if (this.isProcessing) return;
       
       // 防止事件影响页面滚动
@@ -318,24 +366,27 @@ export default {
         this.recordingTime++;
       }, 1000);
       
-      // 检查运行环境
       console.log('🎤 开始录音...');
       console.log('运行环境:', uni.getSystemInfoSync().platform);
       
-      // 在H5环境下，uni.startRecord可能不可用，使用兼容处理
-      if (typeof uni.startRecord === 'function') {
+      // 检测浏览器环境并使用Web录音
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        console.log('🌐 检测到浏览器环境，使用Web录音...');
+        await this.startWebRecording();
+      } else if (typeof uni !== 'undefined' && typeof uni.startRecord === 'function') {
+        console.log('📱 检测到App环境，使用uni录音...');
         uni.startRecord({
           success: (res) => {
-            console.log('✅ 录音开始成功');
+            console.log('✅ App录音开始成功');
           },
           fail: (err) => {
-            console.error('❌ 录音开始失败:', err);
+            console.error('❌ App录音开始失败:', err);
             this.handleRecordingFallback();
           }
         });
       } else {
-        console.log('⚠️ 当前环境不支持录音API，使用模拟模式');
-        // 浏览器环境下的模拟处理
+        console.log('⚠️ 当前环境不支持录音API');
+        this.handleRecordingFallback();
       }
       
       uni.showToast({
@@ -343,10 +394,89 @@ export default {
         icon: 'none'
       });
     },
+
+    async startWebRecording() {
+      try {
+        console.log('🌐 开始Web录音...');
+        
+        // 请求麦克风权限
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 16000
+          } 
+        });
+        this.mediaStream = stream;
+        
+        // 检查浏览器支持的mime类型
+        let mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/webm';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/mp4';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = ''; // 使用默认
+            }
+          }
+        }
+        
+        console.log('使用MIME类型:', mimeType);
+        
+        // 创建MediaRecorder
+        this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+        this.audioChunks = [];
+        
+        this.mediaRecorder.ondataavailable = (event) => {
+          console.log('收到音频数据:', event.data.size, 'bytes');
+          if (event.data.size > 0) {
+            this.audioChunks.push(event.data);
+          }
+        };
+        
+        this.mediaRecorder.onstop = () => {
+          console.log('✅ Web录音停止，数据块数量:', this.audioChunks.length);
+          if (this.audioChunks.length > 0) {
+            const audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
+            console.log('音频Blob大小:', audioBlob.size, 'bytes');
+            this.processWebAudio(audioBlob);
+          } else {
+            console.error('❌ 没有录音数据');
+            this.handleRecordingError('录音数据为空');
+          }
+        };
+        
+        this.mediaRecorder.onerror = (event) => {
+          console.error('❌ MediaRecorder错误:', event.error);
+          this.handleRecordingError('录音过程中出错');
+        };
+        
+        // 开始录音
+        this.mediaRecorder.start(100); // 每100ms收集一次数据
+        console.log('✅ Web录音开始成功, 状态:', this.mediaRecorder.state);
+        
+      } catch (error) {
+        console.error('❌ Web录音开始失败:', error);
+        
+        let errorMessage = '无法访问麦克风';
+        if (error.name === 'NotAllowedError') {
+          errorMessage = '麦克风权限被拒绝';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = '未找到麦克风设备';
+        }
+        
+        uni.showToast({
+          title: errorMessage,
+          icon: 'error'
+        });
+        this.handleRecordingFallback();
+      }
+    },
     
     handleRecordingFallback() {
       console.log('🔄 录音API不可用，使用降级处理');
       this.isRecording = false;
+      this.isProcessing = false;
       if (this.recordingTimer) {
         clearInterval(this.recordingTimer);
         this.recordingTimer = null;
@@ -383,27 +513,158 @@ export default {
       
       console.log('🛑 停止录音...');
       
-      // 检查录音API是否可用
-      if (typeof uni.stopRecord === 'function') {
-        // 使用真实的录音API
+      // 检测环境并停止录音
+      if (this.mediaRecorder || this.mediaStream) {
+        console.log('🌐 停止Web录音...');
+        this.stopWebRecording();
+      } else if (typeof uni !== 'undefined' && typeof uni.stopRecord === 'function') {
+        console.log('📱 停止App录音...');
         uni.stopRecord({
           success: (res) => {
-            console.log('✅ 录音停止成功，文件路径:', res.tempFilePath);
+            console.log('✅ App录音停止成功，文件路径:', res.tempFilePath);
             this.handleRecordingSuccess(res.tempFilePath);
           },
           fail: (err) => {
-            console.error('❌ 录音停止失败:', err);
+            console.error('❌ App录音停止失败:', err);
             this.handleRecordingError('录音停止失败');
           }
         });
       } else {
-        // 浏览器环境下的模拟录音文件
-        console.log('⚠️ 当前环境不支持录音API，模拟录音文件');
-        setTimeout(() => {
-          // 模拟录音文件路径
-          const mockFilePath = `mock_recording_${Date.now()}.wav`;
-          this.handleRecordingSuccess(mockFilePath);
-        }, 1000);
+        console.log('⚠️ 当前环境不支持录音API');
+        this.handleRecordingError('录音API不可用');
+      }
+    },
+
+    stopWebRecording() {
+      try {
+        console.log('🌐 停止Web录音...');
+        console.log('MediaRecorder状态:', this.mediaRecorder?.state);
+        
+        if (this.mediaRecorder) {
+          if (this.mediaRecorder.state === 'recording') {
+            console.log('停止MediaRecorder...');
+            this.mediaRecorder.stop();
+          } else if (this.mediaRecorder.state === 'paused') {
+            this.mediaRecorder.resume();
+            this.mediaRecorder.stop();
+          }
+        }
+        
+        // 停止所有音频轨道
+        if (this.mediaStream) {
+          console.log('停止媒体流...');
+          this.mediaStream.getTracks().forEach(track => {
+            console.log('停止轨道:', track.kind);
+            track.stop();
+          });
+        }
+        
+      } catch (error) {
+        console.error('❌ 停止Web录音失败:', error);
+        this.handleRecordingError('停止录音失败');
+      }
+    },
+
+    async processWebAudio(audioBlob) {
+      try {
+        console.log('🎵 处理Web录音数据...', audioBlob.size, 'bytes');
+        console.log('🎵 音频Blob类型:', audioBlob.type);
+        
+        // 根据Blob类型确定文件扩展名
+        let extension = '.webm';
+        let mimeType = audioBlob.type || 'audio/webm';
+        
+        if (mimeType.includes('webm')) {
+          extension = '.webm';
+        } else if (mimeType.includes('mp4')) {
+          extension = '.mp4';
+        } else if (mimeType.includes('wav')) {
+          extension = '.wav';
+        } else if (mimeType.includes('ogg')) {
+          extension = '.ogg';
+        }
+        
+        // 创建带正确扩展名和MIME类型的File对象
+        const timestamp = Date.now();
+        const fileName = `web_recording_${timestamp}${extension}`;
+        
+        const audioFile = new File([audioBlob], fileName, { 
+          type: mimeType
+        });
+        
+        console.log('📁 创建音频文件:', {
+          name: audioFile.name,
+          size: audioFile.size,
+          type: audioFile.type
+        });
+        
+        // 直接上传到后端
+        await this.uploadWebAudio(audioFile);
+        
+      } catch (error) {
+        console.error('❌ 处理Web音频失败:', error);
+        this.handleRecordingError('音频处理失败');
+      }
+    },
+
+    async uploadWebAudio(audioFile) {
+      try {
+        console.log('📤 上传Web录音文件...');
+        
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+        
+        // 创建FormData
+        const formData = new FormData();
+        formData.append('audio', audioFile);
+        
+        // 使用原生fetch上传文件
+        const response = await fetch('http://localhost:3001/api/speech/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          console.log('✅ Web音频上传成功:', result.data);
+          
+          // 创建录音记录
+          const newRecording = {
+            id: Date.now(),
+            duration: this.recordingTime,
+            filePath: result.data.file.filename,
+            transcription: '',
+            playing: false,
+            isWebAudio: true
+          };
+          
+          this.recordings.push(newRecording);
+          this.isProcessing = false;
+          this.recordingTime = 0;
+          
+          uni.showToast({
+            title: '录制完成，正在转换文字...',
+            icon: 'success'
+          });
+          
+          // 获取Token并调用语音识别
+          setTimeout(() => {
+            this.transcribeRecording(newRecording);
+          }, 500);
+          
+        } else {
+          throw new Error(result.message || '上传失败');
+        }
+        
+      } catch (error) {
+        console.error('❌ Web音频上传失败:', error);
+        this.handleRecordingError(`上传失败: ${error.message}`);
       }
     },
     
@@ -505,41 +766,30 @@ export default {
         if (recording && recording.filePath) {
           console.log('📁 开始处理录音文件:', recording.filePath);
           
-          // 检查文件路径是否为模拟文件
-          const isMockFile = recording.filePath.includes('mock_recording_');
-          
-          if (isMockFile) {
-            console.log('🔄 检测到模拟录音文件，跳过文件上传，直接调用转写API测试...');
-            // 对于模拟文件，直接调用转写API但告诉后端这是测试请求
-            try {
-              console.log('📤 直接调用阿里云转写API进行测试...');
-              await this.performRealSpeechRecognitionWithoutFile(recording, speechToken);
-              
-            } catch (apiError) {
-              console.error('❌ 真实转写API调用失败:', apiError);
-              // 不使用降级方案，直接报错让用户知道API有问题
-              uni.hideLoading();
-              uni.showToast({
-                title: 'API调用失败: ' + (apiError.message || '未知错误'),
-                icon: 'error',
-                duration: 3000
-              });
-            }
-          } else {
-            console.log('📤 准备上传真实音频文件进行阿里云识别...');
-            try {
-              // 上传真实音频文件到后端
+          try {
+            // 检查是否为Web录音（已经上传过的）
+            if (recording.isWebAudio) {
+              console.log('🌐 Web录音文件，直接调用转写API...');
+              // Web录音文件已经上传，直接调用转写
+              await this.callTranscribeAPI(recording, speechToken, recording.filePath);
+            } else {
+              console.log('📤 准备上传音频文件进行阿里云识别...');
+              // App录音或其他情况，需要先上传
               const uploadResult = await this.uploadAudioFile(recording.filePath, token);
               console.log('✅ 音频文件上传成功:', uploadResult);
               
-              // 使用真实的阿里云语音识别服务
-              console.log('🔄 开始阿里云语音识别，Token:', speechToken.substring(0, 20) + '...');
-              await this.performRealSpeechRecognition(recording, speechToken, uploadResult);
-              
-            } catch (uploadError) {
-              console.error('❌ 音频上传失败，使用降级方案:', uploadError);
-              await this.fallbackSpeechRecognition(recording, speechToken);
+              // 调用转写API
+              await this.callTranscribeAPI(recording, speechToken, uploadResult.file.filename);
             }
+            
+          } catch (error) {
+            console.error('❌ 音频处理失败:', error);
+            uni.hideLoading();
+            uni.showToast({
+              title: '语音识别失败: ' + (error.message || '未知错误'),
+              icon: 'error',
+              duration: 3000
+            });
           }
           
         } else {
@@ -647,15 +897,16 @@ export default {
       }
     },
 
-    async performRealSpeechRecognitionWithoutFile(recording, speechToken) {
+    async callTranscribeAPI(recording, speechToken, filename) {
       try {
-        console.log('🎯 开始测试阿里云转写API（无文件模式）...');
+        console.log('🎯 开始阿里云语音识别...');
+        console.log('📁 音频文件:', filename);
         console.log('🔑 Token:', speechToken.substring(0, 20) + '...');
         
         // 获取用户Token
         const token = uni.getStorageSync('token');
         
-        // 调用转写API但使用测试模式
+        // 调用真实的转写API（不使用测试模式）
         const transcribeResponse = await uni.request({
           url: 'http://localhost:3001/api/speech/transcribe',
           method: 'POST',
@@ -664,12 +915,12 @@ export default {
             'Content-Type': 'application/json'
           },
           data: {
-            filename: 'test_mode', // 特殊标识，告诉后端这是测试
-            testMode: true
+            filename: filename,
+            testMode: false // 明确指定不是测试模式
           }
         });
 
-        console.log('转写测试响应:', transcribeResponse);
+        console.log('转写响应:', transcribeResponse);
 
         if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
           const transcribedText = transcribeResponse.data.data.transcript;
@@ -684,21 +935,22 @@ export default {
           
           uni.hideLoading();
           uni.showToast({
-            title: '阿里云API测试成功',
+            title: '语音转文字完成',
             icon: 'success'
           });
           
-          console.log('✅ 阿里云转写API测试成功！');
+          console.log('✅ 阿里云语音识别完成！');
           console.log('📄 转录文本:', transcribedText);
+          console.log('⏰ 转写时间:', transcribeResponse.data.data.transcribedAt);
           
         } else {
-          const errorMsg = transcribeResponse.data?.message || transcribeResponse.data?.details || '转写API请求失败';
+          const errorMsg = transcribeResponse.data?.message || transcribeResponse.data?.details || '语音识别请求失败';
           console.error('❌ 转写API响应错误:', transcribeResponse);
           throw new Error(errorMsg);
         }
         
       } catch (error) {
-        console.error('❌ 转写API测试失败:', error);
+        console.error('❌ 阿里云语音识别失败:', error);
         throw error;
       }
     },
