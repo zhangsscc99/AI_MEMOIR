@@ -1,0 +1,90 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "岁月镜像",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/memoir/memoir",
+			"style": {
+				"navigationBarTitleText": "回忆录",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/diary/diary",
+			"style": {
+				"navigationBarTitleText": "随记",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/welcome/welcome",
+			"style": {
+				"navigationBarTitleText": "回忆录工坊",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/question/question",
+			"style": {
+				"navigationBarTitleText": "问答",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "岁月镜像",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#7A7E83",
+		"selectedColor": "#FF6B47",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"iconPath": "static/icons/home.svg",
+				"selectedIconPath": "static/icons/home-filled.svg",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/memoir/memoir",
+				"iconPath": "static/icons/book.svg",
+				"selectedIconPath": "static/icons/book-filled.svg",
+				"text": "回忆录"
+			},
+			{
+				"pagePath": "pages/diary/diary",
+				"iconPath": "static/icons/edit.svg",
+				"selectedIconPath": "static/icons/edit-filled.svg",
+				"text": "随记"
+			},
+			{
+				"pagePath": "pages/profile/profile",
+				"iconPath": "static/icons/user.svg",
+				"selectedIconPath": "static/icons/user-filled.svg",
+				"text": "我的"
+			}
+		]
+	}
+}
