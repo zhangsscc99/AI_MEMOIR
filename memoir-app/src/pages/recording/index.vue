@@ -65,7 +65,7 @@
                   <view v-if="isRecording" class="recording-animation">
                     <view class="wave" v-for="i in 3" :key="i"></view>
                   </view>
-                  <text v-else class="mic-icon">🎤</text>
+                  <image v-else src="/static/icons/microphone.svg" class="mic-icon" mode="aspectFit"></image>
                 </view>
               </view>
               <text class="record-text">{{ recordButtonText }}</text>
@@ -459,7 +459,7 @@ export default {
 }
 
 .prompts-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #333;
   margin-bottom: 24px;
@@ -569,25 +569,29 @@ export default {
 .record-btn {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #007AFF 0%, #005FCC 100%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #e0e0e0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .record-btn.recording {
-  background: linear-gradient(135deg, #FF3B30 0%, #CC1E14 100%);
-  box-shadow: 0 4px 20px rgba(255, 59, 48, 0.4);
+  background: rgba(255, 59, 48, 0.1);
+  border-color: #FF3B30;
+  box-shadow: 0 4px 20px rgba(255, 59, 48, 0.2);
   animation: pulse 2s infinite;
 }
 
 .record-btn.processing {
-  background: linear-gradient(135deg, #FF9500 0%, #CC7700 100%);
-  box-shadow: 0 4px 20px rgba(255, 149, 0, 0.4);
+  background: rgba(255, 149, 0, 0.1);
+  border-color: #FF9500;
+  box-shadow: 0 4px 20px rgba(255, 149, 0, 0.2);
 }
 
 .record-icon {
@@ -597,8 +601,9 @@ export default {
 }
 
 .mic-icon {
-  font-size: 32px;
-  color: white;
+  width: 32px;
+  height: 32px;
+  color: #333;
 }
 
 .recording-animation {
