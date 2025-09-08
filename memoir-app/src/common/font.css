@@ -23,6 +23,23 @@
   letter-spacing: 1.5px;
 }
 
+/* 金色渐变文字效果 */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 25%, #FDB931 50%, #D4AF37 75%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+/* 金色渐变变量 */
+:root {
+  --gold-gradient: linear-gradient(135deg, #D4AF37 0%, #FFD700 25%, #FDB931 50%, #D4AF37 75%, #B8860B 100%);
+  --gold-color: #D4AF37;
+  --gold-light: #FFD700;
+  --gold-dark: #B8860B;
+}
+
 /* 强制应用到所有导航栏 */
 uni-page-head .uni-page-head__title,
 .uni-page-head .uni-page-head__title,
