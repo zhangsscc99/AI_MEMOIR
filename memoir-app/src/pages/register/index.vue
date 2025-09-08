@@ -21,6 +21,7 @@
             placeholder="请输入用户名" 
             v-model="registerForm.username"
             :class="{ 'error': errors.username }"
+            autocomplete="off"
           />
         </view>
         <text v-if="errors.username" class="error-text">{{ errors.username }}</text>
@@ -34,6 +35,11 @@
             placeholder="请输入邮箱" 
             v-model="registerForm.email"
             :class="{ 'error': errors.email }"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            :value="registerForm.email"
           />
         </view>
         <text v-if="errors.email" class="error-text">{{ errors.email }}</text>
@@ -47,6 +53,11 @@
             placeholder="请输入密码" 
             v-model="registerForm.password"
             :class="{ 'error': errors.password }"
+            autocomplete="new-password"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            :value="registerForm.password"
           />
         </view>
         <text v-if="errors.password" class="error-text">{{ errors.password }}</text>
@@ -60,6 +71,7 @@
             placeholder="请确认密码" 
             v-model="registerForm.confirmPassword"
             :class="{ 'error': errors.confirmPassword }"
+            autocomplete="new-password"
           />
         </view>
         <text v-if="errors.confirmPassword" class="error-text">{{ errors.confirmPassword }}</text>
@@ -96,6 +108,34 @@ export default {
       errors: {},
       isLoading: false
     }
+  },
+  created() {
+    // 在组件创建时就清空数据
+    this.registerForm = {
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+    };
+    this.errors = {};
+  },
+  mounted() {
+    // 确保表单数据重置为空
+    this.registerForm = {
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+    };
+    this.errors = {};
+    
+    // 使用nextTick确保DOM更新后清除任何残留值
+    this.$nextTick(() => {
+      const inputs = document.querySelectorAll('.input-field');
+      inputs.forEach(input => {
+        input.value = '';
+      });
+    });
   },
   methods: {
     validateForm() {
@@ -302,10 +342,10 @@ export default {
 }
 
 .input-field {
-  width: 280px;
+  width: 240px;
   height: 44px;
   border: 1px solid #e1e5e9;
-  border-radius: 22px;
+  border-radius: 12px;
   padding: 0 16px;
   font-size: 16px;
   color: #333;
