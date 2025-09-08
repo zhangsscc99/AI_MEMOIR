@@ -172,8 +172,6 @@ export default {
         this.errors.password = '请输入密码';
       } else if (this.registerForm.password.length < 6) {
         this.errors.password = '密码至少需要6个字符';
-      } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(this.registerForm.password)) {
-        this.errors.password = '密码必须包含大小写字母和数字';
       }
       
       // 验证确认密码
@@ -208,33 +206,35 @@ export default {
           }
         });
         
-        const [error, result] = response;
+        console.log('注册响应:', response);
         
-        if (error) {
-          throw new Error('网络请求失败');
-        }
+        const data = response.data;
         
-        const { data } = result;
-        
-        if (data.success) {
-          // 保存用户信息和token
-          uni.setStorageSync('token', data.data.token);
-          uni.setStorageSync('user', data.data.user);
-          
-          uni.showToast({
-            title: '注册成功',
-            icon: 'success'
-          });
-          
-          // 跳转到个人空间页面
-          setTimeout(() => {
-            uni.switchTab({
-              url: '/pages/profile/index'
+        if (response.statusCode === 200 || response.statusCode === 201) {
+          if (data.success) {
+            // 保存用户信息和token
+            uni.setStorageSync('token', data.data.token);
+            uni.setStorageSync('user', data.data.user);
+            
+            uni.showToast({
+              title: '注册成功',
+              icon: 'success'
             });
-          }, 1500);
-          
+            
+            // 跳转到个人空间页面
+            setTimeout(() => {
+              uni.switchTab({
+                url: '/pages/profile/index'
+              });
+            }, 1500);
+          } else {
+            throw new Error(data.message || '注册失败');
+          }
+        } else if (response.statusCode === 400) {
+          // 处理400错误（验证失败或用户已存在）
+          throw new Error(data.message || '请求数据有误');
         } else {
-          throw new Error(data.message || '注册失败');
+          throw new Error('网络请求失败');
         }
         
       } catch (error) {

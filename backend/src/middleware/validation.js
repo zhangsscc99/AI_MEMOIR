@@ -46,9 +46,7 @@ const validateRegister = [
     
   body('password')
     .isLength({ min: 6, max: 128 })
-    .withMessage('密码长度必须在 6-128 个字符之间')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('密码必须包含至少一个小写字母、一个大写字母和一个数字'),
+    .withMessage('密码长度必须在 6-128 个字符之间'),
     
   body('confirmPassword')
     .custom((value, { req }) => {
@@ -87,9 +85,7 @@ const validateChangePassword = [
     
   body('newPassword')
     .isLength({ min: 6, max: 128 })
-    .withMessage('新密码长度必须在 6-128 个字符之间')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('新密码必须包含至少一个小写字母、一个大写字母和一个数字'),
+    .withMessage('新密码长度必须在 6-128 个字符之间'),
     
   body('confirmNewPassword')
     .custom((value, { req }) => {
