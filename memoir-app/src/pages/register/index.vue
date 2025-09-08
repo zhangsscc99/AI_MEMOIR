@@ -33,13 +33,13 @@
             class="input-field" 
             type="email" 
             placeholder="请输入邮箱" 
-            v-model="registerForm.email"
+            :value="registerForm.email"
+            @input="updateEmail"
             :class="{ 'error': errors.email }"
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-            :value="registerForm.email"
           />
         </view>
         <text v-if="errors.email" class="error-text">{{ errors.email }}</text>
@@ -51,13 +51,13 @@
             class="input-field" 
             type="password" 
             placeholder="请输入密码" 
-            v-model="registerForm.password"
+            :value="registerForm.password"
+            @input="updatePassword"
             :class="{ 'error': errors.password }"
             autocomplete="new-password"
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
-            :value="registerForm.password"
           />
         </view>
         <text v-if="errors.password" class="error-text">{{ errors.password }}</text>
@@ -135,9 +135,27 @@ export default {
       inputs.forEach(input => {
         input.value = '';
       });
+      
+      // 延迟再次清除，防止框架或浏览器重新填充
+      setTimeout(() => {
+        const inputs2 = document.querySelectorAll('.input-field');
+        inputs2.forEach(input => {
+          input.value = '';
+        });
+        // 强制重新渲染
+        this.$forceUpdate();
+      }, 100);
     });
   },
   methods: {
+    updateEmail(event) {
+      this.registerForm.email = event.target.value || '';
+    },
+    
+    updatePassword(event) {
+      this.registerForm.password = event.target.value || '';
+    },
+    
     validateForm() {
       this.errors = {};
       
@@ -379,7 +397,7 @@ export default {
 }
 
 .register-btn {
-  width: 200px;
+  width: 240px;
   height: 45px;
   background: rgba(255, 255, 255, 0.8);
   color: #333;
