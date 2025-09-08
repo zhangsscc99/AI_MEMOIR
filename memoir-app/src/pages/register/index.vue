@@ -194,41 +194,38 @@ export default {
 <style scoped>
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
+  background-color: #f8f8f8;
+  padding: 20px;
 }
 
 .register-header {
+  background: white;
+  border-radius: 12px;
+  padding: 40px 20px;
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .app-title {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 600;
-  color: white;
+  color: #333;
   margin-bottom: 12px;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
 }
 
 .app-subtitle {
   font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  color: #666;
   font-weight: 300;
 }
 
 .register-form {
-  width: 100%;
-  max-width: 360px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  padding: 40px 30px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  background: white;
+  border-radius: 12px;
+  padding: 30px 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .form-title {
@@ -245,20 +242,21 @@ export default {
 
 .input-field {
   width: 100%;
-  height: 50px;
-  border: 2px solid #e1e5e9;
-  border-radius: 12px;
-  padding: 0 16px;
+  height: 44px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 0 12px;
   font-size: 16px;
   color: #333;
-  background: white;
+  background: #f8f9fa;
   transition: all 0.3s ease;
 }
 
 .input-field:focus {
-  border-color: #667eea;
+  border-color: #FF6B47;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+  box-shadow: 0 0 0 2px rgba(255, 107, 71, 0.1);
 }
 
 .input-field.error {
