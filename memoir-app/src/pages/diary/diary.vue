@@ -7,7 +7,7 @@
 
     <view class="diary-list">
       <view class="diary-item">
-        <view class="diary-image-placeholder"></view>
+        <image src="/src/images/lion.png" class="diary-image" mode="aspectFill"></image>
         <view class="diary-content">
           <view class="diary-title">示例：春节福字的故事</view>
           <view class="diary-date">2025/08/25</view>
@@ -80,13 +80,13 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.diary-image-placeholder {
+.diary-image {
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: #f0f0f0;
   margin-right: 16px;
   flex-shrink: 0;
+  object-fit: cover;
 }
 
 .diary-content {
@@ -130,15 +130,23 @@ export default {
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #FF6B47 0%, #FF8A65 100%);
-  color: white;
-  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 25px;
   padding: 12px 24px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(255, 107, 71, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.add-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 .add-icon {

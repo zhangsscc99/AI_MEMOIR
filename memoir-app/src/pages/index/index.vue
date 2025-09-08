@@ -31,7 +31,9 @@
     <view class="section-preview">
       <view class="section-title">章节预览</view>
       <view class="preview-placeholder">
-        <image src="/static/images/preview-placeholder.png" class="placeholder-img" mode="aspectFit"></image>
+        <image src="/static/icons/empty-book.svg" class="empty-book-icon" mode="aspectFit"></image>
+        <view class="empty-text">未创建回忆录</view>
+        <view class="empty-subtitle">开始录制后，章节内容将在这里显示</view>
       </view>
     </view>
   </view>
@@ -326,11 +328,30 @@ export default {
 .preview-placeholder {
   text-align: center;
   padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.placeholder-img {
-  width: 120px;
-  height: 80px;
-  opacity: 0.3;
+.empty-book-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-text {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-subtitle {
+  font-size: 14px;
+  color: #999;
+  line-height: 1.4;
+  max-width: 200px;
 }
 </style>

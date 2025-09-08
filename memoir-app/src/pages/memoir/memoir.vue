@@ -1,46 +1,35 @@
 <template>
   <view class="container">
-    <view class="progress-header">
-      <view class="progress-dots">
-        <view 
-          v-for="(dot, index) in 6" 
-          :key="index"
-          class="dot"
-          :class="{ active: index === 0 }"
-        ></view>
+    <!-- 书本图片 -->
+    <view class="book-section">
+      <image src="/src/images/memoirbook.png" class="book-image" mode="aspectFit"></image>
+    </view>
+
+    <!-- 欢迎文案 -->
+    <view class="welcome-section">
+      <view class="welcome-title">欢迎来到回忆录工坊！</view>
+      <view class="welcome-description">
+        <text>我们将通过 </text>
+        <text class="highlight-number">36</text>
+        <text> 个互动 </text>
+        <text class="highlight-text">采访</text>
+        <text> 问答，</text>
+        <text class="description-line">了解您的人生故事，</text>
+        <text class="description-final">生成电子版或精美纸质版的专属于您的</text>
+      </view>
+      
+      <!-- 回忆录标题 -->
+      <view class="memoir-title-section">
+        <text class="quote-left">"</text>
+        <text class="memoir-title-text">回忆录</text>
+        <text class="quote-right">"</text>
       </view>
     </view>
 
-    <view class="ai-avatar">
-      <view class="avatar-circle">
-        <view class="avatar-dot dot1"></view>
-        <view class="avatar-dot dot2"></view>
-      </view>
-    </view>
-
-    <view class="question-section">
-      <view class="question-number">问题1：</view>
-      <view class="question-text">您的年龄？</view>
-    </view>
-
-    <view class="answer-section">
-      <view class="answer-type">单选</view>
-      <view class="options-grid">
-        <button 
-          v-for="(option, index) in ['40岁以下', '40~50岁', '50~60岁', '60~70岁', '70岁以上']" 
-          :key="index"
-          class="option-btn"
-          :class="{ selected: selectedOption === index }"
-          @click="selectOption(index)"
-        >
-          {{ option }}
-        </button>
-      </view>
-    </view>
-
-    <view class="confirm-section">
-      <button class="confirm-btn" @click="confirmAnswer" :disabled="selectedOption === null">
-        确定
+    <!-- 开始按钮 -->
+    <view class="start-section">
+      <button class="start-journey-btn" @click="startJourney">
+        开启回忆之旅
       </button>
     </view>
   </view>
@@ -48,22 +37,13 @@
 
 <script>
 export default {
-  data() {
-    return {
-      selectedOption: null
-    }
-  },
   methods: {
-    selectOption(index) {
-      this.selectedOption = index;
-    },
-    confirmAnswer() {
-      if (this.selectedOption !== null) {
-        uni.showToast({
-          title: '答案已记录！',
-          icon: 'success'
-        });
-      }
+    startJourney() {
+      uni.showToast({
+        title: '开始创建回忆录！',
+        icon: 'success'
+      });
+      // TODO: 跳转到问答流程
     }
   }
 }
@@ -71,151 +51,167 @@ export default {
 
 <style scoped>
 .container {
-  padding: 20px;
-  background-color: #f8f8f8;
+  padding: 40px 20px 20px;
+  background-color: #f8f6f3;
   min-height: 100vh;
-}
-
-.progress-header {
-  margin-bottom: 40px;
-}
-
-.progress-dots {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #ddd;
-  transition: all 0.3s ease;
-}
-
-.dot.active {
-  background-color: #FF6B47;
-  width: 24px;
-  border-radius: 4px;
-}
-
-.ai-avatar {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 40px;
-}
-
-.avatar-circle {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  border-radius: 50%;
-  position: relative;
-  display: flex;
+  flex-direction: column;
   align-items: center;
+}
+
+.book-section {
+  margin-bottom: 40px;
+  display: flex;
   justify-content: center;
 }
 
-.avatar-dot {
-  width: 8px;
-  height: 8px;
-  background-color: #f39c12;
-  border-radius: 50%;
-  position: absolute;
-  animation: pulse 2s infinite;
+.book-image {
+  width: 200px;
+  height: 260px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
 }
 
-.dot1 {
-  left: 25px;
+.welcome-section {
+  text-align: center;
+  margin-bottom: 60px;
+  max-width: 320px;
 }
 
-.dot2 {
-  right: 25px;
+.welcome-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin-bottom: 24px;
+  letter-spacing: 1px;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(0.8);
-  }
+.welcome-description {
+  font-size: 16px;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 32px;
 }
 
-.question-section {
-  margin-bottom: 40px;
-}
-
-.question-number {
-  font-size: 18px;
+.highlight-number {
   color: #FF6B47;
-  margin-bottom: 12px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.highlight-text {
+  color: #FF6B47;
   font-weight: 500;
 }
 
-.question-text {
-  font-size: 20px;
-  color: #333;
-  font-weight: bold;
-  line-height: 1.4;
+.description-line {
+  display: block;
+  margin: 8px 0;
 }
 
-.answer-section {
-  margin-bottom: 80px;
+.description-final {
+  display: block;
+  margin-top: 8px;
 }
 
-.answer-type {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 20px;
+.memoir-title-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
 }
 
-.options-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.option-btn {
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 25px;
-  padding: 16px 20px;
-  font-size: 16px;
-  color: #333;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.option-btn.selected {
-  border-color: #FF6B47;
-  background-color: #fff5f2;
+.quote-left,
+.quote-right {
+  font-size: 32px;
   color: #FF6B47;
+  font-weight: 300;
+  opacity: 0.8;
 }
 
-.confirm-section {
-  position: fixed;
-  bottom: 34px;
-  left: 20px;
-  right: 20px;
+.memoir-title-text {
+  font-size: 36px;
+  font-weight: bold;
+  color: #FF6B47;
+  margin: 0 8px;
+  letter-spacing: 2px;
 }
 
-.confirm-btn {
+.start-section {
+  margin-top: auto;
+  margin-bottom: 40px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.start-journey-btn {
   width: 100%;
   background: linear-gradient(135deg, #FF6B47 0%, #FF8A65 100%);
   color: white;
   border: none;
-  border-radius: 25px;
-  padding: 16px;
+  border-radius: 28px;
+  padding: 18px 32px;
   font-size: 18px;
   font-weight: 500;
-  transition: opacity 0.3s ease;
+  box-shadow: 0 8px 24px rgba(255, 107, 71, 0.3);
+  transition: all 0.3s ease;
 }
 
-.confirm-btn:disabled {
-  opacity: 0.5;
+.start-journey-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(255, 107, 71, 0.4);
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .container {
+    padding: 30px 16px 16px;
+  }
+  
+  .book-image {
+    width: 160px;
+    height: 210px;
+  }
+  
+  .welcome-title {
+    font-size: 20px;
+  }
+  
+  .welcome-description {
+    font-size: 15px;
+  }
+  
+  .memoir-title-text {
+    font-size: 28px;
+  }
+  
+  .quote-left,
+  .quote-right {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  .book-image {
+    width: 140px;
+    height: 180px;
+  }
+  
+  .welcome-title {
+    font-size: 18px;
+  }
+  
+  .welcome-description {
+    font-size: 14px;
+  }
+  
+  .memoir-title-text {
+    font-size: 24px;
+  }
+  
+  .start-journey-btn {
+    font-size: 16px;
+    padding: 16px 28px;
+  }
 }
 </style>

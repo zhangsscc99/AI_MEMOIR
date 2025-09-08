@@ -1,0 +1,33 @@
+/* 中文艺术字体样式 */
+
+/* 导航栏标题字体 */
+.uni-page-head .uni-page-head__title,
+.uni-page-head__title {
+  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
+  font-weight: 500 !important;
+  font-size: 18px !important;
+  letter-spacing: 1.5px !important;
+}
+
+/* H5端导航栏标题 */
+.uni-page-head .uni-page-head-btn .uni-page-head__title {
+  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
+  font-weight: 500 !important;
+  letter-spacing: 1.5px !important;
+}
+
+/* 通用中文艺术字体类 */
+.chinese-artistic {
+  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+}
+
+/* 强制应用到所有导航栏 */
+uni-page-head .uni-page-head__title,
+.uni-page-head .uni-page-head__title,
+[class*="uni-page-head"] .uni-page-head__title {
+  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
+  font-weight: 500 !important;
+  letter-spacing: 1.5px !important;
+}
