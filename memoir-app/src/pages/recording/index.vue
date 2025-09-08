@@ -70,12 +70,6 @@
               </view>
               <text class="record-text">{{ recordButtonText }}</text>
             </view>
-            
-            <!-- 语言选择 -->
-            <view class="language-selector">
-              <text class="language-text">普通话</text>
-              <text class="language-arrow">▼</text>
-            </view>
           </view>
           
           <!-- 录音计时 -->
@@ -555,7 +549,7 @@ export default {
 .voice-control-area {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 20px;
 }
 
@@ -634,25 +628,6 @@ export default {
   text-align: center;
 }
 
-.language-selector {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
-  background: #f8f9fa;
-  border-radius: 20px;
-  cursor: pointer;
-}
-
-.language-text {
-  font-size: 14px;
-  color: #333;
-}
-
-.language-arrow {
-  font-size: 10px;
-  color: #666;
-}
 
 .recording-timer {
   text-align: center;
