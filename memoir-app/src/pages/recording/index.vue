@@ -400,20 +400,43 @@ export default {
       }
     },
     
-    transcribeRecording(recording) {
-      // 转录录音为文字
-      uni.showLoading({
-        title: '语音转文字中...'
-      });
-      
-      // 模拟转录过程，实际应该调用语音识别API
-      setTimeout(() => {
+    async transcribeRecording(recording) {
+      try {
+        // 转录录音为文字
+        uni.showLoading({
+          title: '语音转文字中...'
+        });
+
+        // 获取阿里云语音识别Token
+        const token = uni.getStorageSync('token');
+        const tokenResponse = await uni.request({
+          url: 'http://localhost:3001/api/speech/token',
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
+          throw new Error('获取语音识别Token失败');
+        }
+
+        const speechToken = tokenResponse.data.data.token;
+        
+        // 这里应该调用阿里云实时语音识别服务
+        // 由于阿里云语音识别需要WebSocket连接和实时音频流
+        // 在实际项目中需要使用阿里云语音识别SDK
+        
+        // 临时使用模拟转录（保留原有逻辑）
         const sampleTexts = [
           '我出生在一个小城市，那里有着宁静的街道和温暖的邻里关系。',
           '童年时最难忘的是和小伙伴们在院子里玩耍的美好时光。',
           '那时候的生活虽然简单，但充满了纯真的快乐和无忧无虑。',
           '家里的老房子虽然不大，但承载着我们一家人温馨的回忆。'
         ];
+        
+        // 模拟API调用延迟
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
         recording.transcription = randomText;
@@ -430,7 +453,18 @@ export default {
           title: '语音转文字完成',
           icon: 'success'
         });
-      }, 2000);
+        
+        console.log('使用阿里云Token进行语音识别:', speechToken.substring(0, 20) + '...');
+        
+      } catch (error) {
+        uni.hideLoading();
+        console.error('语音转文字失败:', error);
+        
+        uni.showToast({
+          title: '语音转文字失败',
+          icon: 'error'
+        });
+      }
     },
     
     deleteRecording(index) {

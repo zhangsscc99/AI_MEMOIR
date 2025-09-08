@@ -1,3 +1,4 @@
+require('dotenv').config(); // 加载环境变量
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -10,6 +11,7 @@ const { testConnection } = require('./config/database');
 // 导入路由
 const authRoutes = require('./routes/auth');
 const chapterRoutes = require('./routes/chapters');
+const speechRoutes = require('./routes/speech');
 
 // 创建 Express 应用
 const app = express();
@@ -61,6 +63,7 @@ app.get('/health', (req, res) => {
 // API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/chapters', chapterRoutes);
+app.use('/api/speech', speechRoutes);
 
 // 静态文件服务（用于文件上传）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -142,6 +145,9 @@ const startServer = async () => {
       console.log('   - GET  /api/chapters        - 获取章节列表');
       console.log('   - GET  /api/chapters/:id    - 获取章节详情');
       console.log('   - DELETE /api/chapters/:id  - 删除章节');
+      console.log('   - GET  /api/speech/token    - 获取语音识别Token');
+      console.log('   - POST /api/speech/upload   - 上传音频文件');
+      console.log('   - DELETE /api/speech/audio/:filename - 删除音频文件');
       console.log('');
       console.log('🎯 前端访问地址: http://localhost:5173');
       console.log('⚡ 准备接收请求...');
