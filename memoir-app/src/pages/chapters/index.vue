@@ -121,6 +121,20 @@ export default {
           completed: false
         },
         {
+          id: 'relationships',
+          title: '人缘际遇',
+          description: '记录重要的人际关系和人生际遇',
+          icon: '/static/icons/relationships.svg',
+          completed: false
+        },
+        {
+          id: 'laterlife',
+          title: '晚年生活',
+          description: '分享退休后的生活和晚年感悟',
+          icon: '/static/icons/laterlife.svg',
+          completed: false
+        },
+        {
           id: 'wisdom',
           title: '人生感悟',
           description: '分享人生智慧和生活哲理',

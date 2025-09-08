@@ -64,7 +64,7 @@ export default {
   data() {
     return {
       progressPercent: 0,
-      totalChapters: 8,
+      totalChapters: 10,
       completedChapters: []
     }
   },
@@ -87,6 +87,8 @@ export default {
           'love': '爱情婚姻',
           'family': '为人父母',
           'travel': '旅行见闻',
+          'relationships': '人缘际遇',
+          'laterlife': '晚年生活',
           'wisdom': '人生感悟'
         };
         
