@@ -1,5 +1,10 @@
 <template>
   <view class="container">
+    <!-- 返回按钮 -->
+    <view class="back-btn" @click="goBack">
+      <text class="back-icon">←</text>
+    </view>
+    
     <view class="login-header">
       <view class="app-title">岁月镜像</view>
       <view class="app-subtitle">记录生命中的每一个珍贵瞬间</view>
@@ -9,34 +14,50 @@
       <view class="form-title">欢迎回来</view>
       
       <view class="input-group">
-        <input 
-          class="input-field" 
-          type="text" 
-          placeholder="请输入用户名或邮箱" 
-          v-model="loginForm.identifier"
-          :class="{ 'error': errors.identifier }"
-        />
+        <view class="input-container">
+          <input 
+            class="input-field" 
+            type="text" 
+            placeholder="请输入用户名或邮箱" 
+            :value="loginForm.identifier"
+            @input="updateIdentifier"
+            :class="{ 'error': errors.identifier }"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+        </view>
         <text v-if="errors.identifier" class="error-text">{{ errors.identifier }}</text>
       </view>
       
       <view class="input-group">
-        <input 
-          class="input-field" 
-          type="password" 
-          placeholder="请输入密码" 
-          v-model="loginForm.password"
-          :class="{ 'error': errors.password }"
-        />
+        <view class="input-container">
+          <input 
+            class="input-field" 
+            type="password" 
+            placeholder="请输入密码" 
+            :value="loginForm.password"
+            @input="updatePassword"
+            :class="{ 'error': errors.password }"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+        </view>
         <text v-if="errors.password" class="error-text">{{ errors.password }}</text>
       </view>
       
-      <button 
-        class="login-btn" 
-        @click="handleLogin"
-        :disabled="isLoading"
-      >
-        {{ isLoading ? '登录中...' : '登录' }}
-      </button>
+      <view class="btn-container">
+        <button 
+          class="login-btn" 
+          @click="handleLogin"
+          :disabled="isLoading"
+        >
+          {{ isLoading ? '登录中...' : '登录' }}
+        </button>
+      </view>
       
       <view class="form-footer">
         <text class="register-text">还没有账号？</text>
@@ -58,7 +79,21 @@ export default {
       isLoading: false
     }
   },
+  mounted() {
+    // 确保错误状态清空
+    this.errors = {};
+  },
   methods: {
+    updateIdentifier(event) {
+      this.loginForm.identifier = event.detail.value || event.target.value || '';
+      this.errors.identifier = '';
+    },
+    
+    updatePassword(event) {
+      this.loginForm.password = event.detail.value || event.target.value || '';
+      this.errors.password = '';
+    },
+    
     validateForm() {
       this.errors = {};
       
@@ -93,15 +128,12 @@ export default {
           }
         });
         
-        const [error, result] = response;
+        console.log('登录响应:', response);
         
-        if (error) {
-          throw new Error('网络请求失败');
-        }
+        const data = response.data;
         
-        const { data } = result;
-        
-        if (data.success) {
+        if (response.statusCode === 200 || response.statusCode === 201) {
+          if (data.success) {
           // 保存用户信息和token
           uni.setStorageSync('token', data.data.token);
           uni.setStorageSync('user', data.data.user);
@@ -118,8 +150,13 @@ export default {
             });
           }, 1500);
           
+          } else {
+            throw new Error(data.message || '登录失败');
+          }
+        } else if (response.statusCode === 400 || response.statusCode === 401) {
+          throw new Error(data.message || '用户名或密码错误');
         } else {
-          throw new Error(data.message || '登录失败');
+          throw new Error('网络请求失败');
         }
         
       } catch (error) {
@@ -138,6 +175,12 @@ export default {
       uni.navigateTo({
         url: '/pages/register/index'
       });
+    },
+    
+    goBack() {
+      uni.switchTab({
+        url: '/pages/profile/index'
+      });
     }
   }
 }
@@ -146,41 +189,74 @@ export default {
 <style scoped>
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f8f8f8;
+  padding: 20px;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding: 40px 20px;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.back-icon {
+  font-size: 20px;
+  color: #333;
+  font-weight: 600;
 }
 
 .login-header {
+  background: white;
+  border-radius: 12px;
+  padding: 40px 20px;
   text-align: center;
-  margin-bottom: 60px;
+  margin-top: 60px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .app-title {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 600;
-  color: white;
+  color: #333;
   margin-bottom: 12px;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
 }
 
 .app-subtitle {
   font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  color: #666;
   font-weight: 300;
 }
 
 .login-form {
-  width: 100%;
-  max-width: 360px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  padding: 40px 30px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  background: white;
+  border-radius: 12px;
+  padding: 30px 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .form-title {
@@ -195,22 +271,29 @@ export default {
   margin-bottom: 20px;
 }
 
+.input-container {
+  display: flex;
+  justify-content: center;
+}
+
 .input-field {
-  width: 100%;
-  height: 50px;
-  border: 2px solid #e1e5e9;
+  width: 240px;
+  height: 44px;
+  border: 1px solid #e1e5e9;
   border-radius: 12px;
   padding: 0 16px;
   font-size: 16px;
   color: #333;
-  background: white;
+  background: #f8f9fa;
   transition: all 0.3s ease;
+  text-align: center;
 }
 
 .input-field:focus {
-  border-color: #667eea;
+  border-color: #FF6B47;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+  box-shadow: 0 0 0 2px rgba(255, 107, 71, 0.1);
 }
 
 .input-field.error {
@@ -224,16 +307,21 @@ export default {
   display: block;
 }
 
+.btn-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 .login-btn {
-  width: 100%;
-  height: 50px;
+  width: 240px;
+  height: 45px;
   background: rgba(255, 255, 255, 0.8);
   color: #333;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
+  border-radius: 25px;
   font-size: 16px;
   font-weight: 600;
-  margin-top: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   backdrop-filter: blur(15px);
