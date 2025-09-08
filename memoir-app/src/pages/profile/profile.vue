@@ -104,7 +104,7 @@ export default {
 
 .user-id {
   font-size: 14px;
-  color: #999;
+  color: #333;
 }
 
 .vip-badge {
@@ -167,7 +167,7 @@ export default {
 
 .footer-link {
   font-size: 14px;
-  color: #FF6B47;
+  color: #333;
   text-decoration: underline;
 }
 </style>
