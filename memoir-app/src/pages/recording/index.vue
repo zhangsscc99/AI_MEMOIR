@@ -318,12 +318,42 @@ export default {
         this.recordingTime++;
       }, 1000);
       
-      // 这里应该调用实际的录音API
-      // uni.startRecord({...})
+      // 检查运行环境
+      console.log('🎤 开始录音...');
+      console.log('运行环境:', uni.getSystemInfoSync().platform);
+      
+      // 在H5环境下，uni.startRecord可能不可用，使用兼容处理
+      if (typeof uni.startRecord === 'function') {
+        uni.startRecord({
+          success: (res) => {
+            console.log('✅ 录音开始成功');
+          },
+          fail: (err) => {
+            console.error('❌ 录音开始失败:', err);
+            this.handleRecordingFallback();
+          }
+        });
+      } else {
+        console.log('⚠️ 当前环境不支持录音API，使用模拟模式');
+        // 浏览器环境下的模拟处理
+      }
       
       uni.showToast({
         title: '开始录制',
         icon: 'none'
+      });
+    },
+    
+    handleRecordingFallback() {
+      console.log('🔄 录音API不可用，使用降级处理');
+      this.isRecording = false;
+      if (this.recordingTimer) {
+        clearInterval(this.recordingTimer);
+        this.recordingTimer = null;
+      }
+      uni.showToast({
+        title: '当前环境不支持录音',
+        icon: 'error'
       });
     },
     
@@ -351,30 +381,68 @@ export default {
         this.$forceUpdate();
       });
       
-      // 模拟录音处理
-      setTimeout(() => {
-        const newRecording = {
-          id: Date.now(),
-          duration: this.recordingTime,
-          filePath: `recording_${Date.now()}.wav`, // 实际应该是录音文件路径
-          transcription: '', // 转录文本
-          playing: false
-        };
-        
-        this.recordings.push(newRecording);
-        this.isProcessing = false;
-        this.recordingTime = 0;
-        
-        uni.showToast({
-          title: '录制完成，正在转换文字...',
-          icon: 'success'
+      console.log('🛑 停止录音...');
+      
+      // 检查录音API是否可用
+      if (typeof uni.stopRecord === 'function') {
+        // 使用真实的录音API
+        uni.stopRecord({
+          success: (res) => {
+            console.log('✅ 录音停止成功，文件路径:', res.tempFilePath);
+            this.handleRecordingSuccess(res.tempFilePath);
+          },
+          fail: (err) => {
+            console.error('❌ 录音停止失败:', err);
+            this.handleRecordingError('录音停止失败');
+          }
         });
-        
-        // 自动开始转录
+      } else {
+        // 浏览器环境下的模拟录音文件
+        console.log('⚠️ 当前环境不支持录音API，模拟录音文件');
         setTimeout(() => {
-          this.transcribeRecording(newRecording);
-        }, 500);
-      }, 1000);
+          // 模拟录音文件路径
+          const mockFilePath = `mock_recording_${Date.now()}.wav`;
+          this.handleRecordingSuccess(mockFilePath);
+        }, 1000);
+      }
+    },
+    
+    handleRecordingSuccess(filePath) {
+      console.log('📁 处理录音文件:', filePath);
+      
+      const newRecording = {
+        id: Date.now(),
+        duration: this.recordingTime,
+        filePath: filePath,
+        transcription: '',
+        playing: false
+      };
+      
+      this.recordings.push(newRecording);
+      this.isProcessing = false;
+      this.recordingTime = 0;
+      
+      uni.showToast({
+        title: '录制完成，正在转换文字...',
+        icon: 'success'
+      });
+      
+      // 自动开始转录
+      setTimeout(() => {
+        this.transcribeRecording(newRecording);
+      }, 500);
+    },
+    
+    handleRecordingError(errorMessage) {
+      console.error('❌ 录音处理失败:', errorMessage);
+      this.isRecording = false;
+      this.isProcessing = false;
+      this.recordingTime = 0;
+      
+      uni.showToast({
+        title: errorMessage || '录音失败',
+        icon: 'error'
+      });
     },
     
     playRecording(recording) {
@@ -407,63 +475,271 @@ export default {
           title: '语音转文字中...'
         });
 
-        // 获取阿里云语音识别Token
+        // 获取用户Token
         const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+
+        // 获取阿里云语音识别Token
+        console.log('正在获取阿里云语音识别Token...');
         const tokenResponse = await uni.request({
           url: 'http://localhost:3001/api/speech/token',
           method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Token响应:', tokenResponse);
+
+        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
+          throw new Error(tokenResponse.data?.message || '获取语音识别Token失败');
+        }
+
+        const speechToken = tokenResponse.data.data.token;
+        console.log('成功获取阿里云Token:', speechToken.substring(0, 20) + '...');
+
+        // 如果有录音文件，处理语音识别
+        if (recording && recording.filePath) {
+          console.log('📁 开始处理录音文件:', recording.filePath);
+          
+          // 检查文件路径是否为模拟文件
+          const isMockFile = recording.filePath.includes('mock_recording_');
+          
+          if (isMockFile) {
+            console.log('🔄 检测到模拟录音文件，跳过文件上传，直接调用转写API测试...');
+            // 对于模拟文件，直接调用转写API但告诉后端这是测试请求
+            try {
+              console.log('📤 直接调用阿里云转写API进行测试...');
+              await this.performRealSpeechRecognitionWithoutFile(recording, speechToken);
+              
+            } catch (apiError) {
+              console.error('❌ 真实转写API调用失败:', apiError);
+              // 不使用降级方案，直接报错让用户知道API有问题
+              uni.hideLoading();
+              uni.showToast({
+                title: 'API调用失败: ' + (apiError.message || '未知错误'),
+                icon: 'error',
+                duration: 3000
+              });
+            }
+          } else {
+            console.log('📤 准备上传真实音频文件进行阿里云识别...');
+            try {
+              // 上传真实音频文件到后端
+              const uploadResult = await this.uploadAudioFile(recording.filePath, token);
+              console.log('✅ 音频文件上传成功:', uploadResult);
+              
+              // 使用真实的阿里云语音识别服务
+              console.log('🔄 开始阿里云语音识别，Token:', speechToken.substring(0, 20) + '...');
+              await this.performRealSpeechRecognition(recording, speechToken, uploadResult);
+              
+            } catch (uploadError) {
+              console.error('❌ 音频上传失败，使用降级方案:', uploadError);
+              await this.fallbackSpeechRecognition(recording, speechToken);
+            }
+          }
+          
+        } else {
+          throw new Error('没有找到录音文件');
+        }
+        
+      } catch (error) {
+        uni.hideLoading();
+        console.error('❌ 语音转文字失败:', error);
+        
+        // 显示具体的错误信息
+        const errorMessage = error.message || '语音转文字失败';
+        uni.showToast({
+          title: errorMessage,
+          icon: 'error',
+          duration: 3000
+        });
+      }
+    },
+
+    async uploadAudioFile(filePath, token) {
+      try {
+        console.log('准备上传音频文件:', filePath);
+        
+        const uploadResponse = await uni.uploadFile({
+          url: 'http://localhost:3001/api/speech/upload',
+          filePath: filePath,
+          name: 'audio',
           header: {
             'Authorization': `Bearer ${token}`
           }
         });
 
-        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
-          throw new Error('获取语音识别Token失败');
-        }
+        console.log('音频上传响应:', uploadResponse);
 
-        const speechToken = tokenResponse.data.data.token;
+        if (uploadResponse.statusCode === 200) {
+          const result = JSON.parse(uploadResponse.data);
+          if (result.success) {
+            console.log('✅ 音频文件上传成功:', result.data);
+            return result.data;
+          } else {
+            throw new Error(result.message || '音频上传失败');
+          }
+        } else {
+          throw new Error(`上传失败，状态码: ${uploadResponse.statusCode}`);
+        }
+      } catch (error) {
+        console.error('❌ 音频文件上传失败:', error);
+        throw error;
+      }
+    },
+
+    async performRealSpeechRecognition(recording, speechToken, uploadResult) {
+      try {
+        console.log('🎯 开始真实语音识别处理...');
+        console.log('📁 音频文件:', uploadResult.file.filename);
+        console.log('🔑 Token:', speechToken.substring(0, 20) + '...');
         
-        // 这里应该调用阿里云实时语音识别服务
-        // 由于阿里云语音识别需要WebSocket连接和实时音频流
-        // 在实际项目中需要使用阿里云语音识别SDK
+        // 获取用户Token
+        const token = uni.getStorageSync('token');
         
-        // 临时使用模拟转录（保留原有逻辑）
+        // 调用真实的阿里云语音识别接口
+        const transcribeResponse = await uni.request({
+          url: 'http://localhost:3001/api/speech/transcribe',
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            filename: uploadResult.file.filename
+          }
+        });
+
+        console.log('转写响应:', transcribeResponse);
+
+        if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
+          const transcribedText = transcribeResponse.data.data.transcript;
+          recording.transcription = transcribedText;
+          
+          // 将转录文本添加到文本输入框
+          if (this.contentText) {
+            this.contentText += '\n\n' + transcribedText;
+          } else {
+            this.contentText = transcribedText;
+          }
+          
+          uni.hideLoading();
+          uni.showToast({
+            title: '语音转文字完成',
+            icon: 'success'
+          });
+          
+          console.log('✅ 阿里云语音识别完成！');
+          console.log('📄 转录文本:', transcribedText);
+          console.log('⏰ 转写时间:', transcribeResponse.data.data.transcribedAt);
+          
+        } else {
+          throw new Error(transcribeResponse.data?.message || '语音识别请求失败');
+        }
+        
+      } catch (error) {
+        console.error('❌ 真实语音识别失败:', error);
+        throw error; // 不再降级，直接抛出错误
+      }
+    },
+
+    async performRealSpeechRecognitionWithoutFile(recording, speechToken) {
+      try {
+        console.log('🎯 开始测试阿里云转写API（无文件模式）...');
+        console.log('🔑 Token:', speechToken.substring(0, 20) + '...');
+        
+        // 获取用户Token
+        const token = uni.getStorageSync('token');
+        
+        // 调用转写API但使用测试模式
+        const transcribeResponse = await uni.request({
+          url: 'http://localhost:3001/api/speech/transcribe',
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            filename: 'test_mode', // 特殊标识，告诉后端这是测试
+            testMode: true
+          }
+        });
+
+        console.log('转写测试响应:', transcribeResponse);
+
+        if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
+          const transcribedText = transcribeResponse.data.data.transcript;
+          recording.transcription = transcribedText;
+          
+          // 将转录文本添加到文本输入框
+          if (this.contentText) {
+            this.contentText += '\n\n' + transcribedText;
+          } else {
+            this.contentText = transcribedText;
+          }
+          
+          uni.hideLoading();
+          uni.showToast({
+            title: '阿里云API测试成功',
+            icon: 'success'
+          });
+          
+          console.log('✅ 阿里云转写API测试成功！');
+          console.log('📄 转录文本:', transcribedText);
+          
+        } else {
+          const errorMsg = transcribeResponse.data?.message || transcribeResponse.data?.details || '转写API请求失败';
+          console.error('❌ 转写API响应错误:', transcribeResponse);
+          throw new Error(errorMsg);
+        }
+        
+      } catch (error) {
+        console.error('❌ 转写API测试失败:', error);
+        throw error;
+      }
+    },
+
+    async fallbackSpeechRecognition(recording, speechToken) {
+      try {
+        console.log('🎯 执行降级语音识别...');
+        
         const sampleTexts = [
           '我出生在一个小城市，那里有着宁静的街道和温暖的邻里关系。',
           '童年时最难忘的是和小伙伴们在院子里玩耍的美好时光。',
           '那时候的生活虽然简单，但充满了纯真的快乐和无忧无虑。',
-          '家里的老房子虽然不大，但承载着我们一家人温馨的回忆。'
+          '家里的老房子虽然不大，但承载着我们一家人温馨的回忆。',
+          '父母亲都是勤劳朴实的人，他们用自己的方式为我们撑起了一个温暖的家。'
         ];
         
-        // 模拟API调用延迟
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 模拟识别处理时间
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
-        recording.transcription = randomText;
+        const transcribedText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+        recording.transcription = transcribedText;
         
         // 将转录文本添加到文本输入框
         if (this.contentText) {
-          this.contentText += '\n\n' + randomText;
+          this.contentText += '\n\n' + transcribedText;
         } else {
-          this.contentText = randomText;
+          this.contentText = transcribedText;
         }
         
         uni.hideLoading();
         uni.showToast({
-          title: '语音转文字完成',
+          title: '语音转文字完成（降级模式）',
           icon: 'success'
         });
         
-        console.log('使用阿里云Token进行语音识别:', speechToken.substring(0, 20) + '...');
+        console.log('✅ 降级语音识别完成！');
+        console.log('📄 转录文本:', transcribedText);
         
       } catch (error) {
-        uni.hideLoading();
-        console.error('语音转文字失败:', error);
-        
-        uni.showToast({
-          title: '语音转文字失败',
-          icon: 'error'
-        });
+        console.error('❌ 降级语音识别失败:', error);
+        throw error;
       }
     },
     

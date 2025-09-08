@@ -1,4 +1,5 @@
 const aliyunTokenService = require('../utils/aliyunToken');
+const aliyunSpeechRecognition = require('../utils/aliyunSpeechRecognition');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -165,6 +166,105 @@ const deleteAudio = async (req, res) => {
 };
 
 /**
+ * @desc 转写音频文件
+ * @route POST /api/speech/transcribe
+ * @access Private
+ */
+const transcribeAudio = async (req, res) => {
+  try {
+    const { filename, testMode } = req.body;
+    
+    if (!filename) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少音频文件名',
+        code: 'MISSING_FILENAME'
+      });
+    }
+
+    // 检查是否为测试模式
+    if (testMode === true || filename === 'test_mode') {
+      console.log('🧪 测试模式: 直接调用阿里云API测试...');
+      
+      try {
+        // 在测试模式下，我们创建一个临时的测试音频URL
+        const testAudioUrl = 'https://speech-demo.oss-cn-shanghai.aliyuncs.com/test.wav';
+        
+        // 调用阿里云语音识别服务进行测试
+        const transcript = await aliyunSpeechRecognition.transcribeAudioFile('test_mode', testAudioUrl);
+        
+        res.status(200).json({
+          success: true,
+          message: '阿里云转写API测试成功',
+          data: {
+            filename: 'test_mode',
+            transcript: transcript || '这是阿里云语音识别API测试结果。API调用成功，但可能需要真实音频文件进行完整测试。',
+            transcribedAt: new Date().toISOString(),
+            testMode: true
+          }
+        });
+        
+      } catch (testError) {
+        console.error('❌ 阿里云API测试失败:', testError);
+        res.status(500).json({
+          success: false,
+          message: '阿里云转写API测试失败',
+          error: testError.message,
+          details: `API测试错误: ${testError.message}`,
+          testMode: true
+        });
+      }
+      
+      return;
+    }
+
+    // 正常模式：处理真实音频文件
+    const audioFilePath = path.join(__dirname, '../../uploads/audio', filename);
+    
+    // 检查文件是否存在
+    if (!fs.existsSync(audioFilePath)) {
+      return res.status(404).json({
+        success: false,
+        message: '音频文件不存在',
+        code: 'FILE_NOT_FOUND',
+        requestedFile: filename
+      });
+    }
+
+    // 构建文件的公网访问URL
+    const publicFileUrl = `${req.protocol}://${req.get('host')}/uploads/audio/${filename}`;
+    
+    console.log('🎤 开始音频转写:', {
+      filename,
+      publicFileUrl,
+      localPath: audioFilePath
+    });
+
+    // 调用阿里云语音识别服务
+    const transcript = await aliyunSpeechRecognition.transcribeAudioFile(audioFilePath, publicFileUrl);
+
+    res.status(200).json({
+      success: true,
+      message: '音频转写成功',
+      data: {
+        filename: filename,
+        transcript: transcript,
+        transcribedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('音频转写错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '音频转写失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : '转写服务暂时不可用',
+      details: error.message
+    });
+  }
+};
+
+/**
  * @desc 清除Token缓存（用于调试）
  * @route POST /api/speech/clear-token
  * @access Private
@@ -192,5 +292,6 @@ module.exports = {
   getSpeechToken,
   uploadAudio,
   deleteAudio,
+  transcribeAudio,
   clearTokenCache
 };

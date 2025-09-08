@@ -147,6 +147,7 @@ const startServer = async () => {
       console.log('   - DELETE /api/chapters/:id  - 删除章节');
       console.log('   - GET  /api/speech/token    - 获取语音识别Token');
       console.log('   - POST /api/speech/upload   - 上传音频文件');
+      console.log('   - POST /api/speech/transcribe - 转写音频文件');
       console.log('   - DELETE /api/speech/audio/:filename - 删除音频文件');
       console.log('');
       console.log('🎯 前端访问地址: http://localhost:5173');

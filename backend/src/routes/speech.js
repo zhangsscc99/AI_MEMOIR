@@ -6,6 +6,7 @@ const {
   getSpeechToken,
   uploadAudio,
   deleteAudio,
+  transcribeAudio,
   clearTokenCache
 } = require('../controllers/speechController');
 
@@ -32,6 +33,13 @@ router.post('/upload', authenticateToken, uploadAudio);
  * @access  Private
  */
 router.delete('/audio/:filename', authenticateToken, deleteAudio);
+
+/**
+ * @route   POST /api/speech/transcribe
+ * @desc    转写音频文件
+ * @access  Private
+ */
+router.post('/transcribe', authenticateToken, transcribeAudio);
 
 /**
  * @route   POST /api/speech/clear-token
