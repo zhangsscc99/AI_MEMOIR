@@ -2,7 +2,7 @@
   <view class="container">
     <view class="user-card">
       <view class="user-avatar">
-        <view class="avatar-placeholder"></view>
+        <image src="/src/images/zaomen.jpeg" class="avatar-image" mode="aspectFill"></image>
       </view>
       <view class="user-info">
         <view class="user-greeting">Hi~</view>
@@ -84,11 +84,14 @@ export default {
   margin-right: 16px;
 }
 
-.avatar-placeholder {
+.avatar-image {
   width: 64px;
   height: 64px;
   border-radius: 32px;
-  background: #f0f0f0;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+  object-position: center top;
 }
 
 .user-info {
