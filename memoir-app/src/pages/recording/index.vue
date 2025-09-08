@@ -462,7 +462,7 @@ export default {
   font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .prompts-list {
