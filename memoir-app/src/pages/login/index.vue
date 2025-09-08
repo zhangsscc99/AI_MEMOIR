@@ -190,8 +190,14 @@ export default {
 .container {
   min-height: 100vh;
   background-color: #f8f8f8;
-  padding: 20px;
+  padding: 20px 12px;
   position: relative;
+}
+
+@media (max-width: 375px) {
+  .container {
+    padding: 15px 8px;
+  }
 }
 
 .back-btn {
@@ -209,6 +215,15 @@ export default {
   z-index: 10;
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
+}
+
+@media (max-width: 375px) {
+  .back-btn {
+    top: 15px;
+    left: 15px;
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .back-btn:hover {
@@ -238,6 +253,14 @@ export default {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
+@media (max-width: 375px) {
+  .login-header {
+    padding: 30px 15px;
+    margin-top: 50px;
+    border-radius: 8px;
+  }
+}
+
 .app-title {
   font-size: 28px;
   font-weight: 600;
@@ -257,6 +280,13 @@ export default {
   border-radius: 12px;
   padding: 30px 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 375px) {
+  .login-form {
+    padding: 25px 15px;
+    border-radius: 8px;
+  }
 }
 
 .form-title {

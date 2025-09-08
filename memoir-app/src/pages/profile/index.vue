@@ -153,7 +153,13 @@ export default {
 .container {
   background-color: #f8f8f8;
   min-height: 100vh;
-  padding: 20px 12px 12px 12px;
+  padding: 20px 8px 12px 8px;
+}
+
+@media (max-width: 375px) {
+  .container {
+    padding: 15px 6px 10px 6px;
+  }
 }
 
 .main-content {
@@ -161,16 +167,29 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  min-width: 350px;
+  min-width: 280px;
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
+}
+
+@media (max-width: 375px) {
+  .main-content {
+    min-width: auto;
+    border-radius: 8px;
+  }
 }
 
 /* 未登录状态 */
 .welcome-section {
   padding: 60px 40px;
   text-align: center;
+}
+
+@media (max-width: 375px) {
+  .welcome-section {
+    padding: 40px 20px;
+  }
 }
 
 .avatar {
