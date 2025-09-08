@@ -153,7 +153,7 @@ export default {
 .container {
   background-color: #f8f8f8;
   min-height: 100vh;
-  padding: 60px 12px 12px 12px;
+  padding: 20px 12px 12px 12px;
 }
 
 .main-content {
