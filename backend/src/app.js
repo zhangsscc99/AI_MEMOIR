@@ -4,7 +4,8 @@ const helmet = require('helmet');
 const path = require('path');
 
 // 导入数据库和模型
-const { testConnection, initDatabase } = require('./models');
+const { initDatabase } = require('./models');
+const { testConnection } = require('./config/database');
 
 // 导入路由
 const authRoutes = require('./routes/auth');
