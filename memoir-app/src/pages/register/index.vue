@@ -275,14 +275,16 @@ export default {
 .register-btn {
   width: 100%;
   height: 50px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 12px;
-  color: white;
   font-size: 16px;
   font-weight: 600;
   margin-top: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  backdrop-filter: blur(15px);
 }
 
 .register-btn:disabled {
@@ -290,8 +292,15 @@ export default {
   cursor: not-allowed;
 }
 
+.register-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
 .register-btn:not(:disabled):active {
-  transform: translateY(1px);
+  transform: translateY(0px);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .form-footer {
