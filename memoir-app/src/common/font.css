@@ -3,24 +3,28 @@
 /* 导航栏标题字体 */
 .uni-page-head .uni-page-head__title,
 .uni-page-head__title {
-  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
-  font-weight: 500 !important;
-  font-size: 18px !important;
-  letter-spacing: 1.5px !important;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", "Noto Sans CJK SC", "Microsoft YaHei", "微软雅黑", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 300 !important;
+  font-size: 16px !important;
+  letter-spacing: 0.5px !important;
+  font-style: normal !important;
 }
 
 /* H5端导航栏标题 */
 .uni-page-head .uni-page-head-btn .uni-page-head__title {
-  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
-  font-weight: 500 !important;
-  letter-spacing: 1.5px !important;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", "Noto Sans CJK SC", "Microsoft YaHei", "微软雅黑", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 300 !important;
+  font-size: 16px !important;
+  letter-spacing: 0.5px !important;
+  font-style: normal !important;
 }
 
 /* 通用中文艺术字体类 */
 .chinese-artistic {
-  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive;
-  font-weight: 500;
-  letter-spacing: 1.5px;
+  font-family: "STCaiyun", "华文彩云", "STXingkai", "华文行楷", "FangSong", "仿宋", "STFangsong", "华文仿宋", cursive;
+  font-weight: 400;
+  letter-spacing: 2px;
+  font-style: italic;
 }
 
 /* 金色渐变文字效果 */
@@ -44,7 +48,8 @@
 uni-page-head .uni-page-head__title,
 .uni-page-head .uni-page-head__title,
 [class*="uni-page-head"] .uni-page-head__title {
-  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
-  font-weight: 500 !important;
-  letter-spacing: 1.5px !important;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", "Noto Sans CJK SC", "Microsoft YaHei", "微软雅黑", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  font-style: normal !important;
 }

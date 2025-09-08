@@ -24,6 +24,13 @@
         <text class="memoir-title-text">回忆录</text>
         <text class="quote-right">"</text>
       </view>
+      
+      <!-- 开启回忆之旅按钮 -->
+      <view class="journey-btn-section">
+        <button class="journey-btn" @click="startJourney">
+          开启回忆之旅
+        </button>
+      </view>
     </view>
 
     <!-- 开始按钮 -->
@@ -94,14 +101,20 @@ export default {
 }
 
 .highlight-number {
-  color: #FF6B47;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 25%, #FDB931 50%, #D4AF37 75%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-weight: bold;
   font-size: 18px;
 }
 
 .highlight-text {
-  color: #FF6B47;
-  font-weight: 500;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 25%, #FDB931 50%, #D4AF37 75%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
 }
 
 .description-line {
@@ -124,15 +137,21 @@ export default {
 .quote-left,
 .quote-right {
   font-size: 32px;
-  color: #FF6B47;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 25%, #FDB931 50%, #D4AF37 75%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-weight: 300;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .memoir-title-text {
   font-size: 36px;
   font-weight: bold;
-  color: #FF6B47;
+  background: linear-gradient(135deg, #D4AF37 0%, #FFD700 25%, #FDB931 50%, #D4AF37 75%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0 8px;
   letter-spacing: 2px;
 }
@@ -144,22 +163,55 @@ export default {
   max-width: 280px;
 }
 
+.journey-btn-section {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.journey-btn {
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 30px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s ease;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", sans-serif;
+}
+
+.journey-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
 .start-journey-btn {
   width: 100%;
-  background: linear-gradient(135deg, #FF6B47 0%, #FF8A65 100%);
-  color: white;
-  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 28px;
   padding: 18px 32px;
   font-size: 18px;
-  font-weight: 500;
-  box-shadow: 0 8px 24px rgba(255, 107, 71, 0.3);
-  transition: all 0.3s ease;
+  font-weight: 400;
+  letter-spacing: 1px;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s ease;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", sans-serif;
 }
 
 .start-journey-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(255, 107, 71, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border-color: rgba(255, 255, 255, 0.9);
 }
 
 /* 响应式设计 */

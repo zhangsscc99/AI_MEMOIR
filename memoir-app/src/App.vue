@@ -21,21 +21,23 @@ page {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* 确保导航栏标题使用中文艺术字体 */
+/* 确保导航栏标题使用高端现代字体 */
 .uni-page-head .uni-page-head__title,
 .uni-page-head__title {
-  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
-  font-weight: 500 !important;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", "Noto Sans CJK SC", "Microsoft YaHei", "微软雅黑", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 600 !important;
   font-size: 18px !important;
-  letter-spacing: 1.5px !important;
+  letter-spacing: 1px !important;
+  font-style: normal !important;
 }
 
 /* 为所有可能的导航栏选择器添加样式 */
 uni-page-head .uni-page-head__title,
 [class*="uni-page-head"] .uni-page-head__title,
 .uni-page-wrapper .uni-page-head .uni-page-head__title {
-  font-family: "STXingkai", "华文行楷", "KaiTi", "楷体", "SimKai", "Microsoft YaHei", cursive !important;
-  font-weight: 500 !important;
-  letter-spacing: 1.5px !important;
+  font-family: "PingFang SC", "苹方", "Source Han Sans CN", "思源黑体", "Noto Sans CJK SC", "Microsoft YaHei", "微软雅黑", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  font-style: normal !important;
 }
 </style>
