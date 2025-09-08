@@ -5,49 +5,11 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon">←</text>
       </view>
-      <view class="nav-title">选择章节</view>
+      <view class="nav-title">人生章节</view>
     </view>
 
     <!-- 页面内容 -->
     <view class="content">
-      <view class="intro-section">
-        <image src="/src/images/memoirbook.png" class="book-image"></image>
-        <view class="intro-text">
-          <text class="main-text">开始您的回忆之旅</text>
-          <text class="sub-text">选择一个章节开始记录人生故事</text>
-        </view>
-      </view>
-
-      <!-- 章节列表 -->
-      <view class="chapters-section">
-        <view class="section-title">人生章节</view>
-        
-        <view class="chapters-grid">
-          <view 
-            v-for="chapter in chapters" 
-            :key="chapter.id"
-            class="chapter-card"
-            :class="{ 'completed': chapter.completed }"
-            @click="selectChapter(chapter)"
-          >
-            <view class="chapter-icon">
-              <image :src="chapter.icon" class="icon-image"></image>
-            </view>
-            <view class="chapter-info">
-              <text class="chapter-title">{{ chapter.title }}</text>
-              <text class="chapter-desc">{{ chapter.description }}</text>
-              <view class="chapter-status">
-                <text v-if="chapter.completed" class="status-text completed">已完成</text>
-                <text v-else class="status-text">待录制</text>
-              </view>
-            </view>
-            <view class="chapter-arrow">
-              <text class="arrow-icon">→</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
       <!-- 统计信息 -->
       <view class="stats-section">
         <view class="stats-card">
@@ -62,6 +24,57 @@
           </view>
         </view>
       </view>
+
+      <!-- 章节滚动列表 -->
+      <view class="chapters-section">
+        <scroll-view 
+          class="chapters-scroll"
+          scroll-x="true"
+          show-scrollbar="false"
+          enable-flex="true"
+        >
+          <view class="chapters-container">
+            <view 
+              v-for="(chapter, index) in chapters" 
+              :key="chapter.id"
+              class="chapter-card"
+              :class="{ 
+                'completed': chapter.completed,
+                'first': index === 0,
+                'last': index === chapters.length - 1
+              }"
+              @click="selectChapter(chapter)"
+            >
+              <!-- 背景图片 -->
+              <view class="chapter-bg">
+                <image 
+                  :src="chapter.backgroundImage" 
+                  class="bg-image"
+                  mode="aspectFill"
+                ></image>
+                <view class="bg-overlay"></view>
+              </view>
+              
+              <!-- 章节内容 -->
+              <view class="chapter-content">
+                <view class="chapter-number">第{{ getChapterNumber(index) }}章</view>
+                <view class="chapter-title">{{ chapter.title }}</view>
+                <view class="chapter-desc">{{ chapter.description }}</view>
+                
+                <!-- 状态标记 -->
+                <view class="chapter-status" v-if="chapter.completed">
+                  <view class="status-icon">✓</view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 提示文字 -->
+      <view class="tip-section">
+        <text class="tip-text">👆 左右滑动浏览章节，点击开始录制</text>
+      </view>
     </view>
   </view>
 </template>
@@ -75,70 +88,70 @@ export default {
           id: 'background',
           title: '家庭背景',
           description: '记录您的出生地、家庭环境和祖辈故事',
-          icon: '/static/icons/home.svg',
+          backgroundImage: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&w=400&h=600&fit=crop',
           completed: false
         },
         {
           id: 'childhood',
           title: '童年时光',
           description: '分享童年的美好回忆和成长经历',
-          icon: '/static/icons/child.svg',
+          backgroundImage: require('@/images/winter.png'),
           completed: false
         },
         {
           id: 'education',
           title: '求学生涯',
           description: '记录学习历程和校园生活',
-          icon: '/static/icons/education.svg',
+          backgroundImage: require('@/images/memoirbook.png'),
           completed: false
         },
         {
           id: 'career',
           title: '职业发展',
           description: '分享工作经历和职业成就',
-          icon: '/static/icons/career.svg',
+          backgroundImage: require('@/images/lion.png'),
           completed: false
         },
         {
           id: 'love',
           title: '爱情婚姻',
           description: '记录爱情故事和婚姻生活',
-          icon: '/static/icons/love.svg',
+          backgroundImage: require('@/images/zaomen.jpeg'),
           completed: false
         },
         {
           id: 'family',
           title: '为人父母',
           description: '分享育儿经历和家庭生活',
-          icon: '/static/icons/family.svg',
+          backgroundImage: require('@/images/story1.png'),
           completed: false
         },
         {
           id: 'travel',
           title: '旅行见闻',
           description: '记录旅行经历和见闻感悟',
-          icon: '/static/icons/travel.svg',
+          backgroundImage: require('@/images/winter.png'),
           completed: false
         },
         {
           id: 'relationships',
           title: '人缘际遇',
           description: '记录重要的人际关系和人生际遇',
-          icon: '/static/icons/relationships.svg',
+          backgroundImage: require('@/images/memoirbook.png'),
           completed: false
         },
         {
           id: 'laterlife',
           title: '晚年生活',
           description: '分享退休后的生活和晚年感悟',
-          icon: '/static/icons/laterlife.svg',
+          backgroundImage: require('@/images/lion.png'),
           completed: false
         },
         {
           id: 'wisdom',
           title: '人生感悟',
           description: '分享人生智慧和生活哲理',
-          icon: '/static/icons/wisdom.svg',
+          backgroundImage: require('@/images/zaomen.jpeg'),
           completed: false
         }
       ]
@@ -168,6 +181,11 @@ export default {
       });
     },
     
+    getChapterNumber(index) {
+      const numbers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+      return numbers[index] || (index + 1);
+    },
+    
     loadChapterStatus() {
       try {
         const savedStatus = uni.getStorageSync('chapter_status');
@@ -190,16 +208,17 @@ export default {
 <style scoped>
 .container {
   min-height: 100vh;
-  background-color: #f8f8f8;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
 .nav-header {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   padding: 20px;
   display: flex;
   align-items: center;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
 }
 
 .back-btn {
@@ -231,162 +250,29 @@ export default {
   font-size: 18px;
   font-weight: 600;
   color: #333;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 2px;
 }
 
 .content {
-  padding: 0 20px;
+  padding: 20px 0;
 }
 
-.intro-section {
-  background: white;
-  border-radius: 12px;
-  padding: 30px 20px;
-  margin: 20px 0;
-  text-align: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.book-image {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 20px;
-}
-
-.main-text {
-  display: block;
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
-  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
-  letter-spacing: 2px;
-}
-
-.sub-text {
-  display: block;
-  font-size: 16px;
-  color: #666;
-  line-height: 1.5;
-  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
-  letter-spacing: 1px;
-}
-
-.chapters-section {
-  margin: 20px 0;
-}
-
-.section-title {
-  font-size: 22px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 16px;
-  padding-left: 4px;
-  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
-  letter-spacing: 2px;
-}
-
-.chapters-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chapter-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.chapter-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
-.chapter-card.completed {
-  border: 2px solid #4CAF50;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fff8 100%);
-}
-
-.chapter-icon {
-  width: 50px;
-  height: 50px;
-  background: #f0f0f0;
-  border-radius: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
-}
-
-.icon-image {
-  width: 24px;
-  height: 24px;
-}
-
-.chapter-info {
-  flex: 1;
-}
-
-.chapter-title {
-  display: block;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 4px;
-  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
-  letter-spacing: 1px;
-}
-
-.chapter-desc {
-  display: block;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.4;
-  margin-bottom: 8px;
-}
-
-.chapter-status {
-  margin-top: 8px;
-}
-
-.status-text {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: #f0f0f0;
-  color: #666;
-}
-
-.status-text.completed {
-  background: #e8f5e8;
-  color: #4CAF50;
-}
-
-.chapter-arrow {
-  margin-left: 16px;
-}
-
-.arrow-icon {
-  font-size: 18px;
-  color: #ccc;
-}
-
+/* 统计信息 */
 .stats-section {
-  margin: 20px 0 40px 0;
+  margin: 0 20px 30px 20px;
 }
 
 .stats-card {
-  background: white;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
   padding: 24px;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .stat-item {
@@ -421,33 +307,198 @@ export default {
   margin: 0 20px;
 }
 
+/* 章节滚动区域 */
+.chapters-section {
+  margin-bottom: 30px;
+}
+
+.chapters-scroll {
+  width: 100%;
+  height: 400px;
+}
+
+.chapters-container {
+  display: flex;
+  padding: 0 20px;
+  gap: 20px;
+  align-items: center;
+}
+
+/* 章节卡片 */
+.chapter-card {
+  position: relative;
+  width: 280px;
+  height: 360px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  flex-shrink: 0;
+}
+
+.chapter-card:active {
+  transform: scale(0.95);
+}
+
+.chapter-card.completed {
+  box-shadow: 0 15px 35px rgba(76, 175, 80, 0.3);
+}
+
+.chapter-card.first {
+  margin-left: 0;
+}
+
+.chapter-card.last {
+  margin-right: 20px;
+}
+
+/* 背景图片 */
+.chapter-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.1) 40%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+/* 章节内容 */
+.chapter-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  color: white;
+}
+
+.chapter-number {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 1px;
+}
+
+.chapter-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 12px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.chapter-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 完成状态标记 */
+.chapter-status {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+}
+
+.status-icon {
+  width: 36px;
+  height: 36px;
+  background: #4CAF50;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* 提示文字 */
+.tip-section {
+  text-align: center;
+  padding: 0 20px;
+  margin-bottom: 40px;
+}
+
+.tip-text {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
 /* 移动端适配 */
 @media (max-width: 375px) {
   .nav-header {
     padding: 15px;
   }
   
-  .content {
-    padding: 0 15px;
+  .stats-section {
+    margin: 0 15px 25px 15px;
   }
   
-  .intro-section {
-    padding: 25px 15px;
+  .stats-card {
+    padding: 20px;
+  }
+  
+  .chapters-container {
+    padding: 0 15px;
+    gap: 15px;
   }
   
   .chapter-card {
-    padding: 16px;
+    width: 250px;
+    height: 320px;
   }
   
-  .chapter-icon {
-    width: 44px;
-    height: 44px;
-    margin-right: 12px;
+  .chapter-content {
+    padding: 20px 16px;
   }
   
-  .icon-image {
-    width: 20px;
-    height: 20px;
+  .chapter-title {
+    font-size: 20px;
   }
+  
+  .tip-section {
+    padding: 0 15px;
+  }
+}
+
+/* 滚动条隐藏 */
+.chapters-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.chapters-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 </style>
