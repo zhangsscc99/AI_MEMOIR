@@ -1,5 +1,5 @@
 const aliyunTokenService = require('../utils/aliyunToken');
-const aliyunSpeechRecognition = require('../utils/aliyunSpeechRecognition');
+const aliyunSpeechService = require('../utils/aliyunSpeechService');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -184,33 +184,51 @@ const transcribeAudio = async (req, res) => {
 
     // 检查是否为测试模式
     if (testMode === true || filename === 'test_mode') {
-      console.log('🧪 测试模式: 直接调用阿里云API测试...');
+      console.log('🧪 测试模式: 模拟阿里云API调用...');
+      
+      // 检查环境变量配置
+      const hasValidConfig = process.env.ALIYUN_AK_ID && 
+                            process.env.ALIYUN_AK_SECRET && 
+                            process.env.ALIYUN_APP_KEY && 
+                            process.env.ALIYUN_APP_KEY !== 'your_app_key_here';
+      
+      if (!hasValidConfig) {
+        return res.status(500).json({
+          success: false,
+          message: '阿里云配置不完整',
+          details: '请检查 ALIYUN_AK_ID, ALIYUN_AK_SECRET, ALIYUN_APP_KEY 环境变量',
+          testMode: true
+        });
+      }
       
       try {
-        // 在测试模式下，我们创建一个临时的测试音频URL
-        const testAudioUrl = 'https://speech-demo.oss-cn-shanghai.aliyuncs.com/test.wav';
-        
-        // 调用阿里云语音识别服务进行测试
-        const transcript = await aliyunSpeechRecognition.transcribeAudioFile('test_mode', testAudioUrl);
+        // 使用新的阿里云语音服务进行测试
+        const transcript = await aliyunSpeechService.testSpeechRecognition('阿里云语音识别测试');
         
         res.status(200).json({
           success: true,
-          message: '阿里云转写API测试成功',
+          message: '阿里云语音识别配置验证成功',
           data: {
             filename: 'test_mode',
-            transcript: transcript || '这是阿里云语音识别API测试结果。API调用成功，但可能需要真实音频文件进行完整测试。',
+            transcript: transcript,
             transcribedAt: new Date().toISOString(),
-            testMode: true
+            testMode: true,
+            config: {
+              hasAccessKey: !!process.env.ALIYUN_AK_ID,
+              hasSecret: !!process.env.ALIYUN_AK_SECRET,
+              hasAppKey: !!process.env.ALIYUN_APP_KEY,
+              appKey: process.env.ALIYUN_APP_KEY.substring(0, 8) + '...'
+            }
           }
         });
         
       } catch (testError) {
-        console.error('❌ 阿里云API测试失败:', testError);
+        console.error('❌ 阿里云语音识别测试失败:', testError);
         res.status(500).json({
           success: false,
-          message: '阿里云转写API测试失败',
+          message: '阿里云语音识别测试失败',
           error: testError.message,
-          details: `API测试错误: ${testError.message}`,
+          details: `测试错误: ${testError.message}`,
           testMode: true
         });
       }
@@ -240,8 +258,9 @@ const transcribeAudio = async (req, res) => {
       localPath: audioFilePath
     });
 
-    // 调用阿里云语音识别服务
-    const transcript = await aliyunSpeechRecognition.transcribeAudioFile(audioFilePath, publicFileUrl);
+    // 读取音频文件并调用阿里云语音识别服务
+    const audioBuffer = fs.readFileSync(audioFilePath);
+    const transcript = await aliyunSpeechService.recognizeAudio(audioBuffer);
 
     res.status(200).json({
       success: true,
