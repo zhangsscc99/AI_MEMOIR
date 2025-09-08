@@ -330,6 +330,9 @@ export default {
   text-align: center;
   border-top: 1px solid #f5f5f5;
   white-space: nowrap;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .footer-link {
