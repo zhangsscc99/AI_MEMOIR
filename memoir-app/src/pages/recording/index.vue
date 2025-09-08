@@ -16,7 +16,7 @@
       <!-- 引导问题 -->
       <view class="prompts-section">
         <view class="prompts-card">
-          <text class="prompts-title">引导问题</text>
+          <view class="prompts-title">引导问题</view>
           <view class="prompts-list">
             <view 
               v-for="(prompt, index) in prompts" 
