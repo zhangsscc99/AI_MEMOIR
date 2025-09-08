@@ -31,29 +31,58 @@
     <view class="section-preview">
       <view class="section-title">章节预览</view>
       
-      <!-- 有章节内容时显示 -->
-      <view v-if="completedChapters.length > 0" class="chapters-list">
-        <view 
-          v-for="chapter in completedChapters" 
-          :key="chapter.id"
-          class="chapter-item"
-          @click="viewChapter(chapter)"
-        >
-          <view class="chapter-info">
-            <text class="chapter-name">{{ chapter.title }}</text>
-            <text class="chapter-preview">{{ chapter.preview }}</text>
-          </view>
-          <view class="chapter-status">
-            <text class="status-tag">已完成</text>
+      <!-- 章节滚动卡片 -->
+      <scroll-view 
+        class="chapters-scroll"
+        scroll-x="true"
+        show-scrollbar="false"
+        enable-flex="true"
+      >
+        <view class="chapters-container">
+          <view 
+            v-for="(chapter, index) in allChapters" 
+            :key="chapter.id"
+            class="chapter-preview-card"
+            :class="{ 
+              'completed': chapter.completed,
+              'first': index === 0,
+              'last': index === allChapters.length - 1
+            }"
+            @click="goToChapter(chapter)"
+          >
+            <!-- 背景图片 -->
+            <view class="card-bg">
+              <image 
+                :src="chapter.backgroundImage" 
+                class="bg-image"
+                mode="aspectFill"
+              ></image>
+              <view class="bg-overlay"></view>
+            </view>
+            
+            <!-- 章节内容 -->
+            <view class="card-content">
+              <view class="chapter-number">第{{ getChapterNumber(index) }}章</view>
+              <view class="chapter-title">{{ chapter.title }}</view>
+              <view class="chapter-subtitle">{{ chapter.description }}</view>
+              
+              <!-- 状态标记 -->
+              <view class="completion-status" v-if="chapter.completed">
+                <view class="status-icon">✓</view>
+                <text class="status-text">已完成</text>
+              </view>
+              <view class="completion-status not-started" v-else>
+                <view class="status-icon">◯</view>
+                <text class="status-text">未开始</text>
+              </view>
+            </view>
           </view>
         </view>
-      </view>
+      </scroll-view>
       
-      <!-- 无内容时显示占位 -->
-      <view v-else class="preview-placeholder">
-        <image src="/static/icons/empty-book.svg" class="empty-book-icon" mode="aspectFit"></image>
-        <view class="empty-text">未创建回忆录</view>
-        <view class="empty-subtitle">开始录制后，章节内容将在这里显示</view>
+      <!-- 提示文字 -->
+      <view class="scroll-tip">
+        <text class="tip-text">👆 左右滑动浏览章节</text>
       </view>
     </view>
   </view>
@@ -65,7 +94,79 @@ export default {
     return {
       progressPercent: 0,
       totalChapters: 10,
-      completedChapters: []
+      completedChapters: [],
+      allChapters: [
+        {
+          id: 'background',
+          title: '家庭背景',
+          description: '记录您的出生地、家庭环境和祖辈故事',
+          backgroundImage: '/src/images/story1.png',
+          completed: false
+        },
+        {
+          id: 'childhood',
+          title: '童年时光',
+          description: '分享童年的美好回忆和成长经历',
+          backgroundImage: '/src/images/winter.png',
+          completed: false
+        },
+        {
+          id: 'education',
+          title: '求学生涯',
+          description: '记录学习历程和校园生活',
+          backgroundImage: '/src/images/memoirbook.png',
+          completed: false
+        },
+        {
+          id: 'career',
+          title: '职业发展',
+          description: '分享工作经历和职业成就',
+          backgroundImage: '/src/images/lion.png',
+          completed: false
+        },
+        {
+          id: 'love',
+          title: '爱情婚姻',
+          description: '记录爱情故事和婚姻生活',
+          backgroundImage: '/src/images/zaomen.jpeg',
+          completed: false
+        },
+        {
+          id: 'family',
+          title: '为人父母',
+          description: '分享育儿经历和家庭生活',
+          backgroundImage: '/src/images/story1.png',
+          completed: false
+        },
+        {
+          id: 'travel',
+          title: '旅行见闻',
+          description: '记录旅行经历和见闻感悟',
+          backgroundImage: '/src/images/winter.png',
+          completed: false
+        },
+        {
+          id: 'relationships',
+          title: '人缘际遇',
+          description: '记录重要的人际关系和人生际遇',
+          backgroundImage: '/src/images/memoirbook.png',
+          completed: false
+        },
+        {
+          id: 'laterlife',
+          title: '晚年生活',
+          description: '分享退休后的生活和晚年感悟',
+          backgroundImage: '/src/images/lion.png',
+          completed: false
+        },
+        {
+          id: 'wisdom',
+          title: '人生感悟',
+          description: '分享人生智慧和生活哲理',
+          backgroundImage: '/src/images/zaomen.jpeg',
+          completed: false
+        }
+      ]
     }
   },
   onLoad() {
@@ -78,55 +179,50 @@ export default {
   methods: {
     loadChapterData() {
       try {
-        // 章节名称映射
-        const chapterNames = {
-          'background': '家庭背景',
-          'childhood': '童年时光',
-          'education': '求学生涯',
-          'career': '职业发展',
-          'love': '爱情婚姻',
-          'family': '为人父母',
-          'travel': '旅行见闻',
-          'relationships': '人缘际遇',
-          'laterlife': '晚年生活',
-          'wisdom': '人生感悟'
-        };
-        
         // 加载章节状态
         const savedStatus = uni.getStorageSync('chapter_status');
         if (savedStatus) {
           const statusMap = JSON.parse(savedStatus);
-          const completed = [];
+          let completedCount = 0;
           
-          Object.keys(statusMap).forEach(chapterId => {
-            const status = statusMap[chapterId];
-            if (status.completed) {
-              // 加载章节内容
-              const chapterContent = uni.getStorageSync(`chapter_${chapterId}`);
-              if (chapterContent) {
-                const content = JSON.parse(chapterContent);
-                completed.push({
-                  id: chapterId,
-                  title: chapterNames[chapterId] || chapterId,
-                  preview: this.getPreviewText(content.text),
-                  lastModified: status.lastModified
-                });
-              }
+          // 更新章节完成状态
+          this.allChapters.forEach(chapter => {
+            if (statusMap[chapter.id] && statusMap[chapter.id].completed) {
+              chapter.completed = true;
+              completedCount++;
+            } else {
+              chapter.completed = false;
             }
           });
           
-          // 按最后修改时间排序
-          completed.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
-          this.completedChapters = completed;
-          
           // 计算进度
-          this.progressPercent = (completed.length / this.totalChapters) * 100;
+          this.progressPercent = (completedCount / this.totalChapters) * 100;
+        } else {
+          // 重置所有章节状态
+          this.allChapters.forEach(chapter => {
+            chapter.completed = false;
+          });
+          this.progressPercent = 0;
         }
       } catch (error) {
         console.log('加载章节数据失败:', error);
-        this.completedChapters = [];
+        this.allChapters.forEach(chapter => {
+          chapter.completed = false;
+        });
         this.progressPercent = 0;
       }
+    },
+
+    getChapterNumber(index) {
+      const numbers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+      return numbers[index] || (index + 1);
+    },
+
+    goToChapter(chapter) {
+      // 跳转到录制页面
+      uni.navigateTo({
+        url: `/pages/recording/index?chapterId=${chapter.id}&title=${encodeURIComponent(chapter.title)}`
+      });
     },
     
     getPreviewText(text) {
@@ -413,6 +509,174 @@ export default {
   font-weight: bold;
   color: #333;
   margin-bottom: 16px;
+}
+
+/* 章节滚动区域 */
+.chapters-scroll {
+  width: 100%;
+  height: 220px;
+  margin-bottom: 16px;
+}
+
+.chapters-container {
+  display: flex;
+  padding: 0 4px;
+  gap: 16px;
+  align-items: center;
+}
+
+/* 章节预览卡片 */
+.chapter-preview-card {
+  position: relative;
+  width: 160px;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.chapter-preview-card:active {
+  transform: scale(0.95);
+}
+
+.chapter-preview-card.completed {
+  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.2);
+}
+
+.chapter-preview-card.first {
+  margin-left: 0;
+}
+
+.chapter-preview-card.last {
+  margin-right: 4px;
+}
+
+/* 背景图片 */
+.card-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.1) 40%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+}
+
+/* 卡片内容 */
+.card-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  color: white;
+}
+
+.chapter-number {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+}
+
+.chapter-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 6px;
+  font-family: "STKaiti", "KaiTi", "华文楷体", "FangSong", "仿宋", "LiSu", "隶书", "SimHei", "黑体", serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+}
+
+.chapter-subtitle {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.3;
+  margin-bottom: 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 完成状态 */
+.completion-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-icon {
+  width: 16px;
+  height: 16px;
+  background: #4CAF50;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.completion-status.not-started .status-icon {
+  background: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.status-text {
+  font-size: 10px;
+  color: white;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 提示文字 */
+.scroll-tip {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.tip-text {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+}
+
+/* 隐藏滚动条 */
+.chapters-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.chapters-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .preview-placeholder {

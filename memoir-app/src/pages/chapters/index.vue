@@ -88,70 +88,70 @@ export default {
           id: 'background',
           title: '家庭背景',
           description: '记录您的出生地、家庭环境和祖辈故事',
-          backgroundImage: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&w=400&h=600&fit=crop',
+          backgroundImage: '/src/images/story1.png',
           completed: false
         },
         {
           id: 'childhood',
           title: '童年时光',
           description: '分享童年的美好回忆和成长经历',
-          backgroundImage: require('@/images/winter.png'),
+          backgroundImage: '/src/images/winter.png',
           completed: false
         },
         {
           id: 'education',
           title: '求学生涯',
           description: '记录学习历程和校园生活',
-          backgroundImage: require('@/images/memoirbook.png'),
+          backgroundImage: '/src/images/memoirbook.png',
           completed: false
         },
         {
           id: 'career',
           title: '职业发展',
           description: '分享工作经历和职业成就',
-          backgroundImage: require('@/images/lion.png'),
+          backgroundImage: '/src/images/lion.png',
           completed: false
         },
         {
           id: 'love',
           title: '爱情婚姻',
           description: '记录爱情故事和婚姻生活',
-          backgroundImage: require('@/images/zaomen.jpeg'),
+          backgroundImage: '/src/images/zaomen.jpeg',
           completed: false
         },
         {
           id: 'family',
           title: '为人父母',
           description: '分享育儿经历和家庭生活',
-          backgroundImage: require('@/images/story1.png'),
+          backgroundImage: '/src/images/story1.png',
           completed: false
         },
         {
           id: 'travel',
           title: '旅行见闻',
           description: '记录旅行经历和见闻感悟',
-          backgroundImage: require('@/images/winter.png'),
+          backgroundImage: '/src/images/winter.png',
           completed: false
         },
         {
           id: 'relationships',
           title: '人缘际遇',
           description: '记录重要的人际关系和人生际遇',
-          backgroundImage: require('@/images/memoirbook.png'),
+          backgroundImage: '/src/images/memoirbook.png',
           completed: false
         },
         {
           id: 'laterlife',
           title: '晚年生活',
           description: '分享退休后的生活和晚年感悟',
-          backgroundImage: require('@/images/lion.png'),
+          backgroundImage: '/src/images/lion.png',
           completed: false
         },
         {
           id: 'wisdom',
           title: '人生感悟',
           description: '分享人生智慧和生活哲理',
-          backgroundImage: require('@/images/zaomen.jpeg'),
+          backgroundImage: '/src/images/zaomen.jpeg',
           completed: false
         }
       ]
