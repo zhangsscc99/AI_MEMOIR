@@ -16,7 +16,7 @@
     <view class="menu-section">
       <view class="menu-item" v-for="(item, index) in menuList" :key="index" @click="handleMenuClick(item)">
         <view class="menu-left">
-          <view class="menu-icon-placeholder"></view>
+          <image :src="getMenuIcon(item.id)" class="menu-icon" mode="aspectFit"></image>
           <text class="menu-text">{{ item.title }}</text>
         </view>
         <text class="arrow-icon">></text>
@@ -50,6 +50,17 @@ export default {
         title: `${item.title}功能开发中`,
         icon: 'none'
       });
+    },
+    getMenuIcon(id) {
+      const iconMap = {
+        'purchase': '/static/icons/shopping.svg',
+        'orders': '/static/icons/orders.svg',
+        'service': '/static/icons/support.svg',
+        'feedback': '/static/icons/feedback.svg',
+        'share': '/static/icons/share.svg',
+        'cooperation': '/static/icons/business.svg'
+      };
+      return iconMap[id] || '';
     }
   }
 }
@@ -130,11 +141,9 @@ export default {
   align-items: center;
 }
 
-.menu-icon-placeholder {
-  width: 24px;
-  height: 24px;
-  background: #f0f0f0;
-  border-radius: 4px;
+.menu-icon {
+  width: 20px;
+  height: 20px;
   margin-right: 12px;
 }
 

@@ -3,7 +3,7 @@
     <!-- 回忆录工坊卡片 -->
     <view class="memoir-card" @click="goToWelcome">
       <view class="memoir-card-left">
-        <image src="/static/images/book-cover.png" class="book-cover" mode="aspectFit"></image>
+        <image src="/src/images/memoirbook.png" class="book-cover" mode="aspectFit"></image>
       </view>
       <view class="memoir-card-right">
         <view class="memoir-title">回忆录</view>
@@ -74,69 +74,159 @@ export default {
 }
 
 .memoir-card {
-  background: linear-gradient(135deg, #f5f3f0 0%, #e8e4df 100%);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
+  background: linear-gradient(135deg, #f8f6f3 0%, #ede8e3 100%);
+  border-radius: 20px;
+  padding: 40px 32px;
+  margin-bottom: 24px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  min-height: 300px;
 }
 
 .memoir-card-left {
   flex-shrink: 0;
-  margin-right: 20px;
+  margin-right: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .book-cover {
-  width: 80px;
-  height: 100px;
-  border-radius: 8px;
+  width: 160px;
+  height: 210px;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  transform: perspective(400px) rotateY(-5deg);
+  transition: transform 0.3s ease;
+}
+
+.memoir-card:hover .book-cover {
+  transform: perspective(300px) rotateY(0deg);
 }
 
 .memoir-card-right {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 16px;
+  min-width: 0;
 }
 
 .memoir-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 12px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #2d2d2d;
+  margin-bottom: 20px;
+  letter-spacing: 1.5px;
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  white-space: nowrap;
 }
 
 .memoir-progress {
   display: flex;
   align-items: baseline;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .progress-text {
-  font-size: 32px;
-  font-weight: bold;
-  color: #333;
-  margin-right: 8px;
+  font-size: 36px;
+  font-weight: 300;
+  color: #1a1a1a;
+  margin-right: 12px;
+  font-family: 'Arial', sans-serif;
+  line-height: 1;
 }
 
 .progress-label {
   font-size: 14px;
   color: #666;
+  font-weight: 400;
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .memoir-card {
+    padding: 32px 20px;
+    min-height: 220px;
+    border-radius: 16px;
+  }
+  
+  .memoir-card-left {
+    margin-right: 20px;
+  }
+  
+  .book-cover {
+    width: 120px;
+    height: 160px;
+  }
+  
+  .memoir-title {
+    font-size: 22px;
+    top: 32px;
+    right: 24px;
+    letter-spacing: 1px;
+  }
+  
+  .progress-text {
+    font-size: 28px;
+    margin-right: 8px;
+  }
+  
+  .progress-label {
+    font-size: 12px;
+  }
+  
+  .memoir-card-right {
+    padding-left: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .memoir-card {
+    padding: 28px 16px;
+    min-height: 200px;
+  }
+  
+  .book-cover {
+    width: 100px;
+    height: 130px;
+  }
+  
+  .memoir-title {
+    font-size: 18px;
+    top: 28px;
+    right: 20px;
+  }
+  
+  .progress-text {
+    font-size: 24px;
+  }
+  
+  .progress-label {
+    font-size: 11px;
+  }
 }
 
 .progress-bar {
   width: 100%;
-  height: 6px;
-  background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-  margin-bottom: 16px;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  margin-bottom: 24px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #FF6B47 0%, #FF8A65 100%);
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 0.3s ease;
 }
 
@@ -144,11 +234,35 @@ export default {
   background: linear-gradient(135deg, #FF6B47 0%, #FF8A65 100%);
   color: white;
   border: none;
-  border-radius: 25px;
+  border-radius: 24px;
   padding: 12px 24px;
   font-size: 16px;
   font-weight: 500;
   width: fit-content;
+  box-shadow: 0 4px 16px rgba(255, 107, 71, 0.3);
+  transition: all 0.3s ease;
+}
+
+.start-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 107, 71, 0.4);
+}
+
+/* 按钮响应式设计 */
+@media (max-width: 480px) {
+  .start-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .start-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 18px;
+  }
 }
 
 .diary-card {
