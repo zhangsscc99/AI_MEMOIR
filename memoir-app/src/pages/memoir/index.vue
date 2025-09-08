@@ -46,11 +46,10 @@
 export default {
   methods: {
     startJourney() {
-      uni.showToast({
-        title: '开始创建回忆录！',
-        icon: 'success'
+      // 跳转到章节选择页面
+      uni.navigateTo({
+        url: '/pages/chapters/index'
       });
-      // TODO: 跳转到问答流程
     }
   }
 }

@@ -30,7 +30,27 @@
     <!-- 章节预览 -->
     <view class="section-preview">
       <view class="section-title">章节预览</view>
-      <view class="preview-placeholder">
+      
+      <!-- 有章节内容时显示 -->
+      <view v-if="completedChapters.length > 0" class="chapters-list">
+        <view 
+          v-for="chapter in completedChapters" 
+          :key="chapter.id"
+          class="chapter-item"
+          @click="viewChapter(chapter)"
+        >
+          <view class="chapter-info">
+            <text class="chapter-name">{{ chapter.title }}</text>
+            <text class="chapter-preview">{{ chapter.preview }}</text>
+          </view>
+          <view class="chapter-status">
+            <text class="status-tag">已完成</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 无内容时显示占位 -->
+      <view v-else class="preview-placeholder">
         <image src="/static/icons/empty-book.svg" class="empty-book-icon" mode="aspectFit"></image>
         <view class="empty-text">未创建回忆录</view>
         <view class="empty-subtitle">开始录制后，章节内容将在这里显示</view>
@@ -44,20 +64,88 @@ export default {
   data() {
     return {
       progressPercent: 0,
-      totalQuestions: 36,
-      completedQuestions: 0
+      totalChapters: 8,
+      completedChapters: []
     }
   },
   onLoad() {
-    // 计算进度
-    this.progressPercent = (this.completedQuestions / this.totalQuestions) * 100;
+    this.loadChapterData();
+  },
+  onShow() {
+    // 页面显示时重新加载章节数据
+    this.loadChapterData();
   },
   methods: {
+    loadChapterData() {
+      try {
+        // 章节名称映射
+        const chapterNames = {
+          'background': '家庭背景',
+          'childhood': '童年时光',
+          'education': '求学生涯',
+          'career': '职业发展',
+          'love': '爱情婚姻',
+          'family': '为人父母',
+          'travel': '旅行见闻',
+          'wisdom': '人生感悟'
+        };
+        
+        // 加载章节状态
+        const savedStatus = uni.getStorageSync('chapter_status');
+        if (savedStatus) {
+          const statusMap = JSON.parse(savedStatus);
+          const completed = [];
+          
+          Object.keys(statusMap).forEach(chapterId => {
+            const status = statusMap[chapterId];
+            if (status.completed) {
+              // 加载章节内容
+              const chapterContent = uni.getStorageSync(`chapter_${chapterId}`);
+              if (chapterContent) {
+                const content = JSON.parse(chapterContent);
+                completed.push({
+                  id: chapterId,
+                  title: chapterNames[chapterId] || chapterId,
+                  preview: this.getPreviewText(content.text),
+                  lastModified: status.lastModified
+                });
+              }
+            }
+          });
+          
+          // 按最后修改时间排序
+          completed.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+          this.completedChapters = completed;
+          
+          // 计算进度
+          this.progressPercent = (completed.length / this.totalChapters) * 100;
+        }
+      } catch (error) {
+        console.log('加载章节数据失败:', error);
+        this.completedChapters = [];
+        this.progressPercent = 0;
+      }
+    },
+    
+    getPreviewText(text) {
+      if (!text) return '暂无内容';
+      // 截取前50个字符作为预览
+      return text.length > 50 ? text.substring(0, 50) + '...' : text;
+    },
+    
+    viewChapter(chapter) {
+      // 跳转到录制页面查看章节
+      uni.navigateTo({
+        url: `/pages/recording/index?chapterId=${chapter.id}&title=${encodeURIComponent(chapter.title)}`
+      });
+    },
+    
     goToWelcome() {
       uni.navigateTo({
         url: '/pages/welcome/index'
       });
     },
+    
     goToDiary() {
       uni.switchTab({
         url: '/pages/diary/index'
@@ -353,5 +441,64 @@ export default {
   color: #999;
   line-height: 1.4;
   max-width: 200px;
+}
+
+/* 章节列表样式 */
+.chapters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chapter-item {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.chapter-item:active {
+  background: #e9ecef;
+  transform: scale(0.98);
+}
+
+.chapter-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.chapter-preview {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chapter-status {
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.status-tag {
+  background: #e8f5e8;
+  color: #4CAF50;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
 }
 </style>

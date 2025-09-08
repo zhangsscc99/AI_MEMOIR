@@ -61,6 +61,20 @@
 				"navigationBarTitleText": "注册",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/chapters/index",
+			"style": {
+				"navigationBarTitleText": "章节选择",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/recording/index",
+			"style": {
+				"navigationBarTitleText": "录制章节",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {
