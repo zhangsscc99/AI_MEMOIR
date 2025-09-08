@@ -540,7 +540,7 @@ export default {
 .text-input {
   width: 100%;
   min-height: 200px;
-  padding: 16px 0;
+  padding: 16px 16px 16px 16px;
   border: none;
   outline: none;
   font-size: 16px;
@@ -549,7 +549,7 @@ export default {
   background: transparent;
   resize: none;
   border-left: 3px solid #e0e0e0;
-  padding-left: 16px;
+  box-sizing: border-box;
 }
 
 .text-input:focus {
