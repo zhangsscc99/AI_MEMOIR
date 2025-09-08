@@ -1,5 +1,10 @@
 <template>
   <view class="container">
+    <!-- 返回按钮 -->
+    <view class="back-btn" @click="goBack">
+      <text class="back-icon">←</text>
+    </view>
+    
     <view class="register-header">
       <view class="app-title">岁月镜像</view>
       <view class="app-subtitle">开始记录您的人生故事</view>
@@ -9,56 +14,66 @@
       <view class="form-title">创建账号</view>
       
       <view class="input-group">
-        <input 
-          class="input-field" 
-          type="text" 
-          placeholder="请输入用户名" 
-          v-model="registerForm.username"
-          :class="{ 'error': errors.username }"
-        />
+        <view class="input-container">
+          <input 
+            class="input-field" 
+            type="text" 
+            placeholder="请输入用户名" 
+            v-model="registerForm.username"
+            :class="{ 'error': errors.username }"
+          />
+        </view>
         <text v-if="errors.username" class="error-text">{{ errors.username }}</text>
       </view>
       
       <view class="input-group">
-        <input 
-          class="input-field" 
-          type="email" 
-          placeholder="请输入邮箱" 
-          v-model="registerForm.email"
-          :class="{ 'error': errors.email }"
-        />
+        <view class="input-container">
+          <input 
+            class="input-field" 
+            type="email" 
+            placeholder="请输入邮箱" 
+            v-model="registerForm.email"
+            :class="{ 'error': errors.email }"
+          />
+        </view>
         <text v-if="errors.email" class="error-text">{{ errors.email }}</text>
       </view>
       
       <view class="input-group">
-        <input 
-          class="input-field" 
-          type="password" 
-          placeholder="请输入密码" 
-          v-model="registerForm.password"
-          :class="{ 'error': errors.password }"
-        />
+        <view class="input-container">
+          <input 
+            class="input-field" 
+            type="password" 
+            placeholder="请输入密码" 
+            v-model="registerForm.password"
+            :class="{ 'error': errors.password }"
+          />
+        </view>
         <text v-if="errors.password" class="error-text">{{ errors.password }}</text>
       </view>
       
       <view class="input-group">
-        <input 
-          class="input-field" 
-          type="password" 
-          placeholder="请确认密码" 
-          v-model="registerForm.confirmPassword"
-          :class="{ 'error': errors.confirmPassword }"
-        />
+        <view class="input-container">
+          <input 
+            class="input-field" 
+            type="password" 
+            placeholder="请确认密码" 
+            v-model="registerForm.confirmPassword"
+            :class="{ 'error': errors.confirmPassword }"
+          />
+        </view>
         <text v-if="errors.confirmPassword" class="error-text">{{ errors.confirmPassword }}</text>
       </view>
       
-      <button 
-        class="register-btn" 
-        @click="handleRegister"
-        :disabled="isLoading"
-      >
-        {{ isLoading ? '注册中...' : '注册' }}
-      </button>
+      <view class="btn-container">
+        <button 
+          class="register-btn" 
+          @click="handleRegister"
+          :disabled="isLoading"
+        >
+          {{ isLoading ? '注册中...' : '注册' }}
+        </button>
+      </view>
       
       <view class="form-footer">
         <text class="login-text">已有账号？</text>
@@ -186,6 +201,12 @@ export default {
     
     goToLogin() {
       uni.navigateBack();
+    },
+    
+    goBack() {
+      uni.switchTab({
+        url: '/pages/profile/index'
+      });
     }
   }
 }
@@ -196,6 +217,41 @@ export default {
   min-height: 100vh;
   background-color: #f8f8f8;
   padding: 20px;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.back-icon {
+  font-size: 20px;
+  color: #333;
+  font-weight: 600;
 }
 
 .register-header {
@@ -240,16 +296,22 @@ export default {
   margin-bottom: 20px;
 }
 
+.input-container {
+  display: flex;
+  justify-content: center;
+}
+
 .input-field {
-  width: 100%;
+  width: 280px;
   height: 44px;
   border: 1px solid #e1e5e9;
-  border-radius: 8px;
-  padding: 0 12px;
+  border-radius: 22px;
+  padding: 0 16px;
   font-size: 16px;
   color: #333;
   background: #f8f9fa;
   transition: all 0.3s ease;
+  text-align: center;
 }
 
 .input-field:focus {
@@ -270,16 +332,21 @@ export default {
   display: block;
 }
 
+.btn-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 .register-btn {
-  width: 100%;
-  height: 50px;
+  width: 200px;
+  height: 45px;
   background: rgba(255, 255, 255, 0.8);
   color: #333;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
+  border-radius: 25px;
   font-size: 16px;
   font-weight: 600;
-  margin-top: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   backdrop-filter: blur(15px);

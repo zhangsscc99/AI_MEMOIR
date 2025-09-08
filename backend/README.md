@@ -276,3 +276,8 @@ curl -X GET http://localhost:3001/api/auth/me \
 ---
 
 © 2024 岁月镜像 EchoLens - AI 回忆录应用
+
+
+
+npm start -> backend
+npm run dev:h5 -> frontend
