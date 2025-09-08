@@ -6,6 +6,7 @@ const Memoir = require('./Memoir');
 const Question = require('./Question');
 const Answer = require('./Answer');
 const Diary = require('./Diary');
+const Chapter = require('./Chapter');
 
 // 定义模型关联关系
 
@@ -62,6 +63,17 @@ Question.hasMany(Answer, {
 Answer.belongsTo(Question, {
   foreignKey: 'question_id',
   as: 'question'
+});
+
+// 用户与章节的关系（一对多）
+User.hasMany(Chapter, {
+  foreignKey: 'user_id',
+  as: 'chapters',
+  onDelete: 'CASCADE'
+});
+Chapter.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user'
 });
 
 // 数据库初始化函数
@@ -250,5 +262,6 @@ module.exports = {
   Question,
   Answer,
   Diary,
+  Chapter,
   initDatabase
 };

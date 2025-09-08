@@ -215,6 +215,36 @@ const validateAnswer = [
   handleValidationErrors
 ];
 
+/**
+ * 章节保存验证规则
+ */
+const validateChapter = [
+  body('chapterId')
+    .notEmpty()
+    .withMessage('章节 ID 不能为空')
+    .isIn(['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'])
+    .withMessage('无效的章节 ID'),
+    
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('章节标题长度不能超过 100 个字符'),
+    
+  body('content')
+    .optional()
+    .trim()
+    .isLength({ max: 50000 })
+    .withMessage('章节内容长度不能超过 50000 个字符'),
+    
+  body('recordings')
+    .optional()
+    .isArray()
+    .withMessage('录音列表必须是数组'),
+    
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   validateRegister,
@@ -223,5 +253,6 @@ module.exports = {
   validateUpdateProfile,
   validateCreateMemoir,
   validateCreateDiary,
-  validateAnswer
+  validateAnswer,
+  validateChapter
 };

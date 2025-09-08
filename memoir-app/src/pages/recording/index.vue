@@ -201,36 +201,103 @@ export default {
       }
     },
     
-    saveChapter() {
+    async saveChapter() {
       try {
-        const content = {
-          text: this.contentText,
-          recordings: this.recordings,
-          lastModified: new Date().toISOString(),
-          completed: this.contentText.length > 0 || this.recordings.length > 0
-        };
-        
-        // 保存章节内容
-        uni.setStorageSync(`chapter_${this.chapterId}`, JSON.stringify(content));
-        
-        // 更新章节状态
-        const savedStatus = uni.getStorageSync('chapter_status') || '{}';
-        const statusMap = JSON.parse(savedStatus);
-        statusMap[this.chapterId] = {
-          completed: content.completed,
-          lastModified: content.lastModified
-        };
-        uni.setStorageSync('chapter_status', JSON.stringify(statusMap));
-        
-        uni.showToast({
-          title: '保存成功',
-          icon: 'success'
+        // 检查用户是否登录
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          uni.showToast({
+            title: '请先登录',
+            icon: 'error'
+          });
+          return;
+        }
+
+        // 显示加载状态
+        uni.showLoading({
+          title: '保存中...'
         });
+
+        // 准备要保存的数据
+        const saveData = {
+          chapterId: this.chapterId,
+          title: this.chapterTitle,
+          content: this.contentText,
+          recordings: this.recordings
+        };
+
+        // 调用后端API保存章节
+        const response = await uni.request({
+          url: 'http://localhost:3001/api/chapters/save',
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          data: saveData
+        });
+
+        uni.hideLoading();
+
+        if (response.statusCode === 200 && response.data.success) {
+          // 同时更新本地存储（用于离线查看）
+          const content = {
+            text: this.contentText,
+            recordings: this.recordings,
+            lastModified: new Date().toISOString(),
+            completed: this.contentText.length > 0 || this.recordings.length > 0
+          };
+          
+          uni.setStorageSync(`chapter_${this.chapterId}`, JSON.stringify(content));
+          
+          const savedStatus = uni.getStorageSync('chapter_status') || '{}';
+          const statusMap = JSON.parse(savedStatus);
+          statusMap[this.chapterId] = {
+            completed: content.completed,
+            lastModified: content.lastModified
+          };
+          uni.setStorageSync('chapter_status', JSON.stringify(statusMap));
+
+          uni.showToast({
+            title: '保存成功',
+            icon: 'success'
+          });
+        } else {
+          throw new Error(response.data?.message || '保存失败');
+        }
       } catch (error) {
-        uni.showToast({
-          title: '保存失败',
-          icon: 'error'
-        });
+        uni.hideLoading();
+        console.error('保存章节失败:', error);
+        
+        // 如果是网络错误，尝试本地保存
+        if (error.errMsg && error.errMsg.includes('network')) {
+          try {
+            const content = {
+              text: this.contentText,
+              recordings: this.recordings,
+              lastModified: new Date().toISOString(),
+              completed: this.contentText.length > 0 || this.recordings.length > 0,
+              needSync: true // 标记需要同步到服务器
+            };
+            
+            uni.setStorageSync(`chapter_${this.chapterId}`, JSON.stringify(content));
+            
+            uni.showToast({
+              title: '已离线保存',
+              icon: 'success'
+            });
+          } catch (localError) {
+            uni.showToast({
+              title: '保存失败',
+              icon: 'error'
+            });
+          }
+        } else {
+          uni.showToast({
+            title: error.message || '保存失败',
+            icon: 'error'
+          });
+        }
       }
     },
     
@@ -435,12 +502,15 @@ export default {
 
 .save-btn {
   padding: 8px 16px;
-  background: #FF6B47;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
   border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .save-text {
-  color: white;
+  color: #333;
   font-size: 14px;
   font-weight: 600;
 }

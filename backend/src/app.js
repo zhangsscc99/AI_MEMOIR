@@ -9,6 +9,7 @@ const { testConnection } = require('./config/database');
 
 // 导入路由
 const authRoutes = require('./routes/auth');
+const chapterRoutes = require('./routes/chapters');
 
 // 创建 Express 应用
 const app = express();
@@ -59,6 +60,7 @@ app.get('/health', (req, res) => {
 
 // API 路由
 app.use('/api/auth', authRoutes);
+app.use('/api/chapters', chapterRoutes);
 
 // 静态文件服务（用于文件上传）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -136,6 +138,10 @@ const startServer = async () => {
       console.log('   - PUT  /api/auth/change-password - 修改密码');
       console.log('   - POST /api/auth/logout     - 注销登录');
       console.log('   - GET  /api/auth/check      - 检查token');
+      console.log('   - POST /api/chapters/save   - 保存章节');
+      console.log('   - GET  /api/chapters        - 获取章节列表');
+      console.log('   - GET  /api/chapters/:id    - 获取章节详情');
+      console.log('   - DELETE /api/chapters/:id  - 删除章节');
       console.log('');
       console.log('🎯 前端访问地址: http://localhost:5173');
       console.log('⚡ 准备接收请求...');
