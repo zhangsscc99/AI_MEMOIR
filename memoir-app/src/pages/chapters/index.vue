@@ -390,10 +390,7 @@ export default {
   display: block;
   font-size: 32px;
   font-weight: 700;
-  background: linear-gradient(135deg, #FF6B47 0%, #FF8A47 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #333;
   margin-bottom: 4px;
 }
 
