@@ -360,7 +360,7 @@ export default {
   padding: 0 16px;
   font-size: 16px;
   color: #333;
-  background: #f8f9fa;
+  background: white;
   transition: all 0.3s ease;
   text-align: center;
 }
