@@ -231,21 +231,23 @@ export default {
 }
 
 .start-btn {
-  background: linear-gradient(135deg, #FF6B47 0%, #FF8A65 100%);
-  color: white;
-  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 24px;
   padding: 12px 24px;
   font-size: 16px;
   font-weight: 500;
   width: fit-content;
-  box-shadow: 0 4px 16px rgba(255, 107, 71, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .start-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(255, 107, 71, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 /* 按钮响应式设计 */
