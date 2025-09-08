@@ -19,9 +19,13 @@
             class="input-field" 
             type="text" 
             placeholder="请输入用户名" 
-            v-model="registerForm.username"
+            :value="registerForm.username"
+            @input="updateUsername"
             :class="{ 'error': errors.username }"
             autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
           />
         </view>
         <text v-if="errors.username" class="error-text">{{ errors.username }}</text>
@@ -69,9 +73,13 @@
             class="input-field" 
             type="password" 
             placeholder="请确认密码" 
-            v-model="registerForm.confirmPassword"
+            :value="registerForm.confirmPassword"
+            @input="updateConfirmPassword"
             :class="{ 'error': errors.confirmPassword }"
             autocomplete="new-password"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
           />
         </view>
         <text v-if="errors.confirmPassword" class="error-text">{{ errors.confirmPassword }}</text>
@@ -110,50 +118,34 @@ export default {
     }
   },
   created() {
-    // 在组件创建时就清空数据
-    this.registerForm = {
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    };
+    // 在组件创建时确保数据为空
     this.errors = {};
+    console.log('注册页面初始化，表单数据:', this.registerForm);
   },
   mounted() {
-    // 确保表单数据重置为空
-    this.registerForm = {
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    };
+    // 确保错误状态清空
     this.errors = {};
-    
-    // 使用nextTick确保DOM更新后清除任何残留值
-    this.$nextTick(() => {
-      const inputs = document.querySelectorAll('.input-field');
-      inputs.forEach(input => {
-        input.value = '';
-      });
-      
-      // 延迟再次清除，防止框架或浏览器重新填充
-      setTimeout(() => {
-        const inputs2 = document.querySelectorAll('.input-field');
-        inputs2.forEach(input => {
-          input.value = '';
-        });
-        // 强制重新渲染
-        this.$forceUpdate();
-      }, 100);
-    });
+    console.log('页面挂载完成，表单数据:', this.registerForm);
   },
   methods: {
+    updateUsername(event) {
+      this.registerForm.username = event.detail.value || event.target.value || '';
+      this.errors.username = '';  // 清除错误
+    },
+    
     updateEmail(event) {
-      this.registerForm.email = event.target.value || '';
+      this.registerForm.email = event.detail.value || event.target.value || '';
+      this.errors.email = '';  // 清除错误
     },
     
     updatePassword(event) {
-      this.registerForm.password = event.target.value || '';
+      this.registerForm.password = event.detail.value || event.target.value || '';
+      this.errors.password = '';  // 清除错误
+    },
+    
+    updateConfirmPassword(event) {
+      this.registerForm.confirmPassword = event.detail.value || event.target.value || '';
+      this.errors.confirmPassword = '';  // 清除错误
     },
     
     validateForm() {
@@ -317,6 +309,7 @@ export default {
   border-radius: 12px;
   padding: 40px 20px;
   text-align: center;
+  margin-top: 60px;
   margin-bottom: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
