@@ -20,7 +20,7 @@
 
     <!-- 随记卡片 -->
     <view class="diary-card" @click="goToDiary">
-      <image src="/static/images/diary-bg.jpg" class="diary-bg" mode="aspectFill"></image>
+      <image src="/src/images/winter.png" class="diary-bg" mode="aspectFill"></image>
       <view class="diary-overlay">
         <view class="diary-title">随记</view>
         <view class="diary-subtitle">记录照片里的故事，随手写下生活点滴<br/>轻松导入回忆录</view>
