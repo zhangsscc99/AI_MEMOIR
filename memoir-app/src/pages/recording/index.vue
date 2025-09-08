@@ -561,8 +561,8 @@ export default {
 }
 
 .record-btn {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   background: rgba(255, 255, 255, 0.9);
   border: 2px solid #e0e0e0;
   border-radius: 50%;
@@ -595,8 +595,8 @@ export default {
 }
 
 .mic-icon {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   color: #333;
 }
 
@@ -667,8 +667,8 @@ export default {
   }
   
   .record-btn {
-    width: 100px;
-    height: 100px;
+    width: 60px;
+    height: 60px;
   }
   
   .record-icon {
