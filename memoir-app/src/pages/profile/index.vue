@@ -28,8 +28,8 @@
       </view>
     </view>
 
-    <view class="menu-section">
-      <view class="menu-item" v-for="(item, index) in menuList" :key="index" @click="handleMenuClick(item)">
+    <view class="menu-section" v-if="isLoggedIn">
+      <view class="menu-item" v-for="(item, index) in displayMenuList" :key="index" @click="handleMenuClick(item)">
         <view class="menu-left">
           <image :src="getMenuIcon(item.id)" class="menu-icon" mode="aspectFit"></image>
           <text class="menu-text">{{ item.title }}</text>
@@ -51,15 +51,22 @@ export default {
     return {
       isLoggedIn: false,
       user: {},
-      menuList: [
+      baseMenuList: [
         { id: 'purchase', title: '我要购买' },
         { id: 'orders', title: '我的订单' },
         { id: 'service', title: '联系客服' },
         { id: 'feedback', title: '意见反馈' },
         { id: 'share', title: '分享海报' },
-        { id: 'cooperation', title: '商务合作' },
-        { id: 'logout', title: '退出登录' }
+        { id: 'cooperation', title: '商务合作' }
       ]
+    }
+  },
+  computed: {
+    displayMenuList() {
+      if (this.isLoggedIn) {
+        return [...this.baseMenuList, { id: 'logout', title: '退出登录' }];
+      }
+      return this.baseMenuList;
     }
   },
   onShow() {
@@ -160,9 +167,11 @@ export default {
 /* 未登录状态样式 */
 .login-prompt {
   background: white;
+  border-radius: 12px;
   padding: 60px 40px;
   text-align: center;
-  margin-bottom: 12px;
+  margin: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .prompt-avatar {
@@ -243,10 +252,13 @@ export default {
 
 .user-card {
   background: white;
+  border-radius: 12px;
   padding: 24px 20px;
+  margin: 12px;
   display: flex;
   align-items: center;
   position: relative;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .user-avatar {
@@ -304,8 +316,10 @@ export default {
 }
 
 .menu-section {
-  margin-top: 12px;
   background: white;
+  border-radius: 12px;
+  margin: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .menu-item {
@@ -345,8 +359,11 @@ export default {
   display: flex;
   justify-content: center;
   gap: 24px;
-  margin-top: 40px;
+  margin: 12px;
   padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .footer-link {
