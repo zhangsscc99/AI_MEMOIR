@@ -161,6 +161,10 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  min-width: 350px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 /* 未登录状态 */
@@ -325,13 +329,15 @@ export default {
   padding: 20px;
   text-align: center;
   border-top: 1px solid #f5f5f5;
+  white-space: nowrap;
 }
 
 .footer-link {
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
-  margin: 0 16px;
+  margin: 0 12px;
   text-decoration: underline;
+  display: inline-block;
 }
 
 .footer-link:active {
