@@ -95,7 +95,7 @@ export default {
           id: 'childhood',
           title: '童年时光',
           description: '分享童年的美好回忆和成长经历',
-          backgroundImage: '/src/images/winter.png',
+          backgroundImage: '/src/images/story2.png',
           completed: false
         },
         {
