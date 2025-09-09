@@ -25,6 +25,15 @@
 			}
 		},
 		{
+			"path": "pages/diary/edit",
+			"style": {
+				"navigationBarTitleText": "新随记",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/profile/index",
 			"style": {
 				"navigationBarTitleText": "个人空间",

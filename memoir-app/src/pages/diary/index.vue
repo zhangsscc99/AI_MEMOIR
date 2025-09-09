@@ -6,7 +6,31 @@
     </view>
 
     <view class="diary-list">
-      <view class="diary-item">
+      <!-- 显示已保存的随记 -->
+      <view 
+        class="diary-item" 
+        v-for="diary in diaries" 
+        :key="diary.id"
+        @click="viewDiary(diary)"
+      >
+        <image 
+          :src="diary.image || '/src/images/lion.png'" 
+          class="diary-image" 
+          mode="aspectFill"
+        ></image>
+        <view class="diary-content">
+          <view class="diary-title">{{ diary.title }}</view>
+          <view class="diary-date">{{ formatDate(diary.createTime) }}</view>
+        </view>
+        <view class="diary-menu" @click.stop="showDiaryMenu(diary)">
+          <view class="menu-dot"></view>
+          <view class="menu-dot"></view>
+          <view class="menu-dot"></view>
+        </view>
+      </view>
+      
+      <!-- 默认示例（如果没有随记） -->
+      <view class="diary-item" v-if="diaries.length === 0">
         <image src="/src/images/lion.png" class="diary-image" mode="aspectFill"></image>
         <view class="diary-content">
           <view class="diary-title">示例：春节福字的故事</view>
@@ -31,12 +55,116 @@
 
 <script>
 export default {
+  data() {
+    return {
+      diaries: []
+    };
+  },
+
+  onShow() {
+    this.loadDiaries();
+  },
+
   methods: {
+    // 加载随记数据
+    loadDiaries() {
+      try {
+        const diaries = uni.getStorageSync('diaries') || [];
+        this.diaries = diaries;
+      } catch (error) {
+        console.error('加载随记失败:', error);
+        this.diaries = [];
+      }
+    },
+
+    // 新建随记
     addNewDiary() {
+      uni.navigateTo({
+        url: '/pages/diary/edit'
+      });
+    },
+
+    // 查看随记详情
+    viewDiary(diary) {
       uni.showToast({
-        title: '新建随记功能开发中',
+        title: '查看功能开发中',
         icon: 'none'
       });
+    },
+
+    // 显示随记菜单
+    showDiaryMenu(diary) {
+      uni.showActionSheet({
+        itemList: ['编辑', '删除', '分享'],
+        success: (res) => {
+          switch (res.tapIndex) {
+            case 0:
+              this.editDiary(diary);
+              break;
+            case 1:
+              this.deleteDiary(diary);
+              break;
+            case 2:
+              this.shareDiary(diary);
+              break;
+          }
+        }
+      });
+    },
+
+    // 编辑随记
+    editDiary(diary) {
+      uni.showToast({
+        title: '编辑功能开发中',
+        icon: 'none'
+      });
+    },
+
+    // 删除随记
+    deleteDiary(diary) {
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这条随记吗？',
+        success: (res) => {
+          if (res.confirm) {
+            try {
+              const diaries = uni.getStorageSync('diaries') || [];
+              const index = diaries.findIndex(d => d.id === diary.id);
+              if (index > -1) {
+                diaries.splice(index, 1);
+                uni.setStorageSync('diaries', diaries);
+                this.loadDiaries();
+                uni.showToast({
+                  title: '删除成功',
+                  icon: 'success'
+                });
+              }
+            } catch (error) {
+              uni.showToast({
+                title: '删除失败',
+                icon: 'error'
+              });
+            }
+          }
+        }
+      });
+    },
+
+    // 分享随记
+    shareDiary(diary) {
+      uni.showToast({
+        title: '分享功能开发中',
+        icon: 'none'
+      });
+    },
+
+    // 格式化日期
+    formatDate(timestamp) {
+      const date = new Date(timestamp);
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      return `${year}/${month}/${day}`;
     }
   }
 }
