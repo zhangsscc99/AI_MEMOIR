@@ -168,9 +168,9 @@ export default {
 
     // 编辑随记
     editDiary(diary) {
-      uni.showToast({
-        title: '编辑功能开发中',
-        icon: 'none'
+      console.log('编辑随记:', diary);
+      uni.navigateTo({
+        url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=edit`
       });
     },
 
@@ -181,27 +181,91 @@ export default {
         content: '确定要删除这条随记吗？',
         success: (res) => {
           if (res.confirm) {
-            try {
-              const diaries = uni.getStorageSync('diaries') || [];
-              const index = diaries.findIndex(d => d.id === diary.id);
-              if (index > -1) {
-                diaries.splice(index, 1);
-                uni.setStorageSync('diaries', diaries);
-                this.loadDiaries();
-                uni.showToast({
-                  title: '删除成功',
-                  icon: 'success'
-                });
-              }
-            } catch (error) {
-              uni.showToast({
-                title: '删除失败',
-                icon: 'error'
-              });
-            }
+            this.performDelete(diary);
           }
         }
       });
+    },
+
+    // 执行删除操作
+    async performDelete(diary) {
+      try {
+        uni.showLoading({
+          title: '删除中...'
+        });
+
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          uni.hideLoading();
+          uni.showToast({
+            title: '请先登录',
+            icon: 'error'
+          });
+          return;
+        }
+
+        // 调用后端删除API
+        const response = await uni.request({
+          url: `http://localhost:3001/api/chapters/${diary.id}`,
+          method: 'DELETE',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        uni.hideLoading();
+
+        if (response.statusCode === 200 && response.data.success) {
+          // 删除成功，重新加载数据
+          this.loadDiaries();
+          uni.showToast({
+            title: '删除成功',
+            icon: 'success'
+          });
+        } else {
+          // 后端删除失败，尝试本地删除
+          console.log('后端删除失败，尝试本地删除:', response.data);
+          this.deleteFromLocal(diary);
+        }
+      } catch (error) {
+        console.error('删除随记出错:', error);
+        uni.hideLoading();
+        
+        // 网络错误，尝试本地删除
+        uni.showModal({
+          title: '网络错误',
+          content: '无法连接到服务器，是否仅从本地删除？',
+          success: (res) => {
+            if (res.confirm) {
+              this.deleteFromLocal(diary);
+            }
+          }
+        });
+      }
+    },
+
+    // 本地删除
+    deleteFromLocal(diary) {
+      try {
+        const diaries = uni.getStorageSync('diaries') || [];
+        const index = diaries.findIndex(d => d.id === diary.id);
+        if (index > -1) {
+          diaries.splice(index, 1);
+          uni.setStorageSync('diaries', diaries);
+          this.loadDiaries();
+          uni.showToast({
+            title: '本地删除成功',
+            icon: 'success'
+          });
+        }
+      } catch (error) {
+        console.error('本地删除失败:', error);
+        uni.showToast({
+          title: '删除失败',
+          icon: 'error'
+        });
+      }
     },
 
     // 分享随记
