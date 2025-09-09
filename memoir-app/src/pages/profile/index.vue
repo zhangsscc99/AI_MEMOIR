@@ -81,6 +81,9 @@ export default {
     this.checkLoginStatus();
   },
   methods: {
+    // 暴露图片路径优化函数
+    getOptimalImagePath,
+    
     checkLoginStatus() {
       const token = uni.getStorageSync('token');
       const user = uni.getStorageSync('user');

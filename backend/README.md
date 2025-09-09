@@ -301,3 +301,22 @@ scp -r dist/build/h5/* /var/www/MEMOIR/
 # 在assets目录中查找
 grep -r "apiUrl" dist/build/h5/assets/
 grep -r "106.15.248.189" dist/build/h5/assets/
+
+
+pm2 delete memoir-backend
+
+# 重新启动后端
+pm2 start src/app.js --name memoir-backend
+
+
+pm2 stop memoir-backend
+
+# 2. 删除损坏的 node_modules
+cd /root/AI_MEMOIR/backend
+rm -rf node_modules package-lock.json
+
+# 3. 重新安装依赖
+npm install
+
+# 4. 重启服务
+pm2 start memoir-backend
