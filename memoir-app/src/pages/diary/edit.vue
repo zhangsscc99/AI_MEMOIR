@@ -183,6 +183,17 @@ export default {
   methods: {
     // 加载现有随记数据（编辑模式）
     async loadExistingDiary() {
+      // 如果是样板案例，使用默认数据
+      if (this.editChapterId.startsWith('sample_')) {
+        console.log('📖 加载样板案例数据');
+        this.diaryTitle = '春节舞狮子';
+        this.diaryContent = '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。';
+        this.selectedImage = '/src/images/lion.png';
+        this.recordings = [];
+        console.log('✅ 样板案例数据加载完成');
+        return;
+      }
+
       try {
         console.log('🔄 加载现有随记数据...', this.editChapterId);
         
@@ -836,8 +847,20 @@ export default {
         }
 
         // 生成或使用现有的章节ID
-        const customChapterId = this.editMode ? this.editChapterId : 'diary_' + Date.now();
-        console.log('📝 使用的章节ID:', customChapterId, '编辑模式:', this.editMode);
+        let customChapterId;
+        if (this.editMode) {
+          // 如果是样板案例，生成新的ID
+          if (this.editChapterId.startsWith('sample_')) {
+            customChapterId = 'diary_' + Date.now();
+            console.log('📝 样板案例保存为新随记，生成新ID:', customChapterId);
+          } else {
+            customChapterId = this.editChapterId;
+            console.log('📝 编辑现有随记，使用原ID:', customChapterId);
+          }
+        } else {
+          customChapterId = 'diary_' + Date.now();
+          console.log('📝 新建随记，生成新ID:', customChapterId);
+        }
         
         // 处理图片上传
         let backgroundImage = '/src/images/default-diary.svg'; // 默认图片

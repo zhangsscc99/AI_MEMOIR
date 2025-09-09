@@ -141,13 +141,13 @@ export default {
         {
           id: 'sample_diary_1',
           title: '春节舞狮子',
-          content: '这是一个关于勇气和成长的故事。狮子王辛巴从幼小的王子成长为勇敢的国王，经历了失去父亲的痛苦，也学会了承担责任。',
+          content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
           image: '/src/images/lion.png',
           createTime: new Date().toISOString(),
           chapterData: {
             chapterId: 'sample_diary_1',
-            title: '狮子王的故事',
-            content: '这是一个关于勇气和成长的故事。狮子王辛巴从幼小的王子成长为勇敢的国王，经历了失去父亲的痛苦，也学会了承担责任。',
+            title: '春节舞狮子',
+            content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
             backgroundImage: '/src/images/lion.png',
             status: 'completed'
           }
@@ -166,17 +166,6 @@ export default {
     viewDiary(diary) {
       console.log('查看随记:', diary);
       
-      // 如果是样板案例，显示提示信息
-      if (diary.id.startsWith('sample_')) {
-        uni.showModal({
-          title: '样板案例',
-          content: '这是一个样板随记，用于展示功能。您可以点击"新随记"创建自己的随记。',
-          showCancel: false,
-          confirmText: '知道了'
-        });
-        return;
-      }
-      
       // 跳转到编辑页面，以查看模式打开
       uni.navigateTo({
         url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=view`
@@ -185,19 +174,6 @@ export default {
 
     // 显示随记菜单
     showDiaryMenu(diary) {
-      // 如果是样板案例，只显示分享选项
-      if (diary.id.startsWith('sample_')) {
-        uni.showActionSheet({
-          itemList: ['分享'],
-          success: (res) => {
-            if (res.tapIndex === 0) {
-              this.shareDiary(diary);
-            }
-          }
-        });
-        return;
-      }
-      
       uni.showActionSheet({
         itemList: ['编辑', '删除', '分享'],
         success: (res) => {
@@ -239,6 +215,12 @@ export default {
 
     // 执行删除操作
     async performDelete(diary) {
+      // 如果是样板案例，直接本地删除
+      if (diary.id.startsWith('sample_')) {
+        this.deleteFromLocal(diary);
+        return;
+      }
+
       try {
         uni.showLoading({
           title: '删除中...'
