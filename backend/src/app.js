@@ -13,6 +13,10 @@ const authRoutes = require('./routes/auth');
 const chapterRoutes = require('./routes/chapters');
 const speechRoutes = require('./routes/speech');
 
+// 导入控制器
+const { uploadImage } = require('./controllers/uploadController');
+const { authenticateToken } = require('./middleware/auth');
+
 // 创建 Express 应用
 const app = express();
 
@@ -64,6 +68,9 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chapters', chapterRoutes);
 app.use('/api/speech', speechRoutes);
+
+// 图片上传路由
+app.post('/api/upload/image', authenticateToken, uploadImage);
 
 // 静态文件服务（用于文件上传）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

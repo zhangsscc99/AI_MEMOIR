@@ -1,0 +1,7 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" rx="20" fill="#F5F5F5"/>
+  <rect x="50" y="50" width="100" height="100" rx="10" fill="#E0E0E0"/>
+  <circle cx="100" cy="80" r="15" fill="#BDBDBD"/>
+  <path d="M70 120 L130 120 L130 140 L70 140 Z" fill="#BDBDBD"/>
+  <text x="100" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#9E9E9E">默认图片</text>
+</svg>

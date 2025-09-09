@@ -239,7 +239,8 @@ export default {
         console.log('📊 用户章节响应:', response);
         
         if (response.statusCode === 200 && response.data.success) {
-          const userChapters = response.data.data || [];
+          const responseData = response.data.data || {};
+          const userChapters = responseData.chapters || [];
           console.log('📚 获取到用户章节:', userChapters);
           
           // 过滤出diary章节
@@ -263,7 +264,7 @@ export default {
                 (diaryChapter.content.length > 20 ? 
                   diaryChapter.content.substring(0, 20) + '...' : 
                   diaryChapter.content) : '暂无内容',
-              backgroundImage: diaryChapter.backgroundImage || '/src/images/default-diary.png',
+              backgroundImage: diaryChapter.backgroundImage && !diaryChapter.backgroundImage.startsWith('blob:') ? diaryChapter.backgroundImage : '/src/images/default-diary.svg',
               completed: diaryChapter.status === 'completed',
               isDiary: true // 标记为diary章节
             };

@@ -5,12 +5,12 @@
       <view class="back-btn" @click="goBack">
         <text class="back-icon">←</text>
       </view>
-      <view class="nav-title">新随记</view>
+      <view class="nav-title">{{ viewMode ? '查看随记' : (editMode ? '编辑随记' : '新随记') }}</view>
       <view class="action-menu">
         <text class="menu-icon">⋯</text>
       </view>
       <view class="save-btn" @click="saveDiary">
-        <text class="save-text">完成</text>
+        <text class="save-text">{{ viewMode ? '编辑' : '完成' }}</text>
       </view>
     </view>
 
@@ -130,6 +130,7 @@ export default {
     return {
       // 编辑模式相关
       editMode: false,
+      viewMode: false,
       editChapterId: '',
       diaryTitle: '',
       diaryContent: '',
@@ -151,16 +152,22 @@ export default {
   onLoad(options) {
     console.log('📱 随记编辑页面加载', options);
     
-    this.initRecorderManager();
-    this.generateWaveform();
-    
-    // 检查是否是编辑模式
+    // 先设置模式
     if (options.chapterId && options.mode === 'edit') {
       this.editMode = true;
       this.editChapterId = options.chapterId;
       this.diaryTitle = decodeURIComponent(options.title || '随记');
       this.loadExistingDiary();
+    } else if (options.chapterId && options.mode === 'view') {
+      this.viewMode = true;
+      this.editChapterId = options.chapterId;
+      this.diaryTitle = decodeURIComponent(options.title || '随记');
+      this.loadExistingDiary();
     }
+    
+    // 初始化录音功能
+    this.initRecorderManager();
+    this.generateWaveform();
   },
 
   onUnload() {
@@ -730,8 +737,66 @@ export default {
       }
     },
 
+    // 上传图片到服务器
+    async uploadImageToServer(blobUrl) {
+      try {
+        console.log('📤 开始上传图片:', blobUrl);
+        
+        // 将blob URL转换为File对象
+        const response = await fetch(blobUrl);
+        const blob = await response.blob();
+        
+        // 创建FormData
+        const formData = new FormData();
+        const fileName = `diary_image_${Date.now()}.jpg`;
+        // 确保blob有正确的MIME类型
+        const imageBlob = new Blob([blob], { type: 'image/jpeg' });
+        formData.append('image', imageBlob, fileName);
+        
+        // 获取token
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+        
+        // 上传到服务器
+        const uploadResponse = await fetch('http://localhost:3001/api/upload/image', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error(`上传失败: ${uploadResponse.status}`);
+        }
+        
+        const result = await uploadResponse.json();
+        console.log('✅ 图片上传成功:', result);
+        
+        // 返回服务器上的图片URL
+        return result.data.url || result.url;
+        
+      } catch (error) {
+        console.error('❌ 图片上传失败:', error);
+        throw error;
+      }
+    },
+
     // 保存随记
     async saveDiary() {
+      // 如果是查看模式，切换到编辑模式
+      if (this.viewMode) {
+        this.viewMode = false;
+        this.editMode = true;
+        uni.showToast({
+          title: '已切换到编辑模式',
+          icon: 'success'
+        });
+        return;
+      }
+
       if (!this.diaryTitle.trim()) {
         uni.showToast({
           title: '请输入随记标题',
@@ -777,13 +842,31 @@ export default {
         const customChapterId = this.editMode ? this.editChapterId : 'diary_' + Date.now();
         console.log('📝 使用的章节ID:', customChapterId, '编辑模式:', this.editMode);
         
+        // 处理图片上传
+        let backgroundImage = '/src/images/default-diary.svg'; // 默认图片
+        if (this.selectedImage) {
+          try {
+            // 如果是blob URL，需要上传到服务器
+            if (this.selectedImage.startsWith('blob:')) {
+              backgroundImage = await this.uploadImageToServer(this.selectedImage);
+            } else {
+              // 如果是其他格式，直接使用
+              backgroundImage = this.selectedImage;
+            }
+          } catch (error) {
+            console.error('图片上传失败:', error);
+            // 如果上传失败，使用默认图片
+            backgroundImage = '/src/images/default-diary.svg';
+          }
+        }
+
         // 准备保存为回忆录章节的数据
         const chapterData = {
           chapterId: customChapterId,
           title: this.diaryTitle.trim(),
           content: this.diaryContent.trim(),
           recordings: this.recordings,
-          backgroundImage: this.selectedImage // 上传的图片作为章节背景图
+          backgroundImage: backgroundImage // 上传的图片作为章节背景图
         };
 
         console.log('📤 发送章节数据:', chapterData);

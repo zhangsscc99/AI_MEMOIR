@@ -91,9 +91,15 @@ export default {
         });
         
         console.log('📊 后端章节响应:', response);
+        console.log('📊 响应数据详情:', response.data);
         
         if (response.statusCode === 200 && response.data.success) {
-          const userChapters = response.data.data || [];
+          const responseData = response.data.data || {};
+          console.log('📊 原始数据类型:', typeof responseData, '是否为数组:', Array.isArray(responseData));
+          console.log('📊 原始数据内容:', responseData);
+          
+          // 正确访问章节数组：response.data.data.chapters
+          const userChapters = responseData.chapters || [];
           
           // 过滤出diary章节并转换为随记格式
           const diaryChapters = userChapters.filter(chapter => 
@@ -106,7 +112,7 @@ export default {
             id: chapter.chapterId,
             title: chapter.title || '无标题随记',
             content: chapter.content || '',
-            image: chapter.backgroundImage,
+            image: chapter.backgroundImage && !chapter.backgroundImage.startsWith('blob:') ? chapter.backgroundImage : '/src/images/default-diary.svg',
             createTime: chapter.updatedAt || chapter.createdAt,
             chapterData: chapter // 保存完整的章节数据
           }));
@@ -133,9 +139,10 @@ export default {
 
     // 查看随记详情
     viewDiary(diary) {
-      uni.showToast({
-        title: '查看功能开发中',
-        icon: 'none'
+      console.log('查看随记:', diary);
+      // 跳转到编辑页面，以查看模式打开
+      uni.navigateTo({
+        url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=view`
       });
     },
 
