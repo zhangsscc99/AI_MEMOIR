@@ -293,7 +293,7 @@ npm run build:serve
 # 2. 上传构建产物到服务器
 # 构建产物通常在 dist/build/h5 目录
 
-
+cp -r dist/build/h5/* /var/www/MEMOIR/
 
 
 
