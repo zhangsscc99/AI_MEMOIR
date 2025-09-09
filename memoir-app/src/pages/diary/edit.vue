@@ -135,7 +135,11 @@ export default {
       recordingTimer: null,
       waveform: [],
       maxRecordingTime: 600, // 10分钟
-      recorderManager: null
+      recorderManager: null,
+      // Web录音相关
+      mediaRecorder: null,
+      mediaStream: null,
+      audioChunks: []
     };
   },
 
@@ -148,6 +152,12 @@ export default {
     this.stopRecording();
     if (this.recordingTimer) {
       clearInterval(this.recordingTimer);
+    }
+    // 清理Web录音资源
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => {
+        track.stop();
+      });
     }
   },
 
@@ -228,15 +238,19 @@ export default {
 
     // 切换录音状态
     toggleRecording() {
+      console.log('🎯 点击录制按钮，当前状态:', this.isRecording);
+      
       if (this.isRecording) {
+        console.log('🛑 停止录音');
         this.stopRecording();
       } else {
+        console.log('🎤 开始录音');
         this.startRecording();
       }
     },
 
     // 开始录音
-    startRecording() {
+    async startRecording() {
       if (this.recordings.length >= 5) {
         uni.showToast({
           title: '最多录制5段音频',
@@ -245,47 +259,63 @@ export default {
         return;
       }
 
-      // #ifdef APP-PLUS || H5
-      this.recorderManager.start({
-        duration: this.maxRecordingTime * 1000,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        encodeBitRate: 192000,
-        format: 'mp3'
-      });
-      // #endif
+      console.log('🎤 开始录音...');
+      
+      // 检测浏览器环境并使用Web录音
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        console.log('🌐 检测到浏览器环境，使用Web录音...');
+        await this.startWebRecording();
+      } else {
+        // #ifdef APP-PLUS || H5
+        this.recorderManager.start({
+          duration: this.maxRecordingTime * 1000,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          encodeBitRate: 192000,
+          format: 'mp3'
+        });
+        // #endif
 
-      // #ifdef MP-WEIXIN
-      // 微信小程序录音实现
-      wx.startRecord({
-        success: () => {
-          this.isRecording = true;
-          this.startRecordingTimer();
-        },
-        fail: (err) => {
-          console.error('录音失败:', err);
-          uni.showToast({
-            title: '录音失败',
-            icon: 'error'
-          });
-        }
-      });
-      // #endif
+        // #ifdef MP-WEIXIN
+        // 微信小程序录音实现
+        wx.startRecord({
+          success: () => {
+            this.isRecording = true;
+            this.startRecordingTimer();
+          },
+          fail: (err) => {
+            console.error('录音失败:', err);
+            uni.showToast({
+              title: '录音失败',
+              icon: 'error'
+            });
+          }
+        });
+        // #endif
+      }
     },
 
     // 停止录音
     stopRecording() {
       if (!this.isRecording) return;
 
-      // #ifdef APP-PLUS || H5
-      this.recorderManager.stop();
-      // #endif
+      console.log('🛑 停止录音...');
+      
+      // 检测环境并停止录音
+      if (this.mediaRecorder || this.mediaStream) {
+        console.log('🌐 停止Web录音...');
+        this.stopWebRecording();
+      } else {
+        // #ifdef APP-PLUS || H5
+        this.recorderManager.stop();
+        // #endif
 
-      // #ifdef MP-WEIXIN
-      wx.stopRecord();
-      this.isRecording = false;
-      this.stopRecordingTimer();
-      // #endif
+        // #ifdef MP-WEIXIN
+        wx.stopRecord();
+        this.isRecording = false;
+        this.stopRecordingTimer();
+        // #endif
+      }
     },
 
     // 开始录音计时
@@ -343,6 +373,159 @@ export default {
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     },
 
+    // Web录音开始
+    async startWebRecording() {
+      try {
+        console.log('🌐 开始Web录音...');
+        
+        // 请求麦克风权限
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 16000
+          } 
+        });
+        this.mediaStream = stream;
+        
+        // 检查浏览器支持的mime类型
+        let mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/webm';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/mp4';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = '';
+            }
+          }
+        }
+        
+        // 创建MediaRecorder
+        this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+        this.audioChunks = [];
+        
+        this.mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            this.audioChunks.push(event.data);
+          }
+        };
+        
+        this.mediaRecorder.onstop = () => {
+          console.log('✅ Web录音停止，数据块数量:', this.audioChunks.length);
+          if (this.audioChunks.length > 0) {
+            const audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
+            console.log('音频Blob大小:', audioBlob.size, 'bytes');
+            this.processWebAudio(audioBlob);
+          } else {
+            console.error('❌ 没有录音数据');
+            uni.showToast({
+              title: '录音数据为空',
+              icon: 'error'
+            });
+          }
+        };
+        
+        this.mediaRecorder.onerror = (event) => {
+          console.error('❌ MediaRecorder错误:', event.error);
+          uni.showToast({
+            title: '录音过程中出错',
+            icon: 'error'
+          });
+        };
+        
+        // 开始录音
+        this.mediaRecorder.start(100); // 每100ms收集一次数据
+        console.log('✅ Web录音开始成功, 状态:', this.mediaRecorder.state);
+        
+        // 设置录音状态
+        this.isRecording = true;
+        this.startRecordingTimer();
+        
+      } catch (error) {
+        console.error('❌ Web录音开始失败:', error);
+        
+        let errorMessage = '无法访问麦克风';
+        if (error.name === 'NotAllowedError') {
+          errorMessage = '麦克风权限被拒绝';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = '未找到麦克风设备';
+        }
+        
+        uni.showToast({
+          title: errorMessage,
+          icon: 'error'
+        });
+      }
+    },
+
+    // Web录音停止
+    stopWebRecording() {
+      try {
+        console.log('🌐 停止Web录音...');
+        console.log('MediaRecorder状态:', this.mediaRecorder?.state);
+        
+        if (this.mediaRecorder) {
+          if (this.mediaRecorder.state === 'recording') {
+            console.log('停止MediaRecorder...');
+            this.mediaRecorder.stop();
+          } else if (this.mediaRecorder.state === 'paused') {
+            this.mediaRecorder.resume();
+            this.mediaRecorder.stop();
+          }
+        }
+        
+        // 停止所有音频轨道
+        if (this.mediaStream) {
+          console.log('停止媒体流...');
+          this.mediaStream.getTracks().forEach(track => {
+            track.stop();
+          });
+        }
+        
+        // 设置录音状态
+        this.isRecording = false;
+        this.stopRecordingTimer();
+        
+      } catch (error) {
+        console.error('❌ 停止Web录音失败:', error);
+        uni.showToast({
+          title: '停止录音失败',
+          icon: 'error'
+        });
+      }
+    },
+
+    // 处理Web录音数据
+    async processWebAudio(audioBlob) {
+      try {
+        console.log('🎵 处理Web录音数据...', audioBlob.size, 'bytes');
+        
+        // 创建录音记录
+        const newRecording = {
+          id: Date.now(),
+          duration: this.recordingTime,
+          blob: audioBlob,
+          playing: false,
+          isWebAudio: true
+        };
+        
+        this.recordings.push(newRecording);
+        this.recordingTime = 0;
+        
+        uni.showToast({
+          title: '录制完成',
+          icon: 'success'
+        });
+        
+      } catch (error) {
+        console.error('❌ 处理Web录音失败:', error);
+        uni.showToast({
+          title: '处理录音失败',
+          icon: 'error'
+        });
+      }
+    },
+
     // 保存随记
     async saveDiary() {
       if (!this.diaryTitle.trim()) {
@@ -366,47 +549,150 @@ export default {
       });
 
       try {
-        // 准备保存数据
-        const diaryData = {
+        // 检查用户是否登录
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          uni.hideLoading();
+          uni.showToast({
+            title: '请先登录',
+            icon: 'error'
+          });
+          return;
+        }
+
+        // 生成自定义章节ID（使用时间戳确保唯一性）
+        const customChapterId = 'diary_' + Date.now();
+        
+        // 准备保存为回忆录章节的数据
+        const chapterData = {
+          chapterId: customChapterId,
           title: this.diaryTitle.trim(),
           content: this.diaryContent.trim(),
-          image: this.selectedImage,
           recordings: this.recordings,
-          createTime: new Date().getTime(),
-          updateTime: new Date().getTime()
+          backgroundImage: this.selectedImage // 上传的图片作为章节背景图
         };
 
-        // 这里可以调用后端API保存
-        // const response = await uni.request({
-        //   url: 'http://localhost:3001/api/diary/save',
-        //   method: 'POST',
-        //   data: diaryData
-        // });
-
-        // 暂时保存到本地存储
-        const existingDiaries = uni.getStorageSync('diaries') || [];
-        diaryData.id = 'diary_' + Date.now();
-        existingDiaries.unshift(diaryData);
-        uni.setStorageSync('diaries', existingDiaries);
-
-        uni.hideLoading();
-        uni.showToast({
-          title: '保存成功',
-          icon: 'success'
+        // 调用回忆录章节保存API
+        const response = await uni.request({
+          url: 'http://localhost:3001/api/chapters/save',
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          data: chapterData
         });
 
-        // 延迟跳转回随记列表
-        setTimeout(() => {
-          uni.navigateBack();
-        }, 1500);
+        uni.hideLoading();
+
+        if (response.statusCode === 200 && response.data.success) {
+          // 同时保存到本地存储（用于离线查看和章节列表显示）
+          const localChapterData = {
+            id: customChapterId,
+            title: this.diaryTitle.trim(),
+            description: '自定义随记章节',
+            backgroundImage: this.selectedImage || '/src/images/story1.png',
+            completed: true,
+            isCustom: true, // 标记为自定义章节
+            content: this.diaryContent.trim(),
+            recordings: this.recordings,
+            createTime: Date.now(),
+            lastModified: new Date().toISOString()
+          };
+
+          // 保存到本地章节状态
+          uni.setStorageSync(`chapter_${customChapterId}`, JSON.stringify({
+            text: this.diaryContent.trim(),
+            recordings: this.recordings,
+            lastModified: new Date().toISOString(),
+            completed: true
+          }));
+
+          // 更新章节状态映射
+          const savedStatus = uni.getStorageSync('chapter_status') || '{}';
+          const statusMap = JSON.parse(savedStatus);
+          statusMap[customChapterId] = {
+            completed: true,
+            lastModified: new Date().toISOString()
+          };
+          uni.setStorageSync('chapter_status', JSON.stringify(statusMap));
+
+          // 添加到自定义章节列表（用于首页和章节页显示）
+          const customChapters = uni.getStorageSync('custom_chapters') || [];
+          customChapters.unshift(localChapterData);
+          uni.setStorageSync('custom_chapters', customChapters);
+
+          uni.showToast({
+            title: '保存成功',
+            icon: 'success'
+          });
+
+          // 延迟跳转回随记列表
+          setTimeout(() => {
+            uni.navigateBack();
+          }, 1500);
+
+        } else {
+          throw new Error(response.data?.message || '保存失败');
+        }
 
       } catch (error) {
         uni.hideLoading();
         console.error('保存随记失败:', error);
-        uni.showToast({
-          title: '保存失败',
-          icon: 'error'
-        });
+        
+        // 如果是网络错误，尝试本地保存
+        if (error.errMsg && error.errMsg.includes('network')) {
+          try {
+            const customChapterId = 'diary_' + Date.now();
+            
+            // 本地保存章节数据
+            const localChapterData = {
+              id: customChapterId,
+              title: this.diaryTitle.trim(),
+              description: '自定义随记章节',
+              backgroundImage: this.selectedImage || '/src/images/story1.png',
+              completed: true,
+              isCustom: true,
+              content: this.diaryContent.trim(),
+              recordings: this.recordings,
+              createTime: Date.now(),
+              lastModified: new Date().toISOString(),
+              needSync: true // 标记需要同步到服务器
+            };
+
+            uni.setStorageSync(`chapter_${customChapterId}`, JSON.stringify({
+              text: this.diaryContent.trim(),
+              recordings: this.recordings,
+              lastModified: new Date().toISOString(),
+              completed: true,
+              needSync: true
+            }));
+
+            const customChapters = uni.getStorageSync('custom_chapters') || [];
+            customChapters.unshift(localChapterData);
+            uni.setStorageSync('custom_chapters', customChapters);
+
+            uni.showToast({
+              title: '已离线保存',
+              icon: 'success'
+            });
+
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+
+          } catch (localError) {
+            uni.showToast({
+              title: '保存失败',
+              icon: 'error'
+            });
+          }
+        } else {
+          uni.showToast({
+            title: error.message || '保存失败',
+            icon: 'error'
+          });
+        }
       }
     }
   }

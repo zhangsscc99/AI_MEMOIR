@@ -8,12 +8,14 @@ const User = require('../models/User');
  */
 const saveChapter = async (req, res) => {
   try {
-    const { chapterId, title, content, recordings } = req.body;
+    const { chapterId, title, content, recordings, backgroundImage } = req.body;
     const userId = req.user.id;
 
-    // 验证章节ID
+    // 验证章节ID（支持固定章节和自定义随记章节）
     const validChapterIds = ['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'];
-    if (!validChapterIds.includes(chapterId)) {
+    const isCustomDiary = chapterId.startsWith('diary_');
+    
+    if (!validChapterIds.includes(chapterId) && !isCustomDiary) {
       return res.status(400).json({
         success: false,
         message: '无效的章节ID'
@@ -33,6 +35,7 @@ const saveChapter = async (req, res) => {
       chapter.title = title || chapter.title;
       chapter.content = content || '';
       chapter.recordings = recordings || [];
+      chapter.background_image = backgroundImage || chapter.background_image;
       await chapter.updateStatus();
     } else {
       // 创建新章节
@@ -41,7 +44,8 @@ const saveChapter = async (req, res) => {
         chapter_id: chapterId,
         title: title || '未命名章节',
         content: content || '',
-        recordings: recordings || []
+        recordings: recordings || [],
+        background_image: backgroundImage || null
       });
       await chapter.updateStatus();
     }
@@ -56,6 +60,7 @@ const saveChapter = async (req, res) => {
           title: chapter.title,
           content: chapter.content,
           recordings: chapter.recordings,
+          backgroundImage: chapter.background_image,
           status: chapter.status,
           wordCount: chapter.word_count,
           recordingCount: chapter.recording_count,
@@ -96,6 +101,7 @@ const getUserChapters = async (req, res) => {
       title: chapter.title,
       content: chapter.content,
       recordings: chapter.recordings,
+      backgroundImage: chapter.background_image,
       status: chapter.status,
       wordCount: chapter.word_count,
       recordingCount: chapter.recording_count,
@@ -156,6 +162,7 @@ const getChapter = async (req, res) => {
           title: chapter.title,
           content: chapter.content,
           recordings: chapter.recordings,
+          backgroundImage: chapter.background_image,
           status: chapter.status,
           wordCount: chapter.word_count,
           recordingCount: chapter.recording_count,

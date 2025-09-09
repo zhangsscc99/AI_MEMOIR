@@ -18,10 +18,17 @@ const Chapter = sequelize.define('Chapter', {
     }
   },
   chapter_id: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(100),
     allowNull: false,
     validate: {
-      isIn: [['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom']]
+      isValidChapterId(value) {
+        const validChapterIds = ['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'];
+        const isCustomDiary = value.startsWith('diary_');
+        
+        if (!validChapterIds.includes(value) && !isCustomDiary) {
+          throw new Error('无效的章节ID');
+        }
+      }
     }
   },
   title: {
@@ -51,6 +58,11 @@ const Chapter = sequelize.define('Chapter', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     allowNull: false
+  },
+  background_image: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: '章节背景图片路径'
   }
 }, {
   tableName: 'chapters',
