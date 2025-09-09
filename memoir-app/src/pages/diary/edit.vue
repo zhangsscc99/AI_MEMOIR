@@ -122,7 +122,12 @@
 </template>
 
 <script>
-import { apiUrl } from '@/utils/api.js';
+// 直接定义API基础URL
+const API_BASE = 'http://106.15.248.189:3001/api';
+const apiUrl = (path) => {
+  if (!path) return API_BASE;
+  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+};
 export default {
   data() {
     return {
