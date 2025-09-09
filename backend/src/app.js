@@ -35,7 +35,11 @@ app.use(cors({
     'http://localhost:5173',  // 前端开发服务器
     'http://127.0.0.1:5173',
     'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://127.0.0.1:3000',
+    'http://106.15.248.189:5173',  // 服务器前端地址
+    'http://106.15.248.189:3000',
+    'http://106.15.248.189:8080',
+    'http://106.15.248.189:8081'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
