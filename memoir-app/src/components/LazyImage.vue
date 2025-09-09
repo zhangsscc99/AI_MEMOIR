@@ -64,6 +64,11 @@ export default {
     enableWebP: {
       type: Boolean,
       default: true
+    },
+    // 是否立即加载（不进行懒加载）
+    immediate: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -87,7 +92,12 @@ export default {
     }
   },
   mounted() {
-    this.loadImage()
+    if (this.immediate) {
+      // 立即加载，不使用懒加载
+      this.preloadImage()
+    } else {
+      this.loadImage()
+    }
   },
   methods: {
     loadImage() {

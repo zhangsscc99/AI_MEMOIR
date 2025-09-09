@@ -9,6 +9,7 @@
           mode="aspectFit"
           width="120px"
           height="160px"
+          :immediate="true"
         />
       </view>
       <view class="memoir-card-right">
