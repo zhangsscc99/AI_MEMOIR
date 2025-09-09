@@ -4,12 +4,21 @@ const apiUrl = (path) => {
   if (!path) return API_BASE;
   return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 };
+
+// 导入图片预加载工具
+import imagePreloader from '@/utils/imagePreloader.js';
 <template>
   <view class="container">
     <!-- 回忆录工坊卡片 -->
     <view class="memoir-card" @click="goToMemoir">
       <view class="memoir-card-left">
-        <image src="/src/images/memoirbook.png" class="book-cover" mode="aspectFit"></image>
+        <LazyImage 
+          src="/src/images/memoirbook.png" 
+          class="book-cover" 
+          mode="aspectFit"
+          width="120px"
+          height="160px"
+        />
       </view>
       <view class="memoir-card-right">
         <view class="memoir-title">回忆录</view>
@@ -26,7 +35,13 @@ const apiUrl = (path) => {
 
     <!-- 随记卡片 -->
     <view class="diary-card" @click="goToDiary">
-      <image src="/src/images/winter.png" class="diary-bg" mode="aspectFill"></image>
+      <LazyImage 
+        src="/src/images/winter.png" 
+        class="diary-bg" 
+        mode="aspectFill"
+        width="100%"
+        height="200px"
+      />
       <view class="diary-overlay">
         <view class="diary-title">随记</view>
         <view class="diary-subtitle">记录照片里的故事，随手写下生活点滴<br/>轻松导入回忆录</view>
@@ -96,6 +111,9 @@ const apiUrl = (path) => {
 
 <script>
 export default {
+  components: {
+    LazyImage: () => import('@/components/LazyImage.vue')
+  },
   data() {
     return {
       progressPercent: 0,
@@ -178,6 +196,8 @@ export default {
   onLoad() {
     this.loadChapterData();
     this.loadUserChapters();
+    // 预加载关键图片
+    this.preloadCriticalImages();
   },
   onShow() {
     // 页面显示时重新加载章节数据
@@ -185,6 +205,23 @@ export default {
     this.loadUserChapters();
   },
   methods: {
+    // 预加载关键图片
+    preloadCriticalImages() {
+      const criticalImages = [
+        '/src/images/memoirbook.png',
+        '/src/images/winter.png',
+        '/src/images/lion.png'
+      ];
+      
+      imagePreloader.preloadCritical(criticalImages)
+        .then(() => {
+          console.log('关键图片预加载完成');
+        })
+        .catch(error => {
+          console.warn('关键图片预加载失败:', error);
+        });
+    },
+    
     loadChapterData() {
       try {
         // 加载章节状态

@@ -4,6 +4,9 @@ const apiUrl = (path) => {
   if (!path) return API_BASE;
   return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 };
+
+// 导入图片预加载工具
+import imagePreloader from '@/utils/imagePreloader.js';
 <template>
   <view class="container">
     <!-- 导航栏 -->
@@ -53,11 +56,13 @@ const apiUrl = (path) => {
             >
               <!-- 背景图片 -->
               <view class="chapter-bg">
-                <image 
+                <LazyImage 
                   :src="chapter.backgroundImage" 
                   class="bg-image"
                   mode="aspectFill"
-                ></image>
+                  width="100%"
+                  height="100%"
+                />
                 <view class="bg-overlay"></view>
               </view>
               
@@ -87,6 +92,9 @@ const apiUrl = (path) => {
 
 <script>
 export default {
+  components: {
+    LazyImage: () => import('@/components/LazyImage.vue')
+  },
   data() {
     return {
       chapters: [
@@ -175,6 +183,8 @@ export default {
     // 从本地存储加载章节完成状态
     this.loadChapterStatus();
     // 加载用户自定义章节（diary）
+    // 预加载章节图片
+    this.preloadChapterImages();
     this.loadUserChapters();
   },
   onShow() {
@@ -182,6 +192,19 @@ export default {
     this.loadUserChapters();
   },
   methods: {
+    // 预加载章节图片
+    preloadChapterImages() {
+      const chapterImages = this.chapters.map(chapter => chapter.backgroundImage);
+      
+      imagePreloader.preloadChapterImages(chapterImages)
+        .then(() => {
+          console.log('章节图片预加载完成');
+        })
+        .catch(error => {
+          console.warn('章节图片预加载失败:', error);
+        });
+    },
+    
     goBack() {
       uni.navigateBack();
     },
