@@ -78,6 +78,8 @@ app.post('/api/upload/image', authenticateToken, uploadImage);
 
 // 静态文件服务（用于文件上传）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// WebP文件静态服务
+app.use('/uploads/images_webp', express.static(path.join(__dirname, '../uploads/images_webp')));
 
 // 404 处理
 app.use((req, res) => {

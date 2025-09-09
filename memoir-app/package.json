@@ -36,7 +36,8 @@
     "build:quickapp-webview-huawei": "uni build -p quickapp-webview-huawei",
     "build:quickapp-webview-union": "uni build -p quickapp-webview-union",
     "optimize:images": "node scripts/optimize-images.js",
-    "build:optimized": "npm run optimize:images && npm run build:h5"
+    "convert:webp": "node scripts/convert-to-webp.js",
+    "build:optimized": "npm run convert:webp && npm run build:h5"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4070620250821001",

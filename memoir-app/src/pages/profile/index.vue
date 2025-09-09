@@ -4,7 +4,7 @@
     <view class="main-content">
       <!-- 未登录状态 -->
       <view v-if="!isLoggedIn" class="welcome-section">
-        <image src="/src/images/zaomen.jpeg" class="avatar" mode="aspectFill"></image>
+        <image :src="getOptimalImagePath('/src/images/zaomen.jpeg')" class="avatar" mode="aspectFill"></image>
         <text class="welcome-title">欢迎使用岁月镜像</text>
         <text class="welcome-subtitle">请登录以访问您的个人空间</text>
         <view class="auth-buttons">
@@ -21,7 +21,7 @@
       <view v-else class="profile-section">
         <!-- 用户信息 -->
         <view class="user-header">
-          <image :src="user.avatar || '/src/images/zaomen.jpeg'" class="avatar" mode="aspectFill"></image>
+          <image :src="getOptimalImagePath(user.avatar || '/src/images/zaomen.jpeg')" class="avatar" mode="aspectFill"></image>
           <view class="user-details">
             <text class="user-name">Hi~ {{ user.nickname || user.username }}</text>
             <text class="user-id">ID: {{ user.id.substring(0, 12) }}</text>
@@ -51,6 +51,9 @@
 </template>
 
 <script>
+// 导入图片映射工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
+
 export default {
   data() {
     return {

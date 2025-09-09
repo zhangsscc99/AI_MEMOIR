@@ -1,11 +1,16 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 // 确保上传目录存在
 const uploadDir = path.join(__dirname, '../../uploads/images');
+const webpDir = path.join(__dirname, '../../uploads/images_webp');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+}
+if (!fs.existsSync(webpDir)) {
+  fs.mkdirSync(webpDir, { recursive: true });
 }
 
 // 配置multer
@@ -67,13 +72,26 @@ const uploadImage = (req, res) => {
     }
 
     try {
-      // 生成可访问的URL
-      const imageUrl = `http://localhost:3001/uploads/images/${req.file.filename}`;
+      // 生成WebP版本
+      const originalPath = req.file.path;
+      const webpFilename = req.file.filename.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+      const webpPath = path.join(webpDir, webpFilename);
+      
+      // 使用sharp转换为WebP
+      await sharp(originalPath)
+        .webp({ quality: 80 })
+        .toFile(webpPath);
+      
+      // 生成可访问的URL（优先返回WebP）
+      const imageUrl = `http://localhost:3001/uploads/images_webp/${webpFilename}`;
+      const originalUrl = `http://localhost:3001/uploads/images/${req.file.filename}`;
       
       console.log('✅ 图片上传成功:', {
         originalname: req.file.originalname,
         filename: req.file.filename,
-        size: req.file.size,
+        webpFilename: webpFilename,
+        originalSize: req.file.size,
+        webpSize: fs.statSync(webpPath).size,
         url: imageUrl
       });
 
@@ -82,9 +100,12 @@ const uploadImage = (req, res) => {
         message: '图片上传成功',
         data: {
           filename: req.file.filename,
+          webpFilename: webpFilename,
           originalname: req.file.originalname,
-          size: req.file.size,
-          url: imageUrl
+          originalSize: req.file.size,
+          webpSize: fs.statSync(webpPath).size,
+          url: imageUrl, // 优先返回WebP URL
+          originalUrl: originalUrl // 保留原图URL作为备选
         }
       });
 

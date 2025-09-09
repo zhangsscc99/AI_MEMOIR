@@ -3,6 +3,9 @@
  * 用于提前加载关键图片，提升用户体验
  */
 
+// 导入图片映射工具
+import { getOptimalImagePath } from './imageMapping.js';
+
 class ImagePreloader {
   constructor() {
     this.cache = new Map()
@@ -63,8 +66,10 @@ class ImagePreloader {
     ]
     
     const imagesToPreload = criticalImages.length > 0 ? criticalImages : defaultCriticalImages
+    // 转换为WebP路径
+    const webpImages = imagesToPreload.map(img => getOptimalImagePath(img))
     
-    return this.preloadBatch(imagesToPreload, {
+    return this.preloadBatch(webpImages, {
       priority: 'high'
     })
   }
@@ -88,8 +93,10 @@ class ImagePreloader {
     ]
     
     const imagesToPreload = chapterImages.length > 0 ? chapterImages : defaultChapterImages
+    // 转换为WebP路径
+    const webpImages = imagesToPreload.map(img => getOptimalImagePath(img))
     
-    return this.preloadBatch(imagesToPreload, {
+    return this.preloadBatch(webpImages, {
       priority: 'low'
     })
   }

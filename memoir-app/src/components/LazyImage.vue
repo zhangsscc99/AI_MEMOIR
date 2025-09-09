@@ -30,6 +30,9 @@
 </template>
 
 <script>
+// 导入图片映射工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
+
 export default {
   name: 'LazyImage',
   props: {
@@ -79,16 +82,8 @@ export default {
         return this.src
       }
       
-      // 本地图片路径优化
-      let optimizedPath = this.src
-      
-      // 如果支持WebP且不是SVG，尝试使用WebP格式
-      if (this.enableWebP && !this.src.endsWith('.svg')) {
-        const basePath = this.src.replace(/\.(png|jpg|jpeg)$/i, '')
-        optimizedPath = `${basePath}.webp`
-      }
-      
-      return optimizedPath
+      // 使用图片映射工具获取最优路径
+      return getOptimalImagePath(this.src)
     }
   },
   mounted() {

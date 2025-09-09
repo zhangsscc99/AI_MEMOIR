@@ -7,6 +7,8 @@ const apiUrl = (path) => {
 
 // 导入图片预加载工具
 import imagePreloader from '@/utils/imagePreloader.js';
+// 导入图片映射工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
 <template>
   <view class="container">
     <!-- 导航栏 -->

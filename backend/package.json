@@ -29,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "sequelize": "^6.37.7",
+    "sharp": "^0.34.3",
     "sqlite3": "^5.1.7",
     "uuid": "^12.0.0"
   },

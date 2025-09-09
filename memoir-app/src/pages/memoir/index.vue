@@ -2,7 +2,13 @@
   <view class="container">
     <!-- 书本图片 -->
     <view class="book-section">
-      <image src="/src/images/memoirbook.png" class="book-image" mode="aspectFit"></image>
+      <LazyImage 
+        src="/src/images/memoirbook.png" 
+        class="book-image" 
+        mode="aspectFit"
+        width="200px"
+        height="260px"
+      />
     </view>
 
     <!-- 欢迎文案 -->
@@ -31,7 +37,13 @@
 </template>
 
 <script>
+// 导入LazyImage组件
+import LazyImage from '@/components/LazyImage.vue';
+
 export default {
+  components: {
+    LazyImage
+  },
   methods: {
     startJourney() {
       // 跳转到章节选择页面

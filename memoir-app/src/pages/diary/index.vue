@@ -4,6 +4,9 @@ const apiUrl = (path) => {
   if (!path) return API_BASE;
   return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 };
+
+// 导入图片映射工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
 <template>
   <view class="container">
     <view class="page-header">
@@ -20,7 +23,7 @@ const apiUrl = (path) => {
         @click="viewDiary(diary)"
       >
         <image 
-          :src="diary.image || '/src/images/lion.png'" 
+          :src="getOptimalImagePath(diary.image || '/src/images/lion.png')" 
           class="diary-image" 
           mode="aspectFill"
         ></image>
@@ -37,7 +40,7 @@ const apiUrl = (path) => {
       
       <!-- 默认示例（如果没有随记） -->
       <view class="diary-item" v-if="diaries.length === 0">
-        <image src="/src/images/lion.png" class="diary-image" mode="aspectFill"></image>
+        <image :src="getOptimalImagePath('/src/images/lion.png')" class="diary-image" mode="aspectFill"></image>
         <view class="diary-content">
           <view class="diary-title">示例：春节福字的故事</view>
           <view class="diary-date">2025/08/25</view>
@@ -118,7 +121,7 @@ export default {
             id: chapter.chapterId,
             title: chapter.title || '无标题随记',
             content: chapter.content || '',
-            image: chapter.backgroundImage && !chapter.backgroundImage.startsWith('blob:') ? chapter.backgroundImage : '/src/images/default-diary.svg',
+            image: chapter.backgroundImage && !chapter.backgroundImage.startsWith('blob:') ? getOptimalImagePath(chapter.backgroundImage) : '/src/images/default-diary.svg',
             createTime: chapter.updatedAt || chapter.createdAt,
             chapterData: chapter // 保存完整的章节数据
           }));
@@ -148,13 +151,13 @@ export default {
           id: 'sample_diary_1',
           title: '春节舞狮子',
           content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
-          image: '/src/images/lion.png',
+          image: getOptimalImagePath('/src/images/lion.png'),
           createTime: new Date().toISOString(),
           chapterData: {
             chapterId: 'sample_diary_1',
             title: '春节舞狮子',
             content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
-            backgroundImage: '/src/images/lion.png',
+            backgroundImage: getOptimalImagePath('/src/images/lion.png'),
             status: 'completed'
           }
         }
