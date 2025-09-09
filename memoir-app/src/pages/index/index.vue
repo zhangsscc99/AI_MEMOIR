@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 回忆录工坊卡片 -->
-    <view class="memoir-card" @click="goToWelcome">
+    <view class="memoir-card" @click="goToMemoir">
       <view class="memoir-card-left">
         <image src="/src/images/memoirbook.png" class="book-cover" mode="aspectFit"></image>
       </view>
@@ -14,7 +14,7 @@
         <view class="progress-bar">
           <view class="progress-fill" :style="{width: progressPercent + '%'}"></view>
         </view>
-        <button class="start-btn">开始录制</button>
+        <button class="start-btn" @click="goToChapters">开始录制</button>
       </view>
     </view>
 
@@ -306,9 +306,9 @@ export default {
       });
     },
     
-    goToWelcome() {
-      uni.navigateTo({
-        url: '/pages/welcome/index'
+    goToMemoir() {
+      uni.switchTab({
+        url: '/pages/memoir/index'
       });
     },
     
@@ -326,6 +326,13 @@ export default {
             url: '/pages/diary/index'
           });
         }
+      });
+    },
+
+    goToChapters() {
+      console.log('点击开始录制按钮，准备跳转到回忆录工坊');
+      uni.switchTab({
+        url: '/pages/memoir/index'
       });
     }
   }

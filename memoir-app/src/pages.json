@@ -42,14 +42,6 @@
 			}
 		},
 		{
-			"path": "pages/welcome/index",
-			"style": {
-				"navigationBarTitleText": "回忆录工坊",
-				"navigationBarBackgroundColor": "#ffffff",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
 			"path": "pages/question/index",
 			"style": {
 				"navigationBarTitleText": "问答",
