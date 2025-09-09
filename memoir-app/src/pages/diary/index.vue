@@ -116,18 +116,43 @@ export default {
             createTime: chapter.updatedAt || chapter.createdAt,
             chapterData: chapter // 保存完整的章节数据
           }));
+
+          // 添加样板案例到列表末尾
+          const sampleDiaries = this.getDefaultDiaries();
+          console.log('🦁 添加样板案例:', sampleDiaries);
+          this.diaries = this.diaries.concat(sampleDiaries);
           
-          console.log('✅ 随记数据加载完成:', this.diaries);
+          console.log('✅ 随记数据加载完成，总数:', this.diaries.length, '数据:', this.diaries);
         } else {
           console.log('❌ 获取随记失败，使用本地存储数据:', response.data);
           const localDiaries = uni.getStorageSync('diaries') || [];
-          this.diaries = localDiaries;
+          this.diaries = localDiaries.concat(this.getDefaultDiaries());
         }
       } catch (error) {
         console.error('❌ 加载随记出错，使用本地存储数据:', error);
         const localDiaries = uni.getStorageSync('diaries') || [];
-        this.diaries = localDiaries;
+        this.diaries = localDiaries.concat(this.getDefaultDiaries());
       }
+    },
+
+    // 获取默认随记数据（样板案例）
+    getDefaultDiaries() {
+      return [
+        {
+          id: 'sample_diary_1',
+          title: '春节舞狮子',
+          content: '这是一个关于勇气和成长的故事。狮子王辛巴从幼小的王子成长为勇敢的国王，经历了失去父亲的痛苦，也学会了承担责任。',
+          image: '/src/images/lion.png',
+          createTime: new Date().toISOString(),
+          chapterData: {
+            chapterId: 'sample_diary_1',
+            title: '狮子王的故事',
+            content: '这是一个关于勇气和成长的故事。狮子王辛巴从幼小的王子成长为勇敢的国王，经历了失去父亲的痛苦，也学会了承担责任。',
+            backgroundImage: '/src/images/lion.png',
+            status: 'completed'
+          }
+        }
+      ];
     },
 
     // 新建随记
@@ -140,6 +165,18 @@ export default {
     // 查看随记详情
     viewDiary(diary) {
       console.log('查看随记:', diary);
+      
+      // 如果是样板案例，显示提示信息
+      if (diary.id.startsWith('sample_')) {
+        uni.showModal({
+          title: '样板案例',
+          content: '这是一个样板随记，用于展示功能。您可以点击"新随记"创建自己的随记。',
+          showCancel: false,
+          confirmText: '知道了'
+        });
+        return;
+      }
+      
       // 跳转到编辑页面，以查看模式打开
       uni.navigateTo({
         url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=view`
@@ -148,6 +185,19 @@ export default {
 
     // 显示随记菜单
     showDiaryMenu(diary) {
+      // 如果是样板案例，只显示分享选项
+      if (diary.id.startsWith('sample_')) {
+        uni.showActionSheet({
+          itemList: ['分享'],
+          success: (res) => {
+            if (res.tapIndex === 0) {
+              this.shareDiary(diary);
+            }
+          }
+        });
+        return;
+      }
+      
       uni.showActionSheet({
         itemList: ['编辑', '删除', '分享'],
         success: (res) => {
