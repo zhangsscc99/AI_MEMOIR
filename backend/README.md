@@ -293,3 +293,11 @@ npm run build:serve
 # 2. 上传构建产物到服务器
 # 构建产物通常在 dist/build/h5 目录
 scp -r dist/build/h5/* /var/www/MEMOIR/
+
+
+
+
+
+# 在assets目录中查找
+grep -r "apiUrl" dist/build/h5/assets/
+grep -r "106.15.248.189" dist/build/h5/assets/

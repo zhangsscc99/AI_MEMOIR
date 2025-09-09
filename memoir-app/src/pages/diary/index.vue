@@ -88,7 +88,7 @@ export default {
         
         // 从后端获取用户章节，过滤出diary章节
         const response = await uni.request({
-          url: apiUrl('/chapters'),
+          url: 'http://106.15.248.189:3001/api/chapters',
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -244,7 +244,7 @@ export default {
 
         // 调用后端删除API
         const response = await uni.request({
-          url: apiUrl(`/chapters/${diary.id}`),
+          url: `http://106.15.248.189:3001/api/chapters/${diary.id}`,
           method: 'DELETE',
           header: {
             'Authorization': `Bearer ${token}`,
