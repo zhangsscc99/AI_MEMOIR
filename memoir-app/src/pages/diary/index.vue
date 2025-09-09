@@ -75,6 +75,9 @@ export default {
   },
 
   methods: {
+    // 暴露图片路径优化函数
+    getOptimalImagePath,
+    
     // 加载随记数据
     async loadDiaries() {
       try {
