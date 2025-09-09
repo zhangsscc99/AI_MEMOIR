@@ -171,10 +171,12 @@ export default {
   },
   onLoad() {
     this.loadChapterData();
+    this.loadUserChapters();
   },
   onShow() {
     // 页面显示时重新加载章节数据
     this.loadChapterData();
+    this.loadUserChapters();
   },
   methods: {
     loadChapterData() {
@@ -213,16 +215,82 @@ export default {
       }
     },
 
+    // 加载用户创建的章节
+    async loadUserChapters() {
+      try {
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          console.log('用户未登录，跳过加载用户章节');
+          return;
+        }
+
+        const response = await uni.request({
+          url: 'http://localhost:3001/api/chapters',
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          const responseData = response.data.data || {};
+          const userChapters = responseData.chapters || [];
+          console.log('📚 获取到用户章节:', userChapters);
+
+          // 过滤出diary章节
+          const diaryChapters = userChapters.filter(chapter => 
+            chapter.chapterId && chapter.chapterId.startsWith('diary_')
+          );
+
+          console.log('📖 过滤出的diary章节:', diaryChapters);
+
+          // 移除之前加载的diary章节，避免重复
+          this.allChapters = this.allChapters.filter(chapter => !chapter.id.startsWith('diary_'));
+
+          // 将diary章节转换为首页需要的格式并添加到列表
+          diaryChapters.forEach(diaryChapter => {
+            const chapterData = {
+              id: diaryChapter.chapterId,
+              title: diaryChapter.title || '随记',
+              description: diaryChapter.content ? 
+                (diaryChapter.content.length > 20 ? 
+                  diaryChapter.content.substring(0, 20) + '...' : 
+                  diaryChapter.content) : '暂无内容',
+              backgroundImage: diaryChapter.backgroundImage && !diaryChapter.backgroundImage.startsWith('blob:') ? diaryChapter.backgroundImage : '/src/images/default-diary.svg',
+              completed: diaryChapter.status === 'completed',
+              isDiary: true // 标记为diary章节
+            };
+
+            this.allChapters.push(chapterData);
+          });
+
+          console.log('✅ 用户章节加载完成，当前章节总数:', this.allChapters.length);
+        } else {
+          console.log('❌ 获取用户章节失败:', response.data);
+        }
+      } catch (error) {
+        console.error('❌ 加载用户章节出错:', error);
+      }
+    },
+
     getChapterNumber(index) {
       const numbers = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
       return numbers[index] || (index + 1);
     },
 
     goToChapter(chapter) {
-      // 跳转到录制页面
-      uni.navigateTo({
-        url: `/pages/recording/index?chapterId=${chapter.id}&title=${encodeURIComponent(chapter.title)}`
-      });
+      // 如果是diary章节，跳转到编辑页面
+      if (chapter.isDiary) {
+        uni.navigateTo({
+          url: `/pages/diary/edit?chapterId=${chapter.id}&title=${encodeURIComponent(chapter.title)}&mode=view`
+        });
+      } else {
+        // 普通章节跳转到录制页面
+        uni.navigateTo({
+          url: `/pages/recording/index?chapterId=${chapter.id}&title=${encodeURIComponent(chapter.title)}`
+        });
+      }
     },
     
     getPreviewText(text) {
