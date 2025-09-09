@@ -65,7 +65,7 @@
             <!-- 背景图片 -->
             <view class="card-bg">
               <image 
-                :src="chapter.backgroundImage" 
+                :src="getOptimalImagePath(chapter.backgroundImage)" 
                 class="bg-image"
                 mode="aspectFill"
               ></image>
@@ -110,6 +110,8 @@ const apiUrl = (path) => {
 
 // 导入图片预加载工具
 import imagePreloader from '@/utils/imagePreloader.js';
+// 导入图片路径优化工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
 export default {
   components: {
     LazyImage: () => import('@/components/LazyImage.vue')
@@ -205,6 +207,9 @@ export default {
     this.loadUserChapters();
   },
   methods: {
+    // 暴露图片路径优化函数
+    getOptimalImagePath,
+    
     // 预加载关键图片
     preloadCriticalImages() {
       const criticalImages = [

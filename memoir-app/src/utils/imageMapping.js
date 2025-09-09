@@ -33,10 +33,8 @@ export function supportsWebP() {
   return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
 }
 
-// 获取最优图片路径（支持 WebP 则返回 WebP，否则返回原图）
+// 获取最优图片路径（优先返回 WebP，因为现代浏览器都支持）
 export function getOptimalImagePath(originalPath) {
-  if (supportsWebP()) {
-    return getWebPPath(originalPath);
-  }
-  return originalPath;
+  // 直接返回 WebP 路径，因为现代浏览器都支持 WebP
+  return getWebPPath(originalPath);
 }
