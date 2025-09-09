@@ -122,6 +122,7 @@
 </template>
 
 <script>
+import { apiUrl } from '@/utils/api.js';
 export default {
   data() {
     return {
@@ -205,7 +206,7 @@ export default {
         
         // 从后端获取指定章节的详细数据
         const response = await uni.request({
-          url: `http://localhost:3001/api/chapters/${this.editChapterId}`,
+          url: apiUrl(`/chapters/${this.editChapterId}`),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -286,7 +287,7 @@ export default {
 
     // 初始化录音管理器
     initRecorderManager() {
-      // #ifdef APP-PLUS || H5
+      // #ifdef APP-PLUS
       this.recorderManager = uni.getRecorderManager();
       
       this.recorderManager.onStart(() => {
@@ -320,6 +321,11 @@ export default {
           icon: 'error'
         });
       });
+      // #endif
+      
+      // #ifdef H5
+      console.log('H5环境，使用Web录音API');
+      // H5环境使用Web MediaRecorder API，不需要初始化uni.getRecorderManager
       // #endif
     },
 
@@ -660,7 +666,7 @@ export default {
         formData.append('audio', audioFile);
         
         // 使用原生fetch上传文件
-        const response = await fetch('http://localhost:3001/api/speech/upload', {
+        const response = await fetch(apiUrl('/speech/upload'), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -700,7 +706,7 @@ export default {
         
         // 调用语音识别API
         const response = await uni.request({
-          url: 'http://localhost:3001/api/speech/transcribe',
+          url: apiUrl('/speech/transcribe'),
           method: 'POST',
           header: {
             'Content-Type': 'application/json',
@@ -768,7 +774,7 @@ export default {
         }
         
         // 上传到服务器
-        const uploadResponse = await fetch('http://localhost:3001/api/upload/image', {
+        const uploadResponse = await fetch(apiUrl('/upload/image'), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -893,7 +899,7 @@ export default {
 
         // 调用回忆录章节保存API
         const response = await uni.request({
-          url: 'http://localhost:3001/api/chapters/save',
+          url: apiUrl('/chapters/save'),
           method: 'POST',
           header: {
             'Content-Type': 'application/json',

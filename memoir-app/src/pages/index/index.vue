@@ -1,3 +1,4 @@
+import { apiUrl } from '@/utils/api.js';
 <template>
   <view class="container">
     <!-- 回忆录工坊卡片 -->
@@ -225,7 +226,7 @@ export default {
         }
 
         const response = await uni.request({
-          url: 'http://localhost:3001/api/chapters',
+          url: apiUrl('/chapters'),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,

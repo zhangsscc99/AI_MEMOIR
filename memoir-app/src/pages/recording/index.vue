@@ -274,7 +274,7 @@ export default {
 
         // 调用后端API保存章节
         const response = await uni.request({
-          url: 'http://localhost:3001/api/chapters/save',
+          url: apiUrl('/chapters/save'),
           method: 'POST',
           header: {
             'Content-Type': 'application/json',
@@ -642,7 +642,7 @@ export default {
         formData.append('audio', audioFile);
         
         // 使用原生fetch上传文件
-        const response = await fetch('http://localhost:3001/api/speech/upload', {
+        const response = await fetch(apiUrl('/speech/upload'), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -766,7 +766,7 @@ export default {
         // 获取阿里云语音识别Token
         console.log('正在获取阿里云语音识别Token...');
         const tokenResponse = await uni.request({
-          url: 'http://localhost:3001/api/speech/token',
+          url: apiUrl('/speech/token'),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -836,7 +836,7 @@ export default {
         console.log('准备上传音频文件:', filePath);
         
         const uploadResponse = await uni.uploadFile({
-          url: 'http://localhost:3001/api/speech/upload',
+          url: apiUrl('/speech/upload'),
           filePath: filePath,
           name: 'audio',
           header: {
@@ -874,7 +874,7 @@ export default {
         
         // 调用真实的阿里云语音识别接口
         const transcribeResponse = await uni.request({
-          url: 'http://localhost:3001/api/speech/transcribe',
+          url: apiUrl('/speech/transcribe'),
           method: 'POST',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -929,7 +929,7 @@ export default {
         
         // 调用真实的转写API（不使用测试模式）
         const transcribeResponse = await uni.request({
-          url: 'http://localhost:3001/api/speech/transcribe',
+          url: apiUrl('/speech/transcribe'),
           method: 'POST',
           header: {
             'Authorization': `Bearer ${token}`,

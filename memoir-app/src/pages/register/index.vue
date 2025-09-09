@@ -1,3 +1,4 @@
+import { apiUrl } from '@/utils/api.js';
 <template>
   <view class="container">
     <!-- 返回按钮 -->
@@ -193,7 +194,7 @@ export default {
       
       try {
         const response = await uni.request({
-          url: 'http://localhost:3001/api/auth/register',
+          url: apiUrl('/auth/register'),
           method: 'POST',
           header: {
             'Content-Type': 'application/json'
