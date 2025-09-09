@@ -281,3 +281,15 @@ curl -X GET http://localhost:3001/api/auth/me \
 
 npm start -> backend
 npm run dev:h5 -> frontend
+
+
+
+git fetch origin
+git reset --hard origin/main
+
+
+npm run build:serve
+
+# 2. 上传构建产物到服务器
+# 构建产物通常在 dist/build/h5 目录
+scp -r dist/build/h5/* root@106.15.248.189:/var/www/MEMOIR/
