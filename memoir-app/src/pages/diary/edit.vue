@@ -106,6 +106,8 @@
             <view class="recording-info">
               <text class="recording-name">录音 {{ index + 1 }}</text>
               <text class="recording-duration">{{ formatTime(recording.duration) }}</text>
+              <text v-if="recording.transcription" class="recording-transcription">{{ recording.transcription }}</text>
+              <text v-else class="recording-status">正在转换文字...</text>
             </view>
             <view class="recording-actions">
               <view class="play-btn" @click="playRecording(recording)">
@@ -500,27 +502,159 @@ export default {
       try {
         console.log('🎵 处理Web录音数据...', audioBlob.size, 'bytes');
         
+        // 先上传录音文件
+        const uploadedFile = await this.uploadWebAudio(audioBlob);
+        
         // 创建录音记录
         const newRecording = {
           id: Date.now(),
           duration: this.recordingTime,
+          filePath: uploadedFile.filename,
           blob: audioBlob,
           playing: false,
-          isWebAudio: true
+          isWebAudio: true,
+          transcription: '' // 初始化转录文本
         };
         
         this.recordings.push(newRecording);
         this.recordingTime = 0;
         
         uni.showToast({
-          title: '录制完成',
+          title: '录制完成，正在转换文字...',
           icon: 'success'
         });
+
+        // 自动开始语音识别
+        setTimeout(() => {
+          this.transcribeRecording(newRecording);
+        }, 1000);
         
       } catch (error) {
         console.error('❌ 处理Web录音失败:', error);
         uni.showToast({
           title: '处理录音失败',
+          icon: 'error'
+        });
+      }
+    },
+
+    // 上传Web录音文件
+    async uploadWebAudio(audioBlob) {
+      try {
+        console.log('📤 上传Web录音文件...');
+        
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+        
+        // 根据Blob类型确定文件扩展名
+        let extension = '.webm';
+        let mimeType = audioBlob.type || 'audio/webm';
+        
+        if (mimeType.includes('webm')) {
+          extension = '.webm';
+        } else if (mimeType.includes('mp4')) {
+          extension = '.mp4';
+        } else if (mimeType.includes('wav')) {
+          extension = '.wav';
+        } else if (mimeType.includes('ogg')) {
+          extension = '.ogg';
+        }
+        
+        // 创建带正确扩展名和MIME类型的File对象
+        const timestamp = Date.now();
+        const fileName = `diary_recording_${timestamp}${extension}`;
+        
+        const audioFile = new File([audioBlob], fileName, { 
+          type: mimeType
+        });
+        
+        // 创建FormData
+        const formData = new FormData();
+        formData.append('audio', audioFile);
+        
+        // 使用原生fetch上传文件
+        const response = await fetch('http://localhost:3001/api/speech/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`上传失败: ${response.status} ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ 录音文件上传成功:', result.data.file);
+          return result.data.file;
+        } else {
+          throw new Error(result.message || '上传失败');
+        }
+        
+      } catch (error) {
+        console.error('❌ 上传录音文件失败:', error);
+        throw error;
+      }
+    },
+
+    // 语音识别
+    async transcribeRecording(recording) {
+      try {
+        console.log('🎯 开始语音识别:', recording.filePath);
+        
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+        
+        // 调用语音识别API
+        const response = await uni.request({
+          url: 'http://localhost:3001/api/speech/transcribe',
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          data: {
+            filename: recording.filePath
+          }
+        });
+        
+        if (response.statusCode === 200 && response.data.success) {
+          const transcript = response.data.data.transcript;
+          console.log('✅ 语音识别成功:', transcript);
+          
+          // 更新录音的转录文本
+          recording.transcription = transcript;
+          
+          // 如果有识别结果，自动添加到内容区域
+          if (transcript && transcript.trim()) {
+            if (this.diaryContent.trim()) {
+              this.diaryContent += '\n\n' + transcript;
+            } else {
+              this.diaryContent = transcript;
+            }
+            
+            uni.showToast({
+              title: '语音转文字成功',
+              icon: 'success'
+            });
+          }
+          
+        } else {
+          throw new Error(response.data?.message || '语音识别失败');
+        }
+        
+      } catch (error) {
+        console.error('❌ 语音识别失败:', error);
+        uni.showToast({
+          title: '语音转文字失败',
           icon: 'error'
         });
       }
@@ -1076,6 +1210,24 @@ export default {
 .recording-duration {
   font-size: 14px;
   color: #999;
+}
+
+.recording-transcription {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  line-height: 1.4;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recording-status {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+  font-style: italic;
 }
 
 .recording-actions {

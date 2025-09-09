@@ -54,13 +54,11 @@
           <view class="voice-control-area">
             <!-- 录制按钮 -->
             <view class="record-btn-container">
-              <view 
-                class="record-btn"
-                :class="{ 'recording': isRecording, 'processing': isProcessing }"
-                @touchstart="startRecording"
-                @touchend="stopRecording"
-                @touchcancel="stopRecording"
-              >
+            <view 
+              class="record-btn"
+              :class="{ 'recording': isRecording, 'processing': isProcessing }"
+              @click="toggleRecording"
+            >
                 <view class="record-icon">
                   <view v-if="isRecording" class="recording-animation">
                     <view class="wave" v-for="i in 3" :key="i"></view>
@@ -104,8 +102,8 @@ export default {
   computed: {
     recordButtonText() {
       if (this.isProcessing) return '处理中...';
-      if (this.isRecording) return '松开结束';
-      return '按住说话';
+      if (this.isRecording) return '结束录制';
+      return '点击录制';
     },
     currentDate() {
       const now = new Date();
@@ -356,6 +354,19 @@ export default {
             icon: 'error'
           });
         }
+      }
+    },
+
+    // 切换录音状态
+    toggleRecording() {
+      console.log('🎯 点击录制按钮，当前状态:', this.isRecording);
+      
+      if (this.isRecording) {
+        console.log('🛑 停止录音');
+        this.stopRecording();
+      } else {
+        console.log('🎤 开始录音');
+        this.startRecording();
       }
     },
     
