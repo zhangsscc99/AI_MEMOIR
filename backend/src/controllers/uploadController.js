@@ -53,25 +53,25 @@ const uploadSingle = upload.single('image');
  * @access Private
  */
 const uploadImage = (req, res) => {
-  uploadSingle(req, res, (err) => {
-    if (err) {
-      console.error('图片上传错误:', err);
-      return res.status(400).json({
-        success: false,
-        message: err.message || '图片上传失败',
-        code: 'UPLOAD_ERROR'
-      });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: '请选择要上传的图片',
-        code: 'NO_FILE'
-      });
-    }
-
+  uploadSingle(req, res, async (err) => {
     try {
+      if (err) {
+        console.error('图片上传错误:', err);
+        return res.status(400).json({
+          success: false,
+          message: err.message || '图片上传失败',
+          code: 'UPLOAD_ERROR'
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: '请选择要上传的图片',
+          code: 'NO_FILE'
+        });
+      }
+
       // 生成WebP版本
       const originalPath = req.file.path;
       const webpFilename = req.file.filename.replace(/\.(png|jpg|jpeg)$/i, '.webp');

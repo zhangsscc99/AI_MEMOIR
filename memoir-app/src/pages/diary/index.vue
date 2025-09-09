@@ -1,12 +1,3 @@
-// 直接定义API基础URL
-const API_BASE = 'http://106.15.248.189:3001/api';
-const apiUrl = (path) => {
-  if (!path) return API_BASE;
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-};
-
-// 导入图片映射工具
-import { getOptimalImagePath } from '@/utils/imageMapping.js';
 <template>
   <view class="container">
     <view class="page-header">
@@ -63,6 +54,15 @@ import { getOptimalImagePath } from '@/utils/imageMapping.js';
 </template>
 
 <script>
+// 直接定义API基础URL
+const API_BASE = 'http://106.15.248.189:3001/api';
+const apiUrl = (path) => {
+  if (!path) return API_BASE;
+  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+};
+
+// 导入图片映射工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
 export default {
   data() {
     return {
