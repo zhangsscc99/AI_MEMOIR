@@ -29,7 +29,9 @@
       <!-- 照片上传区域 -->
       <view class="photo-section">
         <view class="photo-upload" @click="chooseImage" v-if="!selectedImage">
-          <view class="upload-icon">📷</view>
+          <view class="upload-icon">
+            <image src="/static/icons/camera.svg" class="camera-icon" mode="aspectFit"></image>
+          </view>
           <text class="upload-text">上传图片 记录美好瞬间</text>
         </view>
         
@@ -39,7 +41,7 @@
           <view class="photo-overlay">
             <view class="photo-actions">
               <view class="action-btn" @click="chooseImage">
-                <text class="action-icon">📷</text>
+                <image src="/static/icons/camera.svg" class="action-camera-icon" mode="aspectFit"></image>
               </view>
             </view>
           </view>
@@ -77,9 +79,19 @@
 
         <!-- 录音按钮 -->
         <view class="recording-controls">
-          <view class="record-btn" @click="toggleRecording" :class="{ 'recording': isRecording }">
-            <view class="record-icon" v-if="!isRecording">🎙️</view>
-            <view class="stop-icon" v-else>⏹️</view>
+          <view class="record-btn-container">
+            <view 
+              class="record-btn" 
+              @click="toggleRecording" 
+              :class="{ 'recording': isRecording }"
+            >
+              <view class="record-icon">
+                <view v-if="isRecording" class="recording-animation">
+                  <view class="wave" v-for="i in 3" :key="i"></view>
+                </view>
+                <image v-else src="/static/icons/microphone.svg" class="mic-icon" mode="aspectFit"></image>
+              </view>
+            </view>
             <text class="record-text">{{ isRecording ? '结束录制' : '点击录制' }}</text>
           </view>
         </view>
@@ -408,21 +420,28 @@ export default {
 }
 
 .nav-header {
+  background: white;
+  padding: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 15px;
-  background-color: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
 .back-btn {
-  padding: 8px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
   border-radius: 20px;
-  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .back-icon {
@@ -437,22 +456,34 @@ export default {
 }
 
 .action-menu {
-  padding: 8px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .menu-icon {
   font-size: 18px;
-  color: #666;
+  color: #333;
 }
 
 .save-btn {
   padding: 8px 16px;
-  background-color: #FF6B47;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
   border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .save-text {
-  color: white;
+  color: #333;
   font-size: 16px;
   font-weight: bold;
 }
@@ -486,18 +517,34 @@ export default {
   align-items: center;
   justify-content: center;
   height: 200px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: white;
+  border: 2px dashed #e0e0e0;
   border-radius: 16px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.photo-upload:hover {
+  border-color: #999;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
 .upload-icon {
-  font-size: 48px;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.6;
 }
 
 .upload-text {
-  color: white;
+  color: #666;
   font-size: 16px;
   font-weight: 500;
 }
@@ -536,13 +583,21 @@ export default {
   height: 50px;
   border-radius: 25px;
   background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .action-icon {
   font-size: 24px;
+}
+
+.action-camera-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .text-section {
@@ -619,36 +674,86 @@ export default {
   margin-bottom: 30px;
 }
 
-.record-btn {
+.record-btn-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
-  background: #FF6B47;
-  border-radius: 50px;
+  gap: 8px;
+}
+
+.record-btn {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #e0e0e0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .record-btn.recording {
-  background: #ff4757;
-  animation: pulse 1s ease-in-out infinite;
+  background: rgba(255, 59, 48, 0.1);
+  border-color: #FF3B30;
+  box-shadow: 0 4px 20px rgba(255, 59, 48, 0.2);
+  animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 59, 48, 0.2); }
+  50% { transform: scale(1.05); box-shadow: 0 6px 30px rgba(255, 59, 48, 0.3); }
+  100% { transform: scale(1); box-shadow: 0 4px 20px rgba(255, 59, 48, 0.2); }
 }
 
-.record-icon,
-.stop-icon {
-  font-size: 24px;
-  margin-bottom: 5px;
+.record-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-icon {
+  width: 24px;
+  height: 24px;
+  color: #333;
+}
+
+.recording-animation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wave {
+  width: 4px;
+  height: 20px;
+  background: #FF3B30;
+  border-radius: 2px;
+  animation: wave 1.2s infinite ease-in-out;
+}
+
+.wave:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.wave:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes wave {
+  0%, 40%, 100% { 
+    transform: scaleY(0.4);
+  }
+  20% { 
+    transform: scaleY(1.0);
+  }
 }
 
 .record-text {
-  color: white;
+  color: #333;
   font-size: 14px;
   font-weight: 500;
 }
@@ -696,11 +801,15 @@ export default {
 .delete-btn {
   padding: 8px;
   border-radius: 8px;
-  background: #f0f0f0;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .play-icon,
 .delete-icon {
   font-size: 16px;
+  color: #333;
 }
 </style>
