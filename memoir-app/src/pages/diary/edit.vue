@@ -685,12 +685,21 @@ export default {
       try {
         // 检查用户是否登录
         const token = uni.getStorageSync('token');
+        console.log('🔑 用户token:', token ? '已获取' : '未找到');
+        
         if (!token) {
           uni.hideLoading();
           uni.showToast({
             title: '请先登录',
             icon: 'error'
           });
+          
+          // 跳转到登录页面
+          setTimeout(() => {
+            uni.navigateTo({
+              url: '/pages/login/index'
+            });
+          }, 1500);
           return;
         }
 
@@ -706,6 +715,8 @@ export default {
           backgroundImage: this.selectedImage // 上传的图片作为章节背景图
         };
 
+        console.log('📤 发送章节数据:', chapterData);
+
         // 调用回忆录章节保存API
         const response = await uni.request({
           url: 'http://localhost:3001/api/chapters/save',
@@ -718,6 +729,18 @@ export default {
         });
 
         uni.hideLoading();
+        
+        console.log('📊 保存响应:', response);
+        console.log('📊 响应状态码:', response.statusCode);
+        console.log('📊 响应数据:', response.data);
+        
+        // 如果有错误，显示详细的验证错误
+        if (response.data && response.data.errors) {
+          console.log('❌ 验证错误详情:', response.data.errors);
+          response.data.errors.forEach((error, index) => {
+            console.log(`❌ 错误 ${index + 1}:`, error);
+          });
+        }
 
         if (response.statusCode === 200 && response.data.success) {
           // 同时保存到本地存储（用于离线查看和章节列表显示）
@@ -767,7 +790,10 @@ export default {
           }, 1500);
 
         } else {
-          throw new Error(response.data?.message || '保存失败');
+          console.error('❌ 保存失败详情:', response.data);
+          const errorMessage = response.data?.message || `保存失败 (${response.statusCode})`;
+          const errorDetails = response.data?.details || response.data?.error || '';
+          throw new Error(`${errorMessage}${errorDetails ? ': ' + errorDetails : ''}`);
         }
 
       } catch (error) {

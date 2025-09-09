@@ -8,6 +8,10 @@ const User = require('../models/User');
  */
 const saveChapter = async (req, res) => {
   try {
+    console.log('📥 收到保存章节请求');
+    console.log('📋 请求体:', req.body);
+    console.log('👤 用户ID:', req.user?.id);
+    
     const { chapterId, title, content, recordings, backgroundImage } = req.body;
     const userId = req.user.id;
 

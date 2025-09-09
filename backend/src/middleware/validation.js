@@ -222,8 +222,15 @@ const validateChapter = [
   body('chapterId')
     .notEmpty()
     .withMessage('章节 ID 不能为空')
-    .isIn(['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'])
-    .withMessage('无效的章节 ID'),
+    .custom((value) => {
+      const validChapterIds = ['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'];
+      const isCustomDiary = value.startsWith('diary_');
+      
+      if (!validChapterIds.includes(value) && !isCustomDiary) {
+        throw new Error('无效的章节 ID');
+      }
+      return true;
+    }),
     
   body('title')
     .optional()
