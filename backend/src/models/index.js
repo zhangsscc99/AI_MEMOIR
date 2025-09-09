@@ -82,7 +82,7 @@ const initDatabase = async () => {
     console.log('🔄 开始初始化数据库...');
     
     // 同步所有模型到数据库
-    await sequelize.sync({ force: false }); // force: false 表示不删除现有表
+    await sequelize.sync({ alter: true }); // alter: true 表示修改现有表结构以匹配模型
     
     console.log('✅ 数据库表结构同步完成');
     
