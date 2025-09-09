@@ -310,6 +310,11 @@ export default {
             title: '保存成功',
             icon: 'success'
           });
+          
+          // 保存成功后延迟跳转回去
+          setTimeout(() => {
+            uni.navigateBack();
+          }, 1500);
         } else {
           throw new Error(response.data?.message || '保存失败');
         }
@@ -334,6 +339,11 @@ export default {
               title: '已离线保存',
               icon: 'success'
             });
+            
+            // 离线保存成功后延迟跳转回去
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
           } catch (localError) {
             uni.showToast({
               title: '保存失败',

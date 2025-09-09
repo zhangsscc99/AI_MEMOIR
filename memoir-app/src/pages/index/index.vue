@@ -245,8 +245,19 @@ export default {
     },
     
     goToDiary() {
+      console.log('点击随记卡片，准备跳转到随记页面');
       uni.switchTab({
-        url: '/pages/diary/index'
+        url: '/pages/diary/index',
+        success: function() {
+          console.log('成功跳转到随记页面');
+        },
+        fail: function(err) {
+          console.error('跳转到随记页面失败:', err);
+          // 如果switchTab失败，尝试使用navigateTo
+          uni.navigateTo({
+            url: '/pages/diary/index'
+          });
+        }
       });
     }
   }
