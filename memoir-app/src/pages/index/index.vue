@@ -27,12 +27,10 @@
 
     <!-- 随记卡片 -->
     <view class="diary-card" @click="goToDiary">
-      <LazyImage 
-        src="/src/images/winter.png" 
+      <image 
+        :src="getOptimalImagePath('/src/images/winter.png')" 
         class="diary-bg" 
         mode="aspectFill"
-        width="100%"
-        height="200px"
       />
       <view class="diary-overlay">
         <view class="diary-title">随记</view>
