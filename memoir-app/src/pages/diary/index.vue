@@ -67,13 +67,60 @@ export default {
 
   methods: {
     // 加载随记数据
-    loadDiaries() {
+    async loadDiaries() {
       try {
-        const diaries = uni.getStorageSync('diaries') || [];
-        this.diaries = diaries;
+        console.log('🔄 开始加载随记数据...');
+        
+        // 检查用户登录状态
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          console.log('❌ 未登录，使用本地存储数据');
+          const localDiaries = uni.getStorageSync('diaries') || [];
+          this.diaries = localDiaries;
+          return;
+        }
+        
+        // 从后端获取用户章节，过滤出diary章节
+        const response = await uni.request({
+          url: 'http://localhost:3001/api/chapters',
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('📊 后端章节响应:', response);
+        
+        if (response.statusCode === 200 && response.data.success) {
+          const userChapters = response.data.data || [];
+          
+          // 过滤出diary章节并转换为随记格式
+          const diaryChapters = userChapters.filter(chapter => 
+            chapter.chapterId && chapter.chapterId.startsWith('diary_')
+          );
+          
+          console.log('📖 过滤出的diary章节:', diaryChapters);
+          
+          this.diaries = diaryChapters.map(chapter => ({
+            id: chapter.chapterId,
+            title: chapter.title || '无标题随记',
+            content: chapter.content || '',
+            image: chapter.backgroundImage,
+            createTime: chapter.updatedAt || chapter.createdAt,
+            chapterData: chapter // 保存完整的章节数据
+          }));
+          
+          console.log('✅ 随记数据加载完成:', this.diaries);
+        } else {
+          console.log('❌ 获取随记失败，使用本地存储数据:', response.data);
+          const localDiaries = uni.getStorageSync('diaries') || [];
+          this.diaries = localDiaries;
+        }
       } catch (error) {
-        console.error('加载随记失败:', error);
-        this.diaries = [];
+        console.error('❌ 加载随记出错，使用本地存储数据:', error);
+        const localDiaries = uni.getStorageSync('diaries') || [];
+        this.diaries = localDiaries;
       }
     },
 

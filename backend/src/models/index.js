@@ -82,7 +82,10 @@ const initDatabase = async () => {
     console.log('🔄 开始初始化数据库...');
     
     // 同步所有模型到数据库
-    await sequelize.sync({ alter: true }); // alter: true 表示修改现有表结构以匹配模型
+    await sequelize.sync({ force: false }); // force: false 表示不删除现有表，但会创建新表和新字段
+    
+    // 手动添加缺失的字段
+    await addMissingColumns();
     
     console.log('✅ 数据库表结构同步完成');
     
@@ -94,6 +97,30 @@ const initDatabase = async () => {
   } catch (error) {
     console.error('❌ 数据库初始化失败:', error);
     throw error;
+  }
+};
+
+// 手动添加缺失的字段
+const addMissingColumns = async () => {
+  try {
+    const queryInterface = sequelize.getQueryInterface();
+    
+    // 检查 chapters 表是否存在 background_image 字段
+    const tableInfo = await queryInterface.describeTable('chapters');
+    
+    if (!tableInfo.background_image) {
+      console.log('🔧 添加 background_image 字段到 chapters 表...');
+      await queryInterface.addColumn('chapters', 'background_image', {
+        type: sequelize.Sequelize.STRING(500),
+        allowNull: true,
+        comment: '章节背景图片路径'
+      });
+      console.log('✅ background_image 字段添加成功');
+    } else {
+      console.log('✅ background_image 字段已存在');
+    }
+  } catch (error) {
+    console.log('ℹ️ 添加字段时出现错误（可能字段已存在）:', error.message);
   }
 };
 

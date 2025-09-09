@@ -128,6 +128,9 @@
 export default {
   data() {
     return {
+      // 编辑模式相关
+      editMode: false,
+      editChapterId: '',
       diaryTitle: '',
       diaryContent: '',
       selectedImage: '',
@@ -145,9 +148,19 @@ export default {
     };
   },
 
-  onLoad() {
+  onLoad(options) {
+    console.log('📱 随记编辑页面加载', options);
+    
     this.initRecorderManager();
     this.generateWaveform();
+    
+    // 检查是否是编辑模式
+    if (options.chapterId && options.mode === 'edit') {
+      this.editMode = true;
+      this.editChapterId = options.chapterId;
+      this.diaryTitle = decodeURIComponent(options.title || '随记');
+      this.loadExistingDiary();
+    }
   },
 
   onUnload() {
@@ -164,6 +177,63 @@ export default {
   },
 
   methods: {
+    // 加载现有随记数据（编辑模式）
+    async loadExistingDiary() {
+      try {
+        console.log('🔄 加载现有随记数据...', this.editChapterId);
+        
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          console.log('❌ 未登录，无法加载随记数据');
+          return;
+        }
+        
+        // 从后端获取指定章节的详细数据
+        const response = await uni.request({
+          url: `http://localhost:3001/api/chapters/${this.editChapterId}`,
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('📊 随记详情响应:', response);
+        
+        if (response.statusCode === 200 && response.data.success) {
+          const chapterData = response.data.data;
+          console.log('📖 加载的随记数据:', chapterData);
+          
+          // 填充表单数据
+          this.diaryTitle = chapterData.title || '随记';
+          this.diaryContent = chapterData.content || '';
+          this.selectedImage = chapterData.backgroundImage || '';
+          
+          // 如果有录音数据，恢复录音列表
+          if (chapterData.recordings && Array.isArray(chapterData.recordings)) {
+            this.recordings = chapterData.recordings.map(recording => ({
+              ...recording,
+              playing: false // 重置播放状态
+            }));
+          }
+          
+          console.log('✅ 随记数据加载完成');
+        } else {
+          console.log('❌ 获取随记详情失败:', response.data);
+          uni.showToast({
+            title: '加载随记失败',
+            icon: 'none'
+          });
+        }
+      } catch (error) {
+        console.error('❌ 加载随记数据出错:', error);
+        uni.showToast({
+          title: '加载失败',
+          icon: 'none'
+        });
+      }
+    },
+    
     goBack() {
       if (this.diaryTitle || this.diaryContent || this.selectedImage || this.recordings.length > 0) {
         uni.showModal({
@@ -703,8 +773,9 @@ export default {
           return;
         }
 
-        // 生成自定义章节ID（使用时间戳确保唯一性）
-        const customChapterId = 'diary_' + Date.now();
+        // 生成或使用现有的章节ID
+        const customChapterId = this.editMode ? this.editChapterId : 'diary_' + Date.now();
+        console.log('📝 使用的章节ID:', customChapterId, '编辑模式:', this.editMode);
         
         // 准备保存为回忆录章节的数据
         const chapterData = {
@@ -803,7 +874,7 @@ export default {
         // 如果是网络错误，尝试本地保存
         if (error.errMsg && error.errMsg.includes('network')) {
           try {
-            const customChapterId = 'diary_' + Date.now();
+            const customChapterId = this.editMode ? this.editChapterId : 'diary_' + Date.now();
             
             // 本地保存章节数据
             const localChapterData = {
