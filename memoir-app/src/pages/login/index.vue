@@ -1,9 +1,3 @@
-// 直接定义API基础URL
-const API_BASE = 'http://106.15.248.189:3001/api';
-const apiUrl = (path) => {
-  if (!path) return API_BASE;
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-};
 <template>
   <view class="container">
     <!-- 返回按钮 -->
@@ -74,6 +68,13 @@ const apiUrl = (path) => {
 </template>
 
 <script>
+// 直接定义API基础URL
+const API_BASE = 'http://106.15.248.189:3001/api';
+const apiUrl = (path) => {
+  if (!path) return API_BASE;
+  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+};
+
 export default {
   data() {
     return {
