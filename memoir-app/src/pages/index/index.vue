@@ -142,28 +142,28 @@ export default {
           id: 'travel',
           title: '旅行见闻',
           description: '记录旅行经历和见闻感悟',
-          backgroundImage: '/src/images/winter.png',
+          backgroundImage: '/src/images/story7.png',
           completed: false
         },
         {
           id: 'relationships',
           title: '人缘际遇',
           description: '记录重要的人际关系和人生际遇',
-          backgroundImage: '/src/images/memoirbook.png',
+          backgroundImage: '/src/images/story8.png',
           completed: false
         },
         {
           id: 'laterlife',
           title: '晚年生活',
           description: '分享退休后的生活和晚年感悟',
-          backgroundImage: '/src/images/lion.png',
+          backgroundImage: '/src/images/story9.png',
           completed: false
         },
         {
           id: 'wisdom',
           title: '人生感悟',
           description: '分享人生智慧和生活哲理',
-          backgroundImage: '/src/images/zaomen.jpeg',
+          backgroundImage: '/src/images/story10.png',
           completed: false
         }
       ]
