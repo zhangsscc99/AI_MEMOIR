@@ -102,28 +102,28 @@ export default {
           id: 'education',
           title: '求学生涯',
           description: '记录学习历程和校园生活',
-          backgroundImage: '/src/images/memoirbook.png',
+          backgroundImage: '/src/images/story3.png',
           completed: false
         },
         {
           id: 'career',
           title: '职业发展',
           description: '分享工作经历和职业成就',
-          backgroundImage: '/src/images/lion.png',
+          backgroundImage: '/src/images/story4.png',
           completed: false
         },
         {
           id: 'love',
           title: '爱情婚姻',
           description: '记录爱情故事和婚姻生活',
-          backgroundImage: '/src/images/zaomen.jpeg',
+          backgroundImage: '/src/images/story5.png',
           completed: false
         },
         {
           id: 'family',
           title: '为人父母',
           description: '分享育儿经历和家庭生活',
-          backgroundImage: '/src/images/story1.png',
+          backgroundImage: '/src/images/story6.png',
           completed: false
         },
         {
