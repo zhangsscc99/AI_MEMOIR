@@ -6,9 +6,6 @@
         <text class="back-icon">←</text>
       </view>
       <view class="nav-title">{{ viewMode ? '查看随记' : (editMode ? '编辑随记' : '新随记') }}</view>
-      <view class="action-menu">
-        <text class="menu-icon">⋯</text>
-      </view>
       <view class="save-btn" @click="saveDiary">
         <text class="save-text">{{ viewMode ? '编辑' : '完成' }}</text>
       </view>
