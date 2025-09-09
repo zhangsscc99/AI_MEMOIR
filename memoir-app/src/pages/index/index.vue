@@ -3,23 +3,23 @@
     <!-- 回忆录工坊卡片 -->
     <view class="memoir-card" @click="goToMemoir">
       <view class="memoir-card-left">
-        <LazyImage 
-          src="/src/images/memoirbook.png" 
+        <image 
+          :src="getOptimalImagePath('/src/images/memoirbook.png')" 
           class="book-cover" 
           mode="aspectFit"
-          width="120px"
-          height="160px"
-          :immediate="true"
         />
       </view>
       <view class="memoir-card-right">
-        <view class="memoir-title">回忆录</view>
-        <view class="memoir-progress">
-          <text class="progress-text">0/36</text>
-          <text class="progress-label">已录制</text>
-        </view>
-        <view class="progress-bar">
-          <view class="progress-fill" :style="{width: progressPercent + '%'}"></view>
+        <view class="memoir-content">
+          <view class="memoir-title">回忆录</view>
+          <view class="memoir-subtitle">记录您的人生故事</view>
+          <view class="memoir-progress">
+            <text class="progress-text">0/36</text>
+            <text class="progress-label">已录制</text>
+          </view>
+          <view class="progress-bar">
+            <view class="progress-fill" :style="{width: progressPercent + '%'}"></view>
+          </view>
         </view>
         <button class="start-btn" @click="goToChapters">开始录制</button>
       </view>
@@ -434,21 +434,31 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   padding-left: 16px;
   min-width: 0;
+}
+
+.memoir-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .memoir-title {
   font-size: 28px;
   font-weight: 600;
   color: #2d2d2d;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
   letter-spacing: 1.5px;
-  position: absolute;
-  top: 40px;
-  right: 40px;
-  white-space: nowrap;
+}
+
+.memoir-subtitle {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 20px;
+  font-weight: 400;
 }
 
 .memoir-progress {
