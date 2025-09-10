@@ -81,6 +81,11 @@
 </template>
 
 <script>
+// 导入 API 配置工具
+import { apiUrl } from '@/utils/apiConfig.js';
+// 导入认证工具
+import { handleAuthError } from '@/utils/auth.js';
+
 export default {
   data() {
     return {
@@ -274,7 +279,7 @@ export default {
 
         // 调用后端API保存章节
         const response = await uni.request({
-          url: 'http://106.15.248.189:3001/api/chapters/save',
+          url: apiUrl('/chapters/save'),
           method: 'POST',
           header: {
             'Content-Type': 'application/json',
@@ -284,6 +289,11 @@ export default {
         });
 
         uni.hideLoading();
+
+        // 检查认证错误
+        if (handleAuthError(response)) {
+          return;
+        }
 
         if (response.statusCode === 200 && response.data.success) {
           // 同时更新本地存储（用于离线查看）
@@ -642,7 +652,7 @@ export default {
         formData.append('audio', audioFile);
         
         // 使用原生fetch上传文件
-        const response = await fetch('http://106.15.248.189:3001/api/speech/upload', {
+        const response = await fetch(apiUrl('/speech/upload'), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -766,7 +776,7 @@ export default {
         // 获取阿里云语音识别Token
         console.log('正在获取阿里云语音识别Token...');
         const tokenResponse = await uni.request({
-          url: 'http://106.15.248.189:3001/api/speech/token',
+          url: apiUrl('/speech/token'),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -775,6 +785,11 @@ export default {
         });
 
         console.log('Token响应:', tokenResponse);
+
+        // 检查认证错误
+        if (handleAuthError(tokenResponse)) {
+          return;
+        }
 
         if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
           throw new Error(tokenResponse.data?.message || '获取语音识别Token失败');
@@ -836,7 +851,7 @@ export default {
         console.log('准备上传音频文件:', filePath);
         
         const uploadResponse = await uni.uploadFile({
-          url: 'http://106.15.248.189:3001/api/speech/upload',
+          url: apiUrl('/speech/upload'),
           filePath: filePath,
           name: 'audio',
           header: {
@@ -874,7 +889,7 @@ export default {
         
         // 调用真实的阿里云语音识别接口
         const transcribeResponse = await uni.request({
-          url: 'http://106.15.248.189:3001/api/speech/transcribe',
+          url: apiUrl('/speech/transcribe'),
           method: 'POST',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -929,7 +944,7 @@ export default {
         
         // 调用真实的转写API（不使用测试模式）
         const transcribeResponse = await uni.request({
-          url: 'http://106.15.248.189:3001/api/speech/transcribe',
+          url: apiUrl('/speech/transcribe'),
           method: 'POST',
           header: {
             'Authorization': `Bearer ${token}`,
