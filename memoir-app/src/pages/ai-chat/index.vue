@@ -20,7 +20,7 @@
           <view class="edit-name-btn" @click="toggleEditName">
             <image 
               v-if="!isEditingName"
-              src="/static/icons/search.svg" 
+              src="/static/icons/edit.svg" 
               class="edit-icon"
               mode="aspectFit"
             />
