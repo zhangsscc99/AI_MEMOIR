@@ -124,7 +124,9 @@ export default {
             id: chapter.chapterId,
             title: chapter.title || '无标题随记',
             content: chapter.content || '',
-            image: chapter.backgroundImage && !chapter.backgroundImage.startsWith('blob:') ? getOptimalImagePath(chapter.backgroundImage) : '/src/images/default-diary.svg',
+            image: chapter.backgroundImage && !chapter.backgroundImage.startsWith('blob:') ? 
+              (chapter.backgroundImage.startsWith('http') ? chapter.backgroundImage : getOptimalImagePath(chapter.backgroundImage)) : 
+              '/src/images/default-diary.svg',
             createTime: chapter.updatedAt || chapter.createdAt,
             chapterData: chapter // 保存完整的章节数据
           }));

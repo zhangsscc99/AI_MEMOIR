@@ -34,7 +34,7 @@
         
         <!-- 已选择的图片 -->
         <view class="photo-preview" v-if="selectedImage">
-          <image :src="getOptimalImagePath(selectedImage)" class="preview-image" mode="aspectFill"></image>
+          <image :src="selectedImage.startsWith('http') ? selectedImage : getOptimalImagePath(selectedImage)" class="preview-image" mode="aspectFill"></image>
           <view class="photo-overlay">
             <view class="photo-actions">
               <view class="action-btn" @click="chooseImage">
