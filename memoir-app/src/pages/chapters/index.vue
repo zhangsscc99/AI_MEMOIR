@@ -29,7 +29,7 @@
       <view class="chapters-section">
         <scroll-view 
           class="chapters-scroll"
-          scroll-x="true"
+          scroll-y="true"
           show-scrollbar="false"
           enable-flex="true"
         >
@@ -73,7 +73,7 @@
 
       <!-- 提示文字 -->
       <view class="tip-section">
-        <text class="tip-text">左右滑动浏览章节，点击开始录制</text>
+        <text class="tip-text">上下滑动浏览章节，点击开始录制</text>
       </view>
     </view>
   </view>
@@ -425,11 +425,12 @@ export default {
 
 .chapters-scroll {
   width: 100%;
-  height: 400px;
+  height: 500px;
 }
 
 .chapters-container {
   display: flex;
+  flex-direction: column;
   padding: 0 20px;
   gap: 20px;
   align-items: center;
@@ -438,12 +439,13 @@ export default {
 /* 章节卡片 */
 .chapter-card {
   position: relative;
-  width: 280px;
-  height: 360px;
-  border-radius: 20px;
+  width: 100%;
+  max-width: 350px;
+  height: 200px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
   flex-shrink: 0;
 }
 
@@ -498,10 +500,10 @@ export default {
   position: relative;
   z-index: 2;
   height: 100%;
-  padding: 24px 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
   color: white;
 }
 
@@ -586,8 +588,8 @@ export default {
   }
   
   .chapter-card {
-    width: 250px;
-    height: 320px;
+    max-width: 320px;
+    height: 180px;
   }
   
   .chapter-content {
