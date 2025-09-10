@@ -171,7 +171,7 @@ export default {
         if (response.statusCode === 200 && response.data.success) {
           const userInfo = response.data.data.user; // 注意：后端返回的是 { user: userProfile }
           console.log('👤 用户信息:', userInfo);
-          const userName = userInfo.username || userInfo.nickname || '张无忌';
+          const userName = userInfo.nickname || userInfo.username || '张无忌';
           console.log('📝 用户名:', userName);
           
           this.characterInfo.name = userName;
@@ -392,19 +392,68 @@ export default {
     },
 
     // 保存角色名称
-    saveCharacterName() {
+    async saveCharacterName() {
       if (this.isEditingName) {
         const newName = this.editingName.trim();
         if (newName && newName !== this.characterInfo.name) {
-          this.characterInfo.name = newName;
-          // 更新描述
-          this.characterInfo.description = `基于${newName}的回忆录生成的AI角色`;
-          // 保存到本地存储
-          uni.setStorageSync('customCharacterName', newName);
-          console.log('✅ 角色名称已更新:', newName);
-          
-          // 更新欢迎消息中的角色名称
-          this.updateWelcomeMessage();
+          try {
+            // 显示加载状态
+            uni.showLoading({
+              title: '保存中...'
+            });
+
+            const token = uni.getStorageSync('token');
+            if (!token) {
+              throw new Error('用户未登录');
+            }
+
+            // 调用后端接口更新用户昵称
+            const response = await uni.request({
+              url: apiUrl('/auth/profile'),
+              method: 'PUT',
+              header: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              data: {
+                nickname: newName
+              }
+            });
+
+            uni.hideLoading();
+
+            if (response.statusCode === 200 && response.data.success) {
+              // 更新本地角色信息
+              this.characterInfo.name = newName;
+              this.characterInfo.description = `基于${newName}的回忆录生成的AI角色`;
+              
+              // 更新本地存储的用户信息
+              const userInfo = response.data.data.user;
+              uni.setStorageSync('user', userInfo);
+              
+              // 清除自定义角色名称缓存（因为现在使用数据库中的昵称）
+              uni.removeStorageSync('customCharacterName');
+              
+              console.log('✅ 角色名称已更新到数据库:', newName);
+              
+              // 更新欢迎消息中的角色名称
+              this.updateWelcomeMessage();
+              
+              uni.showToast({
+                title: '保存成功',
+                icon: 'success'
+              });
+            } else {
+              throw new Error(response.data.message || '保存失败');
+            }
+          } catch (error) {
+            uni.hideLoading();
+            console.error('保存角色名称失败:', error);
+            uni.showToast({
+              title: error.message || '保存失败',
+              icon: 'none'
+            });
+          }
         }
         this.isEditingName = false;
         this.editingName = '';
