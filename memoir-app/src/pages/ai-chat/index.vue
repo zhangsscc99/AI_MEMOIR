@@ -8,7 +8,6 @@
       <view class="character-info">
         <view class="character-name">{{ characterInfo.name }}</view>
         <view class="character-desc">{{ characterInfo.description }}</view>
-        <view class="memory-count">记忆片段: {{ memoryCount }} 个</view>
       </view>
     </view>
 
@@ -79,11 +78,6 @@
       </view>
     </view>
 
-    <!-- 记忆管理按钮 -->
-    <view class="memory-manage" @click="showMemoryManage">
-      <view class="memory-icon">🧠</view>
-      <text class="memory-text">管理记忆</text>
-    </view>
   </view>
 </template>
 
@@ -116,7 +110,6 @@ export default {
       scrollTop: 0,
       
       // 记忆相关
-      memoryCount: 0,
       userMemories: []
     }
   },
@@ -127,6 +120,7 @@ export default {
   },
   
   methods: {
+
     // 加载角色信息
     async loadCharacterInfo() {
       try {
@@ -178,7 +172,6 @@ export default {
         if (response.statusCode === 200 && response.data.success) {
           const chapters = response.data.data.chapters || [];
           this.userMemories = chapters;
-          this.memoryCount = chapters.length;
         }
       } catch (error) {
         console.error('加载用户记忆失败:', error);
@@ -298,38 +291,32 @@ export default {
       }
     },
 
-    // 显示记忆管理
-    showMemoryManage() {
-      uni.showModal({
-        title: '记忆管理',
-        content: `当前共有 ${this.memoryCount} 个记忆片段。AI角色会基于这些记忆与您对话。`,
-        showCancel: false,
-        confirmText: '知道了'
-      });
-    }
   }
 }
 </script>
 
 <style scoped>
 .ai-chat-container {
-  height: 100vh;
+  height: 95vh;
   display: flex;
   flex-direction: column;
   background-color: #ffffff;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* 角色信息卡片 */
 .character-card {
   background: #ffffff;
-  padding: 20rpx;
+  padding: 15rpx 20rpx;
   display: flex;
   align-items: center;
   color: #333;
   border: 1rpx solid #e0e0e0;
   border-radius: 12rpx;
-  margin: 20rpx;
+  margin: 15rpx 20rpx 10rpx 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .character-avatar {
@@ -359,19 +346,15 @@ export default {
 .character-desc {
   font-size: 24rpx;
   color: #666;
-  margin-bottom: 8rpx;
-}
-
-.memory-count {
-  font-size: 22rpx;
-  color: #999;
 }
 
 /* 聊天区域 */
 .chat-area {
   flex: 1;
-  padding: 20rpx;
+  padding: 10rpx 20rpx;
   background-color: #ffffff;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .message-list {
@@ -482,6 +465,11 @@ export default {
   background: white;
   padding: 20rpx;
   border-top: 1rpx solid #e0e0e0;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  margin-bottom: 50px;
 }
 
 .input-container {
@@ -515,26 +503,4 @@ export default {
   color: #999;
 }
 
-/* 记忆管理 */
-.memory-manage {
-  position: fixed;
-  right: 30rpx;
-  bottom: 200rpx;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 20rpx;
-  border-radius: 50rpx;
-  display: flex;
-  align-items: center;
-  z-index: 1000;
-}
-
-.memory-icon {
-  font-size: 32rpx;
-  margin-right: 10rpx;
-}
-
-.memory-text {
-  font-size: 24rpx;
-}
 </style>
