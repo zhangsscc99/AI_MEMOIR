@@ -110,8 +110,8 @@ export default {
     return {
       // 角色信息
       characterInfo: {
-        name: '张无忌',
-        description: 'AI角色',
+        name: '',
+        description: '',
         avatar: '/src/images/default-avatar.png'
       },
       
@@ -132,8 +132,8 @@ export default {
     }
   },
   
-  onLoad() {
-    this.loadCharacterInfo();
+  async onLoad() {
+    await this.loadCharacterInfo();
     this.loadUserMemories();
     this.loadCustomCharacterName();
     this.preBuildCharacter();
@@ -411,7 +411,8 @@ export default {
     // 加载自定义角色名称
     loadCustomCharacterName() {
       const customName = uni.getStorageSync('customCharacterName');
-      if (customName) {
+      if (customName && !this.characterInfo.name) {
+        // 只有在没有从用户信息获取到名称时才使用自定义名称
         this.characterInfo.name = customName;
         this.characterInfo.description = `基于${customName}的回忆录生成的AI角色`;
         console.log('📝 加载自定义角色名称:', customName);
