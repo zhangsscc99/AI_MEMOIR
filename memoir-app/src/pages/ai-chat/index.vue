@@ -457,7 +457,7 @@ export default {
   color: #333;
   border: 1rpx solid #e0e0e0;
   border-radius: 12rpx;
-  margin: 15rpx 20rpx 10rpx 5rpx;
+  margin: 15rpx 20rpx 10rpx 15rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
 }
@@ -570,7 +570,7 @@ export default {
 
 .message-item.ai {
   padding-left: 0;
-  margin-left: 0;
+  margin-left: -5rpx;
 }
 
 .message-item.user {
@@ -587,7 +587,7 @@ export default {
 
 .message-item.ai .message-avatar {
   margin-left: 0;
-  margin-right: 15rpx;
+  margin-right: 8rpx;
 }
 
 .message-content {
@@ -678,7 +678,7 @@ export default {
 /* 输入区域 */
 .input-area {
   background: white;
-  padding: 20rpx 20rpx 20rpx 5rpx;
+  padding: 20rpx 20rpx 20rpx 15rpx;
   border-top: 1rpx solid #e0e0e0;
   flex-shrink: 0;
   position: sticky;
