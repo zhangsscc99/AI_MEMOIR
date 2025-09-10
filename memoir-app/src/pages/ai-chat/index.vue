@@ -440,8 +440,8 @@ export default {
 
         if (response.statusCode === 200 && response.data.success) {
           console.log('✅ AI角色预构建成功，记忆数量:', response.data.data.memoryCount);
-          // 更新角色描述
-          this.characterInfo.description = `基于您的回忆录生成的AI角色，拥有${response.data.data.memoryCount}个记忆片段`;
+          // 更新角色描述（不显示记忆数量）
+          this.characterInfo.description = `基于您的回忆录生成的AI角色`;
         } else {
           console.log('⚠️ AI角色预构建失败，将使用实时构建');
         }
