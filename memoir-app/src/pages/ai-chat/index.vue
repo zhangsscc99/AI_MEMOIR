@@ -91,7 +91,7 @@ export default {
       // 角色信息
       characterInfo: {
         name: '张无忌',
-        description: '基于您的回忆录生成的AI角色',
+        description: 'AI角色',
         avatar: '/src/images/default-avatar.png'
       },
       
@@ -125,11 +125,16 @@ export default {
     async loadCharacterInfo() {
       try {
         const token = uni.getStorageSync('token');
+        console.log('🔍 检查登录状态，token:', token ? '存在' : '不存在');
+        
         if (!token) {
-          console.log('用户未登录');
+          console.log('用户未登录，使用默认角色信息');
+          // 未登录时保持默认描述
+          this.characterInfo.description = 'AI角色';
           return;
         }
 
+        console.log('🔄 开始获取用户信息...');
         // 从用户资料获取角色信息
         const response = await uni.request({
           url: apiUrl('/auth/me'),
@@ -140,13 +145,26 @@ export default {
           }
         });
 
+        console.log('📊 用户信息响应:', response);
+
         if (response.statusCode === 200 && response.data.success) {
-          const userInfo = response.data.data;
-          this.characterInfo.name = userInfo.name || '张无忌';
-          this.characterInfo.description = `基于${userInfo.name}的回忆录生成的AI角色`;
+          const userInfo = response.data.data.user; // 注意：后端返回的是 { user: userProfile }
+          console.log('👤 用户信息:', userInfo);
+          const userName = userInfo.username || userInfo.nickname || '张无忌';
+          console.log('📝 用户名:', userName);
+          
+          this.characterInfo.name = userName;
+          // 只有登录用户才显示基于回忆录的描述
+          this.characterInfo.description = `基于${userName}的回忆录生成的AI角色`;
+          console.log('✅ 角色信息更新完成:', this.characterInfo);
+        } else {
+          console.log('❌ 获取用户信息失败，使用默认角色信息:', response.data);
+          this.characterInfo.description = 'AI角色';
         }
       } catch (error) {
-        console.error('加载角色信息失败:', error);
+        console.error('❌ 加载角色信息失败:', error);
+        // 出错时使用默认描述
+        this.characterInfo.description = 'AI角色';
       }
     },
 
@@ -303,6 +321,12 @@ export default {
   background-color: #ffffff;
   overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom);
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.ai-chat-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 /* 角色信息卡片 */
@@ -355,10 +379,23 @@ export default {
   background-color: #ffffff;
   min-height: 0;
   overflow: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.chat-area::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .message-list {
   height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.message-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .message-item {
