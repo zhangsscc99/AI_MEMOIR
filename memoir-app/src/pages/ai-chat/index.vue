@@ -321,11 +321,15 @@ export default {
 
 /* 角色信息卡片 */
 .character-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ffffff;
   padding: 20rpx;
   display: flex;
   align-items: center;
-  color: white;
+  color: #333;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 12rpx;
+  margin: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 }
 
 .character-avatar {
@@ -334,7 +338,7 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   margin-right: 20rpx;
-  border: 3rpx solid rgba(255, 255, 255, 0.3);
+  border: 3rpx solid #e0e0e0;
 }
 
 .avatar-image {
@@ -354,13 +358,13 @@ export default {
 
 .character-desc {
   font-size: 24rpx;
-  opacity: 0.9;
+  color: #666;
   margin-bottom: 8rpx;
 }
 
 .memory-count {
   font-size: 22rpx;
-  opacity: 0.8;
+  color: #999;
 }
 
 /* 聊天区域 */
