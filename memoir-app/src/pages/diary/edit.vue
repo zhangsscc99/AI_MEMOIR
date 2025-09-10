@@ -34,7 +34,7 @@
         
         <!-- 已选择的图片 -->
         <view class="photo-preview" v-if="selectedImage">
-          <image :src="selectedImage" class="preview-image" mode="aspectFill"></image>
+          <image :src="getOptimalImagePath(selectedImage)" class="preview-image" mode="aspectFill"></image>
           <view class="photo-overlay">
             <view class="photo-actions">
               <view class="action-btn" @click="chooseImage">
@@ -128,6 +128,9 @@ const apiUrl = (path) => {
   if (!path) return API_BASE;
   return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
 };
+
+// 导入图片路径优化工具
+import { getOptimalImagePath } from '@/utils/imageMapping.js';
 export default {
   data() {
     return {
@@ -187,6 +190,9 @@ export default {
   },
 
   methods: {
+    // 暴露图片路径优化函数
+    getOptimalImagePath,
+    
     // 加载现有随记数据（编辑模式）
     async loadExistingDiary() {
       // 如果是样板案例，使用默认数据
