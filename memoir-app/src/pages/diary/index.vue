@@ -54,12 +54,8 @@
 </template>
 
 <script>
-// 直接定义API基础URL
-const API_BASE = 'http://106.15.248.189:3001/api';
-const apiUrl = (path) => {
-  if (!path) return API_BASE;
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-};
+// 导入 API 配置工具
+import { apiUrl } from '@/utils/apiConfig.js';
 
 // 导入图片映射工具
 import { getOptimalImagePath } from '@/utils/imageMapping.js';
@@ -83,6 +79,10 @@ export default {
       try {
         console.log('🔄 开始加载随记数据...');
         
+        // 清理可能过期的缓存数据
+        uni.removeStorageSync('diaries');
+        uni.removeStorageSync('currentDiary');
+        
         // 检查用户登录状态
         const token = uni.getStorageSync('token');
         if (!token) {
@@ -94,7 +94,7 @@ export default {
         
         // 从后端获取用户章节，过滤出diary章节
         const response = await uni.request({
-          url: 'http://106.15.248.189:3001/api/chapters',
+          url: apiUrl('/chapters'),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -121,7 +121,8 @@ export default {
           console.log('📖 过滤出的diary章节:', diaryChapters);
           
           this.diaries = diaryChapters.map(chapter => ({
-            id: chapter.chapterId,
+            id: chapter.id, // 使用数据库的真实ID
+            chapterId: chapter.chapterId, // 保存chapterId用于显示
             title: chapter.title || '无标题随记',
             content: chapter.content || '',
             image: chapter.backgroundImage && !chapter.backgroundImage.startsWith('blob:') ? 
@@ -180,6 +181,9 @@ export default {
     viewDiary(diary) {
       console.log('查看随记:', diary);
       
+      // 将完整的随记数据存储到本地，供编辑页面使用
+      uni.setStorageSync('currentDiary', diary);
+      
       // 跳转到编辑页面，以查看模式打开
       uni.navigateTo({
         url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=view`
@@ -209,6 +213,10 @@ export default {
     // 编辑随记
     editDiary(diary) {
       console.log('编辑随记:', diary);
+      
+      // 将完整的随记数据存储到本地，供编辑页面使用
+      uni.setStorageSync('currentDiary', diary);
+      
       uni.navigateTo({
         url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=edit`
       });
@@ -252,7 +260,7 @@ export default {
 
         // 调用后端删除API
         const response = await uni.request({
-          url: `http://106.15.248.189:3001/api/chapters/${diary.id}`,
+          url: apiUrl(`/chapters/${diary.id}`),
           method: 'DELETE',
           header: {
             'Authorization': `Bearer ${token}`,

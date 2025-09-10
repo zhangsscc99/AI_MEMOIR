@@ -122,12 +122,8 @@
 </template>
 
 <script>
-// 直接定义API基础URL
-const API_BASE = 'http://106.15.248.189:3001/api';
-const apiUrl = (path) => {
-  if (!path) return API_BASE;
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-};
+// 导入 API 配置工具
+import { apiUrl } from '@/utils/apiConfig.js';
 
 // 导入图片路径优化工具
 import { getOptimalImagePath } from '@/utils/imageMapping.js';
@@ -209,6 +205,29 @@ export default {
       try {
         console.log('🔄 加载现有随记数据...', this.editChapterId);
         
+        // 优先使用本地存储的数据
+        const localDiary = uni.getStorageSync('currentDiary');
+        if (localDiary && localDiary.id === this.editChapterId) {
+          console.log('📖 使用本地存储的随记数据:', localDiary);
+          
+          // 填充表单数据
+          this.diaryTitle = localDiary.title || '随记';
+          this.diaryContent = localDiary.content || '';
+          this.selectedImage = localDiary.image || '';
+          
+          // 如果有录音数据，恢复录音列表
+          if (localDiary.recordings && Array.isArray(localDiary.recordings)) {
+            this.recordings = localDiary.recordings.map(recording => ({
+              ...recording,
+              playing: false // 重置播放状态
+            }));
+          }
+          
+          console.log('✅ 随记数据加载完成（本地）');
+          return;
+        }
+        
+        // 如果本地没有数据，尝试从后端获取
         const token = uni.getStorageSync('token');
         if (!token) {
           console.log('❌ 未登录，无法加载随记数据');

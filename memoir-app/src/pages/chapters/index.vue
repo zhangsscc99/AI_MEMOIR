@@ -80,12 +80,8 @@
 </template>
 
 <script>
-// 直接定义API基础URL
-const API_BASE = 'http://106.15.248.189:3001/api';
-const apiUrl = (path) => {
-  if (!path) return API_BASE;
-  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-};
+// 导入 API 配置工具
+import { apiUrl } from '@/utils/apiConfig.js';
 
 // 导入图片预加载工具
 import imagePreloader from '@/utils/imagePreloader.js';
