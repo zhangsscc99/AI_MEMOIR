@@ -186,7 +186,7 @@ export default {
       
       // 跳转到编辑页面，以查看模式打开
       uni.navigateTo({
-        url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=view`
+        url: `/pages/diary/edit?chapterId=${diary.chapterId}&title=${encodeURIComponent(diary.title)}&mode=view`
       });
     },
 
@@ -218,7 +218,7 @@ export default {
       uni.setStorageSync('currentDiary', diary);
       
       uni.navigateTo({
-        url: `/pages/diary/edit?chapterId=${diary.id}&title=${encodeURIComponent(diary.title)}&mode=edit`
+        url: `/pages/diary/edit?chapterId=${diary.chapterId}&title=${encodeURIComponent(diary.title)}&mode=edit`
       });
     },
 

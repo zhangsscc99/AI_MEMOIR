@@ -207,7 +207,7 @@ export default {
         
         // 优先使用本地存储的数据
         const localDiary = uni.getStorageSync('currentDiary');
-        if (localDiary && localDiary.id === this.editChapterId) {
+        if (localDiary && (localDiary.id === this.editChapterId || localDiary.chapterId === this.editChapterId)) {
           console.log('📖 使用本地存储的随记数据:', localDiary);
           
           // 填充表单数据
