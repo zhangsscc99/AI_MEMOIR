@@ -402,6 +402,9 @@ export default {
           // 保存到本地存储
           uni.setStorageSync('customCharacterName', newName);
           console.log('✅ 角色名称已更新:', newName);
+          
+          // 更新欢迎消息中的角色名称
+          this.updateWelcomeMessage();
         }
         this.isEditingName = false;
         this.editingName = '';
@@ -459,6 +462,17 @@ export default {
           content: `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`,
           timestamp: new Date()
         });
+      }
+    },
+
+    // 更新欢迎消息中的角色名称
+    updateWelcomeMessage() {
+      if (this.messages.length > 0) {
+        // 更新第一条AI消息（欢迎消息）
+        const firstMessage = this.messages[0];
+        if (firstMessage.type === 'ai' && firstMessage.content.includes('你好！我是')) {
+          firstMessage.content = `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`;
+        }
       }
     }
 
