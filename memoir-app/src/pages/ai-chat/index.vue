@@ -6,7 +6,27 @@
         <image :src="characterInfo.avatar" class="avatar-image" mode="aspectFill"></image>
       </view>
       <view class="character-info">
-        <view class="character-name">{{ characterInfo.name }}</view>
+        <view class="character-name-container">
+          <input 
+            v-if="isEditingName" 
+            v-model="editingName" 
+            class="character-name-input"
+            @blur="saveCharacterName"
+            @confirm="saveCharacterName"
+            @keyup.enter="saveCharacterName"
+            :placeholder="characterInfo.name"
+          />
+          <view v-else class="character-name">{{ characterInfo.name }}</view>
+          <view class="edit-name-btn" @click="toggleEditName">
+            <image 
+              v-if="!isEditingName"
+              src="/static/icons/search.svg" 
+              class="edit-icon"
+              mode="aspectFit"
+            />
+            <text v-else class="edit-icon">✓</text>
+          </view>
+        </view>
         <view class="character-desc">{{ characterInfo.description }}</view>
       </view>
     </view>
@@ -110,13 +130,18 @@ export default {
       scrollTop: 0,
       
       // 记忆相关
-      userMemories: []
+      userMemories: [],
+      
+      // 编辑相关
+      isEditingName: false,
+      editingName: ''
     }
   },
   
   onLoad() {
     this.loadCharacterInfo();
     this.loadUserMemories();
+    this.loadCustomCharacterName();
   },
   
   methods: {
@@ -196,7 +221,7 @@ export default {
       }
     },
 
-    // 发送消息
+    // 发送消息（支持流式输出）
     async sendMessage() {
       if (!this.inputText.trim() || this.isLoading) return;
 
@@ -214,57 +239,74 @@ export default {
       // 滚动到底部
       this.scrollToBottom();
 
-      try {
-        // 调用AI聊天API
-        const response = await this.callAIChat(currentInput);
-        
-        const aiMessage = {
-          type: 'ai',
-          content: response.content || '抱歉，我现在无法回答您的问题。',
-          timestamp: new Date()
-        };
+      // 创建AI消息占位符
+      const aiMessage = {
+        type: 'ai',
+        content: '',
+        timestamp: new Date()
+      };
+      this.messages.push(aiMessage);
 
-        this.messages.push(aiMessage);
+      try {
+        // 使用流式请求
+        await this.streamChat(currentInput, aiMessage);
       } catch (error) {
         console.error('AI聊天失败:', error);
-        const errorMessage = {
-          type: 'ai',
-          content: '抱歉，我现在无法回答您的问题，请稍后再试。',
-          timestamp: new Date()
-        };
-        this.messages.push(errorMessage);
+        aiMessage.content = '抱歉，我现在无法回答您的问题，请稍后再试。';
       } finally {
         this.isLoading = false;
         this.scrollToBottom();
       }
     },
 
-    // 调用AI聊天API
-    async callAIChat(message) {
+    // 流式聊天请求
+    async streamChat(message, aiMessage) {
       const token = uni.getStorageSync('token');
-      
-      // 构建上下文，包含用户的记忆片段
-      const context = this.buildContext(message);
-      
-      const response = await uni.request({
-        url: apiUrl('/ai/chat'),
-        method: 'POST',
-        header: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        data: {
-          message: message,
-          context: context,
-          character: this.characterInfo.name
-        }
-      });
-
-      if (response.statusCode === 200 && response.data.success) {
-        return response.data.data;
-      } else {
-        throw new Error(response.data.message || 'AI聊天失败');
+      if (!token) {
+        throw new Error('未登录');
       }
+
+      try {
+        // 使用非流式请求，因为uni-app对SSE支持有限
+        const response = await uni.request({
+          url: apiUrl('/ai/chat'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            message: message,
+            stream: false  // 使用非流式请求
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          const fullResponse = response.data.data.response || '抱歉，我现在无法回答您的问题。';
+          this.handleStreamResponse(fullResponse, aiMessage);
+        } else {
+          throw new Error(response.data.message || '请求失败');
+        }
+      } catch (error) {
+        console.error('AI聊天请求失败:', error);
+        throw error;
+      }
+    },
+
+    // 处理流式响应（模拟打字机效果）
+    handleStreamResponse(fullResponse, aiMessage) {
+      // 模拟打字机效果
+      let index = 0;
+      const typeWriter = () => {
+        if (index < fullResponse.length) {
+          aiMessage.content += fullResponse[index];
+          index++;
+          this.scrollToBottom();
+          setTimeout(typeWriter, 30); // 30ms间隔，更快一些
+        }
+      };
+      
+      typeWriter();
     },
 
     // 构建上下文
@@ -308,6 +350,51 @@ export default {
         return time.toLocaleDateString();
       }
     },
+
+    // 切换编辑模式
+    toggleEditName() {
+      if (this.isEditingName) {
+        this.saveCharacterName();
+      } else {
+        this.isEditingName = true;
+        this.editingName = this.characterInfo.name;
+        // 聚焦到输入框
+        this.$nextTick(() => {
+          const input = document.querySelector('.character-name-input');
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        });
+      }
+    },
+
+    // 保存角色名称
+    saveCharacterName() {
+      if (this.isEditingName) {
+        const newName = this.editingName.trim();
+        if (newName && newName !== this.characterInfo.name) {
+          this.characterInfo.name = newName;
+          // 更新描述
+          this.characterInfo.description = `基于${newName}的回忆录生成的AI角色`;
+          // 保存到本地存储
+          uni.setStorageSync('customCharacterName', newName);
+          console.log('✅ 角色名称已更新:', newName);
+        }
+        this.isEditingName = false;
+        this.editingName = '';
+      }
+    },
+
+    // 加载自定义角色名称
+    loadCustomCharacterName() {
+      const customName = uni.getStorageSync('customCharacterName');
+      if (customName) {
+        this.characterInfo.name = customName;
+        this.characterInfo.description = `基于${customName}的回忆录生成的AI角色`;
+        console.log('📝 加载自定义角色名称:', customName);
+      }
+    }
 
   }
 }
@@ -361,10 +448,54 @@ export default {
   flex: 1;
 }
 
+.character-name-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
 .character-name {
   font-size: 32rpx;
   font-weight: bold;
-  margin-bottom: 8rpx;
+  flex: 1;
+}
+
+.character-name-input {
+  font-size: 32rpx;
+  font-weight: bold;
+  flex: 1;
+  border: 1rpx solid #007AFF;
+  border-radius: 8rpx;
+  padding: 8rpx 12rpx;
+  background: white;
+  color: #333;
+}
+
+.edit-name-btn {
+  margin-left: 15rpx;
+  padding: 8rpx;
+  border-radius: 50%;
+  background: #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.edit-name-btn:hover {
+  background: #e0e0e0;
+}
+
+.edit-name-btn:active {
+  background: #d0d0d0;
+}
+
+.edit-icon {
+  font-size: 24rpx;
+  color: #666;
+  width: 24rpx;
+  height: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .character-desc {

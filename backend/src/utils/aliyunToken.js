@@ -2,6 +2,13 @@ const RPCClient = require('@alicloud/pop-core').RPCClient;
 
 class AliyunTokenService {
   constructor() {
+    // 检查是否有阿里云配置
+    if (!process.env.ALIYUN_AK_ID || !process.env.ALIYUN_AK_SECRET) {
+      console.log('⚠️  阿里云配置未设置，语音识别功能将不可用');
+      this.client = null;
+      return;
+    }
+    
     this.client = new RPCClient({
       accessKeyId: process.env.ALIYUN_AK_ID,
       accessKeySecret: process.env.ALIYUN_AK_SECRET,
@@ -22,6 +29,11 @@ class AliyunTokenService {
    */
   async getToken() {
     try {
+      // 检查客户端是否已初始化
+      if (!this.client) {
+        throw new Error('阿里云配置未设置，无法获取Token');
+      }
+      
       // 检查缓存的Token是否还有效（提前5分钟刷新）
       const now = Math.floor(Date.now() / 1000);
       if (this.tokenCache.token && this.tokenCache.expireTime > (now + 300)) {
