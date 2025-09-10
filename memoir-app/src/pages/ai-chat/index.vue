@@ -669,11 +669,14 @@ export default {
 
 .message-item.ai {
   padding-left: 0;
-  margin-left: -5rpx;
+  margin-left: 0;
+  justify-content: flex-start;
 }
 
 .message-item.user {
-  flex-direction: row-reverse;
+  flex-direction: row;
+  justify-content: flex-end;
+  padding-right: 0rpx;
 }
 
 .message-avatar {
@@ -697,10 +700,12 @@ export default {
 
 .message-item.ai .message-content {
   margin-left: 0;
+  align-items: flex-start;
 }
 
 .message-item.user .message-content {
   align-items: flex-end;
+  margin-right: 0;
 }
 
 .message-bubble {

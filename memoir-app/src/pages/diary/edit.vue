@@ -7,7 +7,7 @@
       </view>
       <view class="nav-title">{{ viewMode ? '查看随记' : (editMode ? '编辑随记' : '新随记') }}</view>
       <view class="save-btn" @click="saveDiary">
-        <text class="save-text">{{ viewMode ? '编辑' : '完成' }}</text>
+        <text class="save-text">保存</text>
       </view>
     </view>
 
@@ -830,15 +830,11 @@ export default {
 
     // 保存随记
     async saveDiary() {
-      // 如果是查看模式，切换到编辑模式
+      // 如果是查看模式，先切换到编辑模式
       if (this.viewMode) {
         this.viewMode = false;
         this.editMode = true;
-        uni.showToast({
-          title: '已切换到编辑模式',
-          icon: 'success'
-        });
-        return;
+        // 不返回，继续执行保存逻辑
       }
 
       if (!this.diaryTitle.trim()) {
