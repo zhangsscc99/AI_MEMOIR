@@ -54,9 +54,6 @@
             </view>
             <view class="message-time">{{ formatTime(message.timestamp) }}</view>
           </view>
-          <view class="message-avatar" v-if="message.type === 'user'">
-            <image src="/src/images/default-avatar.png" class="avatar-image" mode="aspectFill"></image>
-          </view>
         </view>
         
         <!-- 加载状态 -->
@@ -676,7 +673,7 @@ export default {
 .message-item.user {
   flex-direction: row;
   justify-content: flex-end;
-  padding-right: 0rpx;
+  padding-right: 20rpx;
 }
 
 .message-avatar {
