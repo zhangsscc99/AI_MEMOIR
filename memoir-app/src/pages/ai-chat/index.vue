@@ -457,7 +457,7 @@ export default {
   color: #333;
   border: 1rpx solid #e0e0e0;
   border-radius: 12rpx;
-  margin: 15rpx 20rpx 10rpx 20rpx;
+  margin: 15rpx 20rpx 10rpx 5rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
 }
@@ -538,7 +538,7 @@ export default {
 /* 聊天区域 */
 .chat-area {
   flex: 1;
-  padding: 10rpx 20rpx;
+  padding: 10rpx 20rpx 10rpx 0rpx;
   background-color: #ffffff;
   min-height: 0;
   overflow: hidden;
@@ -565,6 +565,12 @@ export default {
   display: flex;
   margin-bottom: 30rpx;
   align-items: flex-start;
+  padding-left: 0;
+}
+
+.message-item.ai {
+  padding-left: 0;
+  margin-left: 0;
 }
 
 .message-item.user {
@@ -576,13 +582,22 @@ export default {
   height: 60rpx;
   border-radius: 50%;
   overflow: hidden;
-  margin: 0 20rpx;
+  margin: 0 20rpx 0 0;
+}
+
+.message-item.ai .message-avatar {
+  margin-left: 0;
+  margin-right: 15rpx;
 }
 
 .message-content {
   max-width: 70%;
   display: flex;
   flex-direction: column;
+}
+
+.message-item.ai .message-content {
+  margin-left: 0;
 }
 
 .message-item.user .message-content {
@@ -663,7 +678,7 @@ export default {
 /* 输入区域 */
 .input-area {
   background: white;
-  padding: 20rpx;
+  padding: 20rpx 20rpx 20rpx 5rpx;
   border-top: 1rpx solid #e0e0e0;
   flex-shrink: 0;
   position: sticky;
