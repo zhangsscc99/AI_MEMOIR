@@ -45,9 +45,6 @@
           class="message-item"
           :class="message.type"
         >
-          <view class="message-avatar" v-if="message.type === 'ai'">
-            <image :src="characterInfo.avatar" class="avatar-image" mode="aspectFill"></image>
-          </view>
           <view class="message-content">
             <view class="message-bubble">
               <text class="message-text">{{ message.content }}</text>
@@ -58,9 +55,6 @@
         
         <!-- 加载状态 -->
         <view class="message-item ai" v-if="isLoading">
-          <view class="message-avatar">
-            <image :src="characterInfo.avatar" class="avatar-image" mode="aspectFill"></image>
-          </view>
           <view class="message-content">
             <view class="message-bubble loading">
               <view class="typing-indicator">
@@ -634,7 +628,7 @@ export default {
 /* 聊天区域 */
 .chat-area {
   flex: 1;
-  padding: 10rpx 20rpx 10rpx 0rpx;
+  padding: 10rpx 20rpx 10rpx 35rpx;
   background-color: #F8F6F3;
   min-height: 0;
   overflow: hidden;
@@ -686,7 +680,7 @@ export default {
 
 .message-item.ai .message-avatar {
   margin-left: 0;
-  margin-right: 8rpx;
+  margin-right: 0;
 }
 
 .message-content {
