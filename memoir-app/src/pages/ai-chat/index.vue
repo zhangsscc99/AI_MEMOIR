@@ -83,7 +83,7 @@
         <input 
           v-model="inputText" 
           class="message-input" 
-          placeholder="与{{ characterInfo.name }}聊天..."
+          :placeholder="`与${characterInfo.name}聊天...`"
           :disabled="isLoading"
           @confirm="sendMessage"
         />
@@ -116,13 +116,7 @@ export default {
       },
       
       // 聊天消息
-      messages: [
-        {
-          type: 'ai',
-          content: '你好！我是张无忌，基于您的回忆录生成的AI角色。我可以和您聊关于您在倚天屠龙记中的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？',
-          timestamp: new Date()
-        }
-      ],
+      messages: [],
       
       // 输入相关
       inputText: '',
@@ -142,6 +136,7 @@ export default {
     this.loadCharacterInfo();
     this.loadUserMemories();
     this.loadCustomCharacterName();
+    this.addWelcomeMessage();
   },
   
   methods: {
@@ -246,13 +241,16 @@ export default {
         timestamp: new Date()
       };
       this.messages.push(aiMessage);
+      
+      // 确保消息被添加到数组中
+      const messageIndex = this.messages.length - 1;
 
       try {
         // 使用流式请求
-        await this.streamChat(currentInput, aiMessage);
+        await this.streamChat(currentInput, messageIndex);
       } catch (error) {
         console.error('AI聊天失败:', error);
-        aiMessage.content = '抱歉，我现在无法回答您的问题，请稍后再试。';
+        this.messages[messageIndex].content = '抱歉，我现在无法回答您的问题，请稍后再试。';
       } finally {
         this.isLoading = false;
         this.scrollToBottom();
@@ -260,7 +258,7 @@ export default {
     },
 
     // 流式聊天请求
-    async streamChat(message, aiMessage) {
+    async streamChat(message, messageIndex) {
       const token = uni.getStorageSync('token');
       if (!token) {
         throw new Error('未登录');
@@ -283,8 +281,10 @@ export default {
 
         if (response.statusCode === 200 && response.data.success) {
           const fullResponse = response.data.data.response || '抱歉，我现在无法回答您的问题。';
-          this.handleStreamResponse(fullResponse, aiMessage);
+          console.log('AI回复内容:', fullResponse);
+          this.handleStreamResponse(fullResponse, messageIndex);
         } else {
+          console.error('AI聊天响应错误:', response.data);
           throw new Error(response.data.message || '请求失败');
         }
       } catch (error) {
@@ -294,18 +294,39 @@ export default {
     },
 
     // 处理流式响应（模拟打字机效果）
-    handleStreamResponse(fullResponse, aiMessage) {
+    handleStreamResponse(fullResponse, messageIndex) {
+      console.log('开始打字机效果，内容长度:', fullResponse.length);
+      console.log('AI回复内容预览:', fullResponse.substring(0, 100) + '...');
+      
+      // 直接替换整个消息对象来确保响应式更新
+      const updateMessage = (content) => {
+        this.messages.splice(messageIndex, 1, {
+          ...this.messages[messageIndex],
+          content: content
+        });
+      };
+      
+      // 清空现有内容
+      updateMessage('');
+      
       // 模拟打字机效果
       let index = 0;
       const typeWriter = () => {
         if (index < fullResponse.length) {
-          aiMessage.content += fullResponse[index];
+          const currentContent = fullResponse.substring(0, index + 1);
+          updateMessage(currentContent);
           index++;
+          
           this.scrollToBottom();
-          setTimeout(typeWriter, 30); // 30ms间隔，更快一些
+          
+          // 继续下一个字符
+          setTimeout(typeWriter, 30); // 30ms间隔
+        } else {
+          console.log('打字机效果完成，最终内容长度:', this.messages[messageIndex].content.length);
         }
       };
       
+      // 立即开始打字效果
       typeWriter();
     },
 
@@ -393,6 +414,17 @@ export default {
         this.characterInfo.name = customName;
         this.characterInfo.description = `基于${customName}的回忆录生成的AI角色`;
         console.log('📝 加载自定义角色名称:', customName);
+      }
+    },
+
+    // 添加欢迎消息
+    addWelcomeMessage() {
+      if (this.messages.length === 0) {
+        this.messages.push({
+          type: 'ai',
+          content: `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`,
+          timestamp: new Date()
+        });
       }
     }
 
