@@ -256,7 +256,7 @@ export default {
         
         // 从后端获取用户章节
         const response = await uni.request({
-          url: 'http://106.15.248.189:3001/api/chapters',
+          url: apiUrl('/chapters'),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -271,36 +271,22 @@ export default {
           const userChapters = responseData.chapters || [];
           console.log('📚 获取到用户章节:', userChapters);
           
-          // 过滤出diary章节
-          const diaryChapters = userChapters.filter(chapter => 
-            chapter.chapterId && chapter.chapterId.startsWith('diary_')
+          // 只过滤出非diary章节（固定章节）
+          const fixedChapters = userChapters.filter(chapter => 
+            chapter.chapterId && !chapter.chapterId.startsWith('diary_')
           );
           
-          console.log('📖 过滤出的diary章节:', diaryChapters);
+          console.log('📖 过滤出的固定章节:', fixedChapters);
           
-          // 移除之前加载的diary章节（避免重复）
-          this.chapters = this.chapters.filter(chapter => 
-            !chapter.id.startsWith('diary_')
-          );
-          
-          // 将diary章节转换为章节页面需要的格式并添加到列表
-          diaryChapters.forEach(diaryChapter => {
-            const chapterData = {
-              id: diaryChapter.chapterId,
-              title: diaryChapter.title || '随记',
-              description: diaryChapter.content ? 
-                (diaryChapter.content.length > 20 ? 
-                  diaryChapter.content.substring(0, 20) + '...' : 
-                  diaryChapter.content) : '暂无内容',
-              backgroundImage: diaryChapter.backgroundImage && !diaryChapter.backgroundImage.startsWith('blob:') ? diaryChapter.backgroundImage : '/src/images/default-diary.svg',
-              completed: diaryChapter.status === 'completed',
-              isDiary: true // 标记为diary章节
-            };
-            
-            this.chapters.push(chapterData);
+          // 更新固定章节的完成状态
+          fixedChapters.forEach(userChapter => {
+            const existingChapter = this.chapters.find(ch => ch.id === userChapter.chapterId);
+            if (existingChapter) {
+              existingChapter.completed = userChapter.status === 'completed';
+            }
           });
           
-          console.log('✅ 用户章节加载完成，当前章节总数:', this.chapters.length);
+          console.log('✅ 用户章节状态更新完成');
         } else {
           console.log('❌ 获取用户章节失败:', response.data);
         }
