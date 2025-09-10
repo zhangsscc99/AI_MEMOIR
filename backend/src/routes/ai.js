@@ -6,7 +6,9 @@ const {
   chatWithAI, 
   getConversationHistory, 
   clearConversationHistory, 
-  getUserMemories 
+  getUserMemories,
+  prebuildCharacter,
+  refreshCharacter
 } = require('../controllers/aiController');
 
 // 导入中间件
@@ -39,5 +41,19 @@ router.delete('/history', authenticateToken, clearConversationHistory);
  * @access  Private
  */
 router.get('/memories', authenticateToken, getUserMemories);
+
+/**
+ * @route   POST /api/ai/prebuild
+ * @desc    预构建用户角色
+ * @access  Private
+ */
+router.post('/prebuild', authenticateToken, prebuildCharacter);
+
+/**
+ * @route   POST /api/ai/refresh
+ * @desc    刷新用户角色缓存
+ * @access  Private
+ */
+router.post('/refresh', authenticateToken, refreshCharacter);
 
 module.exports = router;

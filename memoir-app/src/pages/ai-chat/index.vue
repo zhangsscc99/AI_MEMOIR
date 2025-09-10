@@ -136,6 +136,7 @@ export default {
     this.loadCharacterInfo();
     this.loadUserMemories();
     this.loadCustomCharacterName();
+    this.preBuildCharacter();
     this.addWelcomeMessage();
   },
   
@@ -417,6 +418,38 @@ export default {
       }
     },
 
+    // 预构建角色
+    async preBuildCharacter() {
+      try {
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          console.log('用户未登录，跳过角色预构建');
+          return;
+        }
+
+        console.log('开始预构建AI角色...');
+        const response = await uni.request({
+          url: apiUrl('/ai/prebuild'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          console.log('✅ AI角色预构建成功，记忆数量:', response.data.data.memoryCount);
+          // 更新角色描述
+          this.characterInfo.description = `基于您的回忆录生成的AI角色，拥有${response.data.data.memoryCount}个记忆片段`;
+        } else {
+          console.log('⚠️ AI角色预构建失败，将使用实时构建');
+        }
+      } catch (error) {
+        console.error('预构建AI角色失败:', error);
+      }
+    },
+
+
     // 添加欢迎消息
     addWelcomeMessage() {
       if (this.messages.length === 0) {
@@ -437,7 +470,7 @@ export default {
   height: 95vh;
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
+  background-color: #F8F6F3;
   overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom);
   scrollbar-width: none; /* Firefox */
@@ -533,13 +566,15 @@ export default {
 .character-desc {
   font-size: 24rpx;
   color: #666;
+  margin-bottom: 10rpx;
 }
+
 
 /* 聊天区域 */
 .chat-area {
   flex: 1;
   padding: 10rpx 20rpx 10rpx 0rpx;
-  background-color: #ffffff;
+  background-color: #F8F6F3;
   min-height: 0;
   overflow: hidden;
   scrollbar-width: none; /* Firefox */
