@@ -76,6 +76,14 @@
 				"navigationBarTitleText": "录制章节",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/ai-chat/index",
+			"style": {
+				"navigationBarTitleText": "AI聊天",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
+			}
 		}
 	],
 	"globalStyle": {
@@ -101,6 +109,12 @@
 				"iconPath": "static/icons/book.svg",
 				"selectedIconPath": "static/icons/book-filled.svg",
 				"text": "回忆录"
+			},
+			{
+				"pagePath": "pages/ai-chat/index",
+				"iconPath": "static/icons/chat.svg",
+				"selectedIconPath": "static/icons/chat-filled.svg",
+				"text": "AI聊天"
 			},
 			{
 				"pagePath": "pages/diary/index",

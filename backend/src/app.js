@@ -12,6 +12,7 @@ const { testConnection } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const chapterRoutes = require('./routes/chapters');
 const speechRoutes = require('./routes/speech');
+const aiRoutes = require('./routes/ai');
 
 // 导入控制器
 const { uploadImage } = require('./controllers/uploadController');
@@ -72,6 +73,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chapters', chapterRoutes);
 app.use('/api/speech', speechRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 图片上传路由
 app.post('/api/upload/image', authenticateToken, uploadImage);
