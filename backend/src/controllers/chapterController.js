@@ -142,12 +142,23 @@ const getChapter = async (req, res) => {
     const { chapterId } = req.params;
     const userId = req.user.id;
 
-    const chapter = await Chapter.findOne({
+    // 首先尝试通过主键ID查找
+    let chapter = await Chapter.findOne({
       where: {
-        user_id: userId,
-        chapter_id: chapterId
+        id: chapterId,
+        user_id: userId
       }
     });
+
+    // 如果通过主键没找到，尝试通过chapter_id查找（向后兼容）
+    if (!chapter) {
+      chapter = await Chapter.findOne({
+        where: {
+          chapter_id: chapterId,
+          user_id: userId
+        }
+      });
+    }
 
     if (!chapter) {
       return res.status(404).json({
@@ -196,12 +207,23 @@ const deleteChapter = async (req, res) => {
     const { chapterId } = req.params;
     const userId = req.user.id;
 
-    const chapter = await Chapter.findOne({
+    // 首先尝试通过主键ID查找
+    let chapter = await Chapter.findOne({
       where: {
-        user_id: userId,
-        chapter_id: chapterId
+        id: chapterId,
+        user_id: userId
       }
     });
+
+    // 如果通过主键没找到，尝试通过chapter_id查找（向后兼容）
+    if (!chapter) {
+      chapter = await Chapter.findOne({
+        where: {
+          chapter_id: chapterId,
+          user_id: userId
+        }
+      });
+    }
 
     if (!chapter) {
       return res.status(404).json({
