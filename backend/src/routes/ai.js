@@ -8,7 +8,8 @@ const {
   clearConversationHistory, 
   getUserMemories,
   prebuildCharacter,
-  refreshCharacter
+  refreshCharacter,
+  completeText
 } = require('../controllers/aiController');
 
 // 导入中间件
@@ -55,5 +56,12 @@ router.post('/prebuild', authenticateToken, prebuildCharacter);
  * @access  Private
  */
 router.post('/refresh', authenticateToken, refreshCharacter);
+
+/**
+ * @route   POST /api/ai/complete-text
+ * @desc    AI文本补全接口
+ * @access  Private
+ */
+router.post('/complete-text', authenticateToken, completeText);
 
 module.exports = router;

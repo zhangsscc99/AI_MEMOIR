@@ -404,11 +404,103 @@ const refreshCharacter = async (req, res) => {
   }
 };
 
+/**
+ * @desc AI文本补全
+ * @route POST /api/ai/complete-text
+ * @access Private
+ */
+const completeText = async (req, res) => {
+  try {
+    const { text, chapterId, chapterTitle } = req.body;
+    const userId = req.user.id;
+
+    console.log('🤖 ===== AI文本补全开始 =====');
+    console.log('👤 用户ID:', userId);
+    console.log('📝 原始文本长度:', text ? text.length : 0);
+    console.log('📚 章节信息:', { chapterId, chapterTitle });
+
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '文本内容不能为空',
+        code: 'EMPTY_TEXT'
+      });
+    }
+
+    // 构建补全提示词
+    const systemPrompt = `你是一个专业的文本编辑助手，专门帮助用户完善回忆录内容。请根据以下要求对文本进行补全和优化：
+
+1. **保持原有内容**：尽可能保留用户原始记录的内容，不要删除或大幅修改
+2. **适当补全**：在合适的地方添加细节描述，使内容更加丰富生动
+3. **修正格式**：修正语音转录可能产生的标点符号错误、断句问题
+4. **语言优化**：改善语言表达，使其更加流畅自然
+5. **结构完善**：适当调整段落结构，使内容更有逻辑性
+6. **情感表达**：增强情感色彩，让回忆录更有感染力
+
+请直接返回优化后的完整文本，不要添加任何解释或标记。`;
+
+    const userPrompt = `请帮我完善这段回忆录内容：
+
+章节：${chapterTitle || '回忆录'}
+内容：${text}
+
+请保持原有的核心内容和情感，在此基础上进行适当的补全和优化。`;
+
+    // 调用通义千问API
+    const completion = await client.chat.completions.create({
+      model: process.env.DASHSCOPE_MODEL || 'qwen-plus',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      max_tokens: 2000,
+      temperature: 0.7
+    });
+
+    const completedText = completion.choices[0].message.content;
+
+    console.log('✅ AI补全完成:', {
+      originalLength: text.length,
+      completedLength: completedText.length,
+      improvement: completedText.length - text.length
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'AI文本补全成功',
+      data: {
+        originalText: text,
+        completedText: completedText,
+        chapterId: chapterId,
+        chapterTitle: chapterTitle,
+        completedAt: new Date().toISOString()
+      }
+    });
+
+    console.log('✅ ===== AI文本补全完成 =====');
+
+  } catch (error) {
+    console.error('❌ ===== AI文本补全失败 =====');
+    console.error('❌ 错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?.id
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'AI文本补全失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'AI服务暂时不可用'
+    });
+  }
+};
+
 module.exports = {
   chatWithAI,
   getConversationHistory,
   clearConversationHistory,
   getUserMemories,
   prebuildCharacter,
-  refreshCharacter
+  refreshCharacter,
+  completeText
 };
