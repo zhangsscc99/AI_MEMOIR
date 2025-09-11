@@ -130,6 +130,12 @@ export default {
     this.preBuildCharacter();
     this.addWelcomeMessage();
   },
+
+  // 每次显示页面时都重新预构建角色（确保数据最新）
+  async onShow() {
+    console.log('🔄 AI聊天页面显示，重新预构建角色...');
+    await this.preBuildCharacter();
+  },
   
   methods: {
 
