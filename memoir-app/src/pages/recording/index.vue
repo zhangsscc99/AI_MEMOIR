@@ -1768,8 +1768,29 @@ export default {
   border-radius: 8px;
   padding: 16px;
   min-height: 200px;
-  background: rgba(52, 199, 89, 0.1);
-  border: 1px solid rgba(52, 199, 89, 0.3);
+  background: linear-gradient(135deg, 
+    rgba(52, 199, 89, 0.15) 0%, 
+    rgba(52, 199, 89, 0.08) 50%, 
+    rgba(52, 199, 89, 0.12) 100%);
+  border: 1px solid rgba(52, 199, 89, 0.4);
+  box-shadow: 
+    0 2px 8px rgba(52, 199, 89, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.diff-ai::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.6) 50%, 
+    transparent 100%);
 }
 
 .diff-label {
@@ -1780,7 +1801,8 @@ export default {
 }
 
 .diff-ai .diff-label {
-  color: #28a745;
+  color: #1e7e34;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
 }
 
 .diff-text {
@@ -1792,7 +1814,8 @@ export default {
 }
 
 .ai-text {
-  color: #28a745;
+  color: #1e7e34;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.2);
 }
 
 .diff-actions {
