@@ -74,22 +74,67 @@
           ></view>
         </view>
 
-        <!-- 录音按钮 -->
+        <!-- 录音和AI补全按钮 -->
         <view class="recording-controls">
-          <view class="record-btn-container">
-            <view 
-              class="record-btn" 
-              @click="toggleRecording" 
-              :class="{ 'recording': isRecording }"
-            >
-              <view class="record-icon">
-                <view v-if="isRecording" class="recording-animation">
-                  <view class="wave" v-for="i in 3" :key="i"></view>
+          <view class="control-buttons">
+            <view class="record-btn-container">
+              <view 
+                class="record-btn" 
+                @click="toggleRecording" 
+                :class="{ 'recording': isRecording }"
+              >
+                <view class="record-icon">
+                  <view v-if="isRecording" class="recording-animation">
+                    <view class="wave" v-for="i in 3" :key="i"></view>
+                  </view>
+                  <image v-else src="/static/icons/microphone.svg" class="mic-icon" mode="aspectFit"></image>
                 </view>
-                <image v-else src="/static/icons/microphone.svg" class="mic-icon" mode="aspectFit"></image>
               </view>
+              <text class="record-text">{{ isRecording ? '结束录制' : '点击录制' }}</text>
             </view>
-            <text class="record-text">{{ isRecording ? '结束录制' : '点击录制' }}</text>
+            
+            <!-- AI补全按钮 -->
+            <view class="ai-complete-btn-container">
+              <view 
+                class="ai-complete-btn" 
+                @click="aiCompleteText"
+                :class="{ 'loading': isAiCompleting }"
+              >
+                <view class="ai-icon" v-if="!isAiCompleting">
+                  <image src="/static/icons/chat.svg" class="ai-icon-img" mode="aspectFit"></image>
+                </view>
+                <view class="ai-loading" v-else>
+                  <view class="loading-dot" v-for="i in 3" :key="i"></view>
+                </view>
+              </view>
+              <text class="ai-complete-text">AI补全</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- AI补全结果显示 -->
+        <view class="ai-complete-result" v-if="showAiDiff">
+          <view class="diff-header">
+            <text class="diff-title">AI补全结果</text>
+            <text class="diff-subtitle">请选择是否接受AI的修改</text>
+          </view>
+          
+          <view class="diff-content">
+            <!-- AI补全内容（绿色背景） -->
+            <view class="diff-ai">
+              <view class="diff-label">AI补全结果</view>
+              <view class="diff-text ai-text">{{ aiCompletedText }}</view>
+            </view>
+          </view>
+          
+          <!-- 选择按钮 -->
+          <view class="diff-actions">
+            <view class="diff-btn reject-btn" @click="rejectAiCompletion">
+              <image src="/static/icons/close.svg" class="btn-icon" mode="aspectFit"></image>
+            </view>
+            <view class="diff-btn accept-btn" @click="acceptAiCompletion">
+              <image src="/static/icons/check.svg" class="btn-icon" mode="aspectFit"></image>
+            </view>
           </view>
         </view>
 
@@ -127,7 +172,12 @@ export default {
       audioChunks: [],
       // 实时语音识别相关
       realtimeRecognitionTimer: null,
-      speechRecognition: null
+      speechRecognition: null,
+      // AI补全相关
+      isAiCompleting: false,
+      showAiDiff: false,
+      originalText: '',
+      aiCompletedText: ''
     };
   },
 
@@ -838,6 +888,86 @@ export default {
       }
     },
 
+    // AI补全文本
+    async aiCompleteText() {
+      try {
+        if (!this.diaryContent || this.diaryContent.trim().length === 0) {
+          uni.showToast({
+            title: '请先输入内容',
+            icon: 'none'
+          });
+          return;
+        }
+
+        this.isAiCompleting = true;
+        this.originalText = this.diaryContent;
+
+        console.log('🤖 开始AI补全文本...');
+        
+        // 获取用户Token
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+
+        const response = await uni.request({
+          url: apiUrl('/ai/complete-text'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            text: this.diaryContent,
+            chapterId: this.editChapterId,
+            chapterTitle: this.diaryTitle || '随记'
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          this.aiCompletedText = response.data.data.completedText;
+          this.showAiDiff = true;
+          
+          console.log('✅ AI补全成功');
+        } else {
+          throw new Error(response.data?.message || 'AI补全失败');
+        }
+      } catch (error) {
+        console.error('❌ AI补全失败:', error);
+        uni.showToast({
+          title: error.message || 'AI补全失败',
+          icon: 'error'
+        });
+      } finally {
+        this.isAiCompleting = false;
+      }
+    },
+
+    // 接受AI补全
+    acceptAiCompletion() {
+      this.diaryContent = this.aiCompletedText;
+      this.showAiDiff = false;
+      this.originalText = '';
+      this.aiCompletedText = '';
+      
+      uni.showToast({
+        title: '已应用AI补全',
+        icon: 'success'
+      });
+    },
+
+    // 拒绝AI补全
+    rejectAiCompletion() {
+      this.showAiDiff = false;
+      this.originalText = '';
+      this.aiCompletedText = '';
+      
+      uni.showToast({
+        title: '已取消AI补全',
+        icon: 'none'
+      });
+    },
+
     // 语音识别
     async transcribeRecording(recording) {
       try {
@@ -1534,6 +1664,238 @@ export default {
   color: #333;
   font-size: 14px;
   font-weight: 500;
+}
+
+/* 控制按钮布局 */
+.control-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+}
+
+/* AI补全按钮样式 */
+.ai-complete-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-complete-btn {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid #e0e0e0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ai-complete-btn:hover {
+  transform: scale(1.05);
+  border-color: #007AFF;
+  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.2);
+}
+
+.ai-complete-btn.loading {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: #007AFF;
+  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.ai-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-icon-img {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+}
+
+.ai-loading {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.loading-dot {
+  width: 6px;
+  height: 6px;
+  background: #007AFF;
+  border-radius: 50%;
+  animation: loading 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+.loading-dot:nth-child(3) { animation-delay: 0s; }
+
+.ai-complete-text {
+  color: #333;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* AI补全结果显示 */
+.ai-complete-result {
+  margin-top: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.diff-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.diff-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.diff-subtitle {
+  font-size: 14px;
+  color: #666;
+  display: block;
+}
+
+.diff-content {
+  margin-bottom: 20px;
+}
+
+.diff-ai {
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 200px;
+  background: linear-gradient(135deg, 
+    rgba(52, 199, 89, 0.15) 0%, 
+    rgba(52, 199, 89, 0.08) 50%, 
+    rgba(52, 199, 89, 0.12) 100%);
+  border: 1px solid rgba(52, 199, 89, 0.4);
+  box-shadow: 
+    0 2px 8px rgba(52, 199, 89, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.diff-ai::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.6) 50%, 
+    transparent 100%);
+}
+
+.diff-label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: block;
+  color: #1e7e34;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.diff-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.ai-text {
+  color: #1e7e34;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.diff-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.diff-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.reject-btn {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #d70015;
+}
+
+.reject-btn:hover {
+  background: rgba(255, 59, 48, 0.2);
+  transform: translateY(-2px);
+}
+
+.accept-btn {
+  background: rgba(52, 199, 89, 0.1);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+  color: #28a745;
+}
+
+.accept-btn:hover {
+  background: rgba(52, 199, 89, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* 动画 */
+@keyframes loading {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 </style>
