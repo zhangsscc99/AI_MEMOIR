@@ -83,8 +83,16 @@ class AliyunSpeechService {
           console.log("识别中间结果:", msg);
           try {
             const result = JSON.parse(msg);
-            if (result.result) {
+            if (result.payload && result.payload.result) {
+              console.log("中间识别结果:", result.payload.result);
+              // 更新最终结果
+              finalResult = result.payload.result;
+            } else if (result.result) {
               console.log("中间识别结果:", result.result);
+              finalResult = result.result;
+            } else if (result.text) {
+              console.log("中间识别结果:", result.text);
+              finalResult = result.text;
             }
           } catch (parseError) {
             console.log("中间结果解析错误:", msg);
@@ -97,16 +105,26 @@ class AliyunSpeechService {
             const result = JSON.parse(msg);
             console.log("解析结果:", result);
             
-            // 处理不同的结果格式
-            if (result.result) {
+            // 检查是否是TranscriptionCompleted事件
+            if (result.header && result.header.name === 'TranscriptionCompleted') {
+              // 这是完成事件，检查是否已经有结果
+              if (finalResult && finalResult !== '识别完成但无结果') {
+                console.log("转录完成，使用已获得的结果:", finalResult);
+              } else {
+                console.log("转录完成事件，但没有文本内容");
+                finalResult = '识别完成但无结果';
+              }
+            } else if (result.result) {
               finalResult = result.result;
             } else if (result.text) {
               finalResult = result.text;
             } else if (result.payload && result.payload.result) {
               finalResult = result.payload.result;
+            } else if (result.payload && result.payload.text) {
+              finalResult = result.payload.text;
             } else if (typeof msg === 'string' && msg.length > 0) {
               finalResult = msg;
-            } else {
+            } else if (!finalResult) {
               finalResult = '识别完成但无结果';
             }
             
@@ -114,7 +132,9 @@ class AliyunSpeechService {
             resolve(finalResult);
           } catch (parseError) {
             console.log("解析错误，使用原始消息:", msg);
-            finalResult = msg || '识别完成但无结果';
+            if (!finalResult) {
+              finalResult = msg || '识别完成但无结果';
+            }
             resolve(finalResult);
           }
         });
