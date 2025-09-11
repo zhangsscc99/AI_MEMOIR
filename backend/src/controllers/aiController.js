@@ -56,7 +56,7 @@ const getUserMemoirContent = async (userId) => {
 };
 
 // 构建智能角色提示词
-const buildCharacterPrompt = (memories, characterName = '张无忌') => {
+const buildCharacterPrompt = (memories, characterName = '用户') => {
   if (memories.length === 0) {
     return `你是${characterName}，一个基于用户回忆录生成的AI角色。虽然用户还没有记录回忆录内容，但你很乐意与用户聊天，了解他们的故事。`;
   }

@@ -162,7 +162,7 @@ export default {
         if (response.statusCode === 200 && response.data.success) {
           const userInfo = response.data.data.user; // 注意：后端返回的是 { user: userProfile }
           console.log('👤 用户信息:', userInfo);
-          const userName = userInfo.nickname || userInfo.username || '张无忌';
+          const userName = userInfo.nickname || userInfo.username || '用户';
           console.log('📝 用户名:', userName);
           
           this.characterInfo.name = userName;
