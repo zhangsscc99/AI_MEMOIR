@@ -67,7 +67,17 @@ const upload = multer({
  */
 const getSpeechToken = async (req, res) => {
   try {
+    console.log('🔑 ===== 获取语音识别Token API调用开始 =====');
+    console.log('👤 用户ID:', req.user?.id);
+    console.log('⏰ 请求时间:', new Date().toISOString());
+    
     const token = await aliyunTokenService.getToken();
+    
+    console.log('✅ Token获取成功:', {
+      tokenLength: token ? token.length : 0,
+      tokenPrefix: token ? token.substring(0, 20) + '...' : 'null',
+      isValid: aliyunTokenService.isTokenValid()
+    });
     
     res.status(200).json({
       success: true,
@@ -79,8 +89,15 @@ const getSpeechToken = async (req, res) => {
       }
     });
 
+    console.log('✅ ===== 获取语音识别Token API调用完成 =====');
+
   } catch (error) {
-    console.error('获取语音Token错误:', error);
+    console.error('❌ ===== 获取语音识别Token API调用失败 =====');
+    console.error('❌ 错误详情:', {
+      message: error.message,
+      stack: error.stack
+    });
+    
     res.status(500).json({
       success: false,
       message: '获取语音识别Token失败',
@@ -95,9 +112,18 @@ const getSpeechToken = async (req, res) => {
  * @access Private
  */
 const uploadAudio = (req, res) => {
+  console.log('📤 ===== 音频上传API调用开始 =====');
+  console.log('👤 用户ID:', req.user?.id);
+  console.log('⏰ 请求时间:', new Date().toISOString());
+  console.log('📋 请求头:', {
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length']
+  });
+  
   // 使用multer中间件处理文件上传
   upload.single('audio')(req, res, function (err) {
     if (err instanceof multer.MulterError) {
+      console.log('❌ Multer错误:', err.code, err.message);
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
           success: false,
@@ -111,6 +137,7 @@ const uploadAudio = (req, res) => {
         code: 'UPLOAD_ERROR'
       });
     } else if (err) {
+      console.log('❌ 文件验证错误:', err.message);
       return res.status(400).json({
         success: false,
         message: err.message,
@@ -120,6 +147,7 @@ const uploadAudio = (req, res) => {
 
     // 文件上传成功
     if (!req.file) {
+      console.log('❌ 未检测到音频文件');
       return res.status(400).json({
         success: false,
         message: '未检测到音频文件',
@@ -136,6 +164,14 @@ const uploadAudio = (req, res) => {
       uploadTime: new Date().toISOString()
     };
 
+    console.log('✅ 音频文件上传成功:', {
+      filename: fileInfo.filename,
+      originalName: fileInfo.originalName,
+      size: fileInfo.size,
+      mimetype: fileInfo.mimetype,
+      path: fileInfo.path
+    });
+
     res.status(200).json({
       success: true,
       message: '音频文件上传成功',
@@ -145,6 +181,8 @@ const uploadAudio = (req, res) => {
         fileUrl: `/uploads/audio/${req.file.filename}`
       }
     });
+
+    console.log('✅ ===== 音频上传API调用完成 =====');
   });
 };
 
@@ -194,7 +232,13 @@ const transcribeAudio = async (req, res) => {
   try {
     const { filename, testMode, realtime } = req.body;
     
+    console.log('🎤 ===== 语音识别API调用开始 =====');
+    console.log('📁 请求参数:', { filename, testMode, realtime });
+    console.log('👤 用户ID:', req.user?.id);
+    console.log('⏰ 请求时间:', new Date().toISOString());
+    
     if (!filename) {
+      console.log('❌ 缺少音频文件名');
       return res.status(400).json({
         success: false,
         message: '缺少音频文件名',
@@ -259,8 +303,11 @@ const transcribeAudio = async (req, res) => {
     // 正常模式：处理真实音频文件
     const audioFilePath = path.join(__dirname, '../../uploads/audio', filename);
     
+    console.log('📂 检查音频文件路径:', audioFilePath);
+    
     // 检查文件是否存在
     if (!fs.existsSync(audioFilePath)) {
+      console.log('❌ 音频文件不存在:', audioFilePath);
       return res.status(404).json({
         success: false,
         message: '音频文件不存在',
@@ -269,6 +316,14 @@ const transcribeAudio = async (req, res) => {
       });
     }
 
+    // 获取文件信息
+    const fileStats = fs.statSync(audioFilePath);
+    console.log('📊 音频文件信息:', {
+      size: fileStats.size,
+      created: fileStats.birthtime,
+      modified: fileStats.mtime
+    });
+
     // 构建文件的公网访问URL
     const publicFileUrl = `${req.protocol}://${req.get('host')}/uploads/audio/${filename}`;
     
@@ -276,12 +331,24 @@ const transcribeAudio = async (req, res) => {
       filename,
       publicFileUrl,
       localPath: audioFilePath,
-      realtime: realtime || false
+      realtime: realtime || false,
+      fileSize: fileStats.size
     });
 
     // 读取音频文件并调用阿里云语音识别服务
+    console.log('📖 读取音频文件...');
     const audioBuffer = fs.readFileSync(audioFilePath);
+    console.log('✅ 音频文件读取完成，大小:', audioBuffer.length, 'bytes');
+    
+    console.log('🚀 调用阿里云语音识别服务...');
     const transcript = await aliyunSpeechService.recognizeAudio(audioBuffer);
+    console.log('✅ 阿里云语音识别完成，结果:', transcript);
+
+    console.log('📤 返回识别结果:', {
+      filename,
+      transcriptLength: transcript ? transcript.length : 0,
+      hasResult: !!transcript && transcript !== '识别完成但无结果'
+    });
 
     res.status(200).json({
       success: true,
@@ -293,8 +360,16 @@ const transcribeAudio = async (req, res) => {
       }
     });
 
+    console.log('✅ ===== 语音识别API调用完成 =====');
+
   } catch (error) {
-    console.error('音频转写错误:', error);
+    console.error('❌ ===== 语音识别API调用失败 =====');
+    console.error('❌ 错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      filename: filename
+    });
+    
     res.status(500).json({
       success: false,
       message: '音频转写失败',

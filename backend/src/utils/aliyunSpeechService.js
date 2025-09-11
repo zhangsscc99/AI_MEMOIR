@@ -61,9 +61,15 @@ class AliyunSpeechService {
    */
   async recognizeAudio(audioBuffer) {
     try {
-      console.log('🎤 开始实时语音识别...');
+      console.log('🎤 ===== 阿里云语音识别服务开始 =====');
+      console.log('📊 音频数据信息:', {
+        size: audioBuffer.length,
+        sizeKB: Math.round(audioBuffer.length / 1024),
+        appKey: this.appkey ? this.appkey.substring(0, 8) + '...' : 'null'
+      });
       
       const token = await this.getToken();
+      console.log('🔑 Token获取成功，长度:', token ? token.length : 0);
       
       return new Promise((resolve, reject) => {
         const st = new Nls.SpeechTranscription({
@@ -76,42 +82,42 @@ class AliyunSpeechService {
 
         // 设置事件监听
         st.on("started", (msg) => {
-          console.log("语音识别开始:", msg);
+          console.log("🚀 语音识别会话启动:", msg);
         });
 
         st.on("changed", (msg) => {
-          console.log("识别中间结果:", msg);
+          console.log("🔄 识别中间结果:", msg);
           try {
             const result = JSON.parse(msg);
             if (result.payload && result.payload.result) {
-              console.log("中间识别结果:", result.payload.result);
+              console.log("📝 中间识别结果:", result.payload.result);
               // 更新最终结果
               finalResult = result.payload.result;
             } else if (result.result) {
-              console.log("中间识别结果:", result.result);
+              console.log("📝 中间识别结果:", result.result);
               finalResult = result.result;
             } else if (result.text) {
-              console.log("中间识别结果:", result.text);
+              console.log("📝 中间识别结果:", result.text);
               finalResult = result.text;
             }
           } catch (parseError) {
-            console.log("中间结果解析错误:", msg);
+            console.log("⚠️ 中间结果解析错误:", msg);
           }
         });
 
         st.on("completed", (msg) => {
-          console.log("语音识别完成:", msg);
+          console.log("✅ 语音识别完成:", msg);
           try {
             const result = JSON.parse(msg);
-            console.log("解析结果:", result);
+            console.log("🔍 解析结果:", result);
             
             // 检查是否是TranscriptionCompleted事件
             if (result.header && result.header.name === 'TranscriptionCompleted') {
               // 这是完成事件，检查是否已经有结果
               if (finalResult && finalResult !== '识别完成但无结果') {
-                console.log("转录完成，使用已获得的结果:", finalResult);
+                console.log("🎯 转录完成，使用已获得的结果:", finalResult);
               } else {
-                console.log("转录完成事件，但没有文本内容");
+                console.log("⚠️ 转录完成事件，但没有文本内容");
                 finalResult = '识别完成但无结果';
               }
             } else if (result.result) {
@@ -128,25 +134,29 @@ class AliyunSpeechService {
               finalResult = '识别完成但无结果';
             }
             
-            console.log("最终识别结果:", finalResult);
+            console.log("🎯 最终识别结果:", finalResult);
+            console.log("✅ ===== 阿里云语音识别服务完成 =====");
             resolve(finalResult);
           } catch (parseError) {
-            console.log("解析错误，使用原始消息:", msg);
+            console.log("⚠️ 解析错误，使用原始消息:", msg);
             if (!finalResult) {
               finalResult = msg || '识别完成但无结果';
             }
+            console.log("✅ ===== 阿里云语音识别服务完成 =====");
             resolve(finalResult);
           }
         });
 
         st.on("failed", (msg) => {
-          console.error("语音识别失败:", msg);
+          console.error("❌ 语音识别失败:", msg);
+          console.error("❌ ===== 阿里云语音识别服务失败 =====");
           reject(new Error(`语音识别失败: ${msg}`));
         });
 
         st.on("closed", () => {
-          console.log("连接已关闭");
+          console.log("🔌 连接已关闭");
           if (!finalResult) {
+            console.log("⚠️ 连接关闭但没有结果，返回默认值");
             resolve('识别会话结束');
           }
         });
