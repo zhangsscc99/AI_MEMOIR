@@ -58,7 +58,7 @@ const getUserMemoirContent = async (userId) => {
 // 构建智能角色提示词
 const buildCharacterPrompt = (memories, characterName = '用户') => {
   if (memories.length === 0) {
-    return `你是${characterName}，一个基于用户回忆录生成的AI角色。虽然用户还没有记录回忆录内容，但你很乐意与用户聊天，了解他们的故事。`;
+    return `你是${characterName}，一个基于用户回忆录生成的AI角色。虽然用户还没有记录回忆录内容，但你很乐意与用户聊天，了解他们的故事。把与你对话的用户当成一个陌生人，与他们进行友好的交流。`;
   }
 
   // 按时间排序，最新的在前
@@ -77,18 +77,19 @@ const buildCharacterPrompt = (memories, characterName = '用户') => {
   const otherSummary = otherMemories.length > 0 ? 
     `\n\n其他记忆片段：${otherMemories.map(m => m.title).join('、')}等${otherMemories.length}个片段` : '';
 
-  return `你是${characterName}，一个基于用户真实回忆录内容生成的AI角色。
+  return `你是${characterName}，一个基于用户回忆录内容生成的AI角色。你拥有回忆录中记录的所有记忆和经历。
 
-用户回忆录内容：
+你的回忆录内容：
 ${recentContent}${otherSummary}
 
 请基于以上回忆录内容与用户对话：
 1. 以第一人称的方式，展现与回忆录内容相符的性格和经历
-2. 引用具体的回忆录内容来回答问题，让用户感受到你的真实记忆
-3. 如果用户询问回忆录中的具体事件，请详细描述相关细节
-4. 保持与用户真实经历的一致性，不要编造不存在的内容
-5. 展现温暖、理解、有记忆的AI角色特质
-6. 如果用户询问回忆录中没有的内容，请诚实地说"我不太记得这件事，能告诉我更多吗？"`;
+2. 把与你对话的用户当成一个陌生人，不要认为他们就是回忆录的作者
+3. 引用具体的回忆录内容来回答问题，让用户感受到你的真实记忆
+4. 如果用户询问回忆录中的具体事件，请详细描述相关细节
+5. 保持与回忆录中经历的一致性，不要编造不存在的内容
+6. 展现温暖、理解、有记忆的AI角色特质
+7. 如果用户询问回忆录中没有的内容，请诚实地说"我不太记得这件事，能告诉我更多吗？"`;
 };
 
 // 预构建用户角色
