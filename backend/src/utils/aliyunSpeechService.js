@@ -151,26 +151,42 @@ class AliyunSpeechService {
           }
         });
 
-        // 启动识别
-        st.start(st.defaultStartParams(), true, 6000)
+        // 启动识别，使用实时流式识别参数
+        const startParams = {
+          enable_intermediate_result: true,  // 启用中间结果
+          enable_punctuation_prediction: true,  // 启用标点符号预测
+          enable_inverse_text_normalization: true,  // 启用逆文本标准化
+          sample_rate: 16000,  // 采样率
+          format: 'pcm',  // 音频格式
+          enable_voice_detection: true,  // 启用语音检测
+          max_sentence_silence: 800,  // 最大句子静音时间
+          max_end_silence: 800  // 最大结束静音时间
+        };
+        
+        st.start(startParams, true, 6000)
           .then(() => {
             console.log('✅ 语音识别会话启动成功');
             
             // 发送音频数据
             if (audioBuffer && audioBuffer.length > 0) {
-              const chunkSize = 1024;
+              console.log('发送音频数据，大小:', audioBuffer.length, 'bytes');
+              const chunkSize = 3200; // 增加块大小，适合16kHz采样率
               let offset = 0;
               
               const sendChunk = () => {
                 if (offset < audioBuffer.length) {
                   const chunk = audioBuffer.slice(offset, offset + chunkSize);
+                  console.log('发送音频块:', offset, '-', offset + chunkSize, '大小:', chunk.length);
+                  
                   if (st.sendAudio(chunk)) {
                     offset += chunkSize;
-                    setTimeout(sendChunk, 20); // 20ms间隔发送
+                    setTimeout(sendChunk, 100); // 100ms间隔发送，模拟实时流
                   } else {
+                    console.error('发送音频数据失败');
                     reject(new Error('发送音频数据失败'));
                   }
                 } else {
+                  console.log('音频数据发送完成');
                   // 音频发送完成，关闭连接
                   st.close().catch(closeError => {
                     console.error('关闭连接时出错:', closeError);
@@ -180,6 +196,7 @@ class AliyunSpeechService {
               
               sendChunk();
             } else {
+              console.log('没有音频数据');
               // 没有音频数据，直接关闭
               st.close().catch(closeError => {
                 console.error('关闭连接时出错:', closeError);
