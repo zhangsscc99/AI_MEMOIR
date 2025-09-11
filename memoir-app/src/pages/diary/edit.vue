@@ -93,29 +93,6 @@
           </view>
         </view>
 
-        <!-- 录音列表 -->
-        <view class="recordings-list" v-if="recordings.length > 0">
-          <view 
-            class="recording-item" 
-            v-for="(recording, index) in recordings" 
-            :key="index"
-          >
-            <view class="recording-info">
-              <text class="recording-name">录音 {{ index + 1 }}</text>
-              <text class="recording-duration">{{ formatTime(recording.duration) }}</text>
-              <text v-if="recording.transcription" class="recording-transcription">{{ recording.transcription }}</text>
-              <text v-else class="recording-status">正在转换文字...</text>
-            </view>
-            <view class="recording-actions">
-              <view class="play-btn" @click="playRecording(recording)">
-                <text class="play-icon">▶️</text>
-              </view>
-              <view class="delete-btn" @click="deleteRecording(index)">
-                <text class="delete-icon">🗑️</text>
-              </view>
-            </view>
-          </view>
-        </view>
       </view>
     </view>
   </view>
@@ -470,26 +447,6 @@ export default {
       }
     },
 
-    // 播放录音
-    playRecording(recording) {
-      uni.showToast({
-        title: '播放功能开发中',
-        icon: 'none'
-      });
-    },
-
-    // 删除录音
-    deleteRecording(index) {
-      uni.showModal({
-        title: '确认删除',
-        content: '确定要删除这段录音吗？',
-        success: (res) => {
-          if (res.confirm) {
-            this.recordings.splice(index, 1);
-          }
-        }
-      });
-    },
 
     // 生成波形
     generateWaveform() {
@@ -651,18 +608,7 @@ export default {
         // 先上传录音文件
         const uploadedFile = await this.uploadWebAudio(audioBlob);
         
-        // 创建录音记录
-        const newRecording = {
-          id: Date.now(),
-          duration: this.recordingTime,
-          filePath: uploadedFile.filename,
-          blob: audioBlob,
-          playing: false,
-          isWebAudio: true,
-          transcription: '' // 初始化转录文本
-        };
-        
-        this.recordings.push(newRecording);
+        // 重置录音时间
         this.recordingTime = 0;
         
         uni.showToast({
@@ -1578,76 +1524,4 @@ export default {
   font-weight: 500;
 }
 
-.recordings-list {
-  border-radius: 12px;
-  background: white;
-  overflow: hidden;
-}
-
-.recording-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.recording-item:last-child {
-  border-bottom: none;
-}
-
-.recording-info {
-  flex: 1;
-}
-
-.recording-name {
-  font-size: 16px;
-  color: #333;
-  display: block;
-  margin-bottom: 5px;
-}
-
-.recording-duration {
-  font-size: 14px;
-  color: #999;
-}
-
-.recording-transcription {
-  font-size: 12px;
-  color: #666;
-  margin-top: 5px;
-  line-height: 1.4;
-  max-width: 200px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.recording-status {
-  font-size: 12px;
-  color: #999;
-  margin-top: 5px;
-  font-style: italic;
-}
-
-.recording-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.play-btn,
-.delete-btn {
-  padding: 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e0e0e0;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.play-icon,
-.delete-icon {
-  font-size: 16px;
-  color: #333;
-}
 </style>
