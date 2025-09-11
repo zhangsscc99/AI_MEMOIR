@@ -103,15 +103,9 @@
             </view>
             
             <view class="diff-content">
-              <!-- 原始内容（红色背景） -->
-              <view class="diff-original">
-                <view class="diff-label">原始内容</view>
-                <view class="diff-text original-text">{{ originalText }}</view>
-              </view>
-              
               <!-- AI补全内容（绿色背景） -->
               <view class="diff-ai">
-                <view class="diff-label">AI补全</view>
+                <view class="diff-label">AI补全结果</view>
                 <view class="diff-text ai-text">{{ aiCompletedText }}</view>
               </view>
             </view>
@@ -120,11 +114,9 @@
             <view class="diff-actions">
               <view class="diff-btn reject-btn" @click="rejectAiCompletion">
                 <image src="/static/icons/close.svg" class="btn-icon" mode="aspectFit"></image>
-                <text>拒绝</text>
               </view>
               <view class="diff-btn accept-btn" @click="acceptAiCompletion">
                 <image src="/static/icons/check.svg" class="btn-icon" mode="aspectFit"></image>
-                <text>接受</text>
               </view>
             </view>
           </view>
@@ -1769,25 +1761,13 @@ export default {
 }
 
 .diff-content {
-  display: flex;
-  gap: 20px;
   margin-bottom: 20px;
 }
 
-.diff-original,
 .diff-ai {
-  flex: 1;
   border-radius: 8px;
   padding: 16px;
   min-height: 200px;
-}
-
-.diff-original {
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.3);
-}
-
-.diff-ai {
   background: rgba(52, 199, 89, 0.1);
   border: 1px solid rgba(52, 199, 89, 0.3);
 }
@@ -1797,10 +1777,6 @@ export default {
   font-weight: 600;
   margin-bottom: 12px;
   display: block;
-}
-
-.diff-original .diff-label {
-  color: #d70015;
 }
 
 .diff-ai .diff-label {
@@ -1813,10 +1789,6 @@ export default {
   color: #333;
   white-space: pre-wrap;
   word-wrap: break-word;
-}
-
-.original-text {
-  color: #d70015;
 }
 
 .ai-text {
@@ -1832,9 +1804,10 @@ export default {
 .diff-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: 8px;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 16px;
@@ -1864,8 +1837,8 @@ export default {
 }
 
 .btn-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 /* 动画 */
