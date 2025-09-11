@@ -20,6 +20,17 @@ export const imageMapping = {
 
 // 获取 WebP 路径
 export function getWebPPath(originalPath) {
+  // 检查是否是生产环境
+  const isProduction = process.env.NODE_ENV === 'production' || 
+                      (typeof window !== 'undefined' && window.location.hostname !== 'localhost');
+  
+  if (isProduction) {
+    // 生产环境：将 /src/images/ 替换为 images_webp/
+    const webpPath = originalPath.replace('/src/images/', 'images_webp/').replace(/\.(png|jpe?g)$/i, '.webp');
+    return webpPath;
+  }
+  
+  // 开发环境：使用映射表
   return imageMapping[originalPath] || originalPath;
 }
 
