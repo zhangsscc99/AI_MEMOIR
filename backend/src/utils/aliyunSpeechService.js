@@ -81,16 +81,40 @@ class AliyunSpeechService {
 
         st.on("changed", (msg) => {
           console.log("识别中间结果:", msg);
+          try {
+            const result = JSON.parse(msg);
+            if (result.result) {
+              console.log("中间识别结果:", result.result);
+            }
+          } catch (parseError) {
+            console.log("中间结果解析错误:", msg);
+          }
         });
 
         st.on("completed", (msg) => {
           console.log("语音识别完成:", msg);
           try {
             const result = JSON.parse(msg);
-            finalResult = result.result || '识别完成但无结果';
+            console.log("解析结果:", result);
+            
+            // 处理不同的结果格式
+            if (result.result) {
+              finalResult = result.result;
+            } else if (result.text) {
+              finalResult = result.text;
+            } else if (result.payload && result.payload.result) {
+              finalResult = result.payload.result;
+            } else if (typeof msg === 'string' && msg.length > 0) {
+              finalResult = msg;
+            } else {
+              finalResult = '识别完成但无结果';
+            }
+            
+            console.log("最终识别结果:", finalResult);
             resolve(finalResult);
           } catch (parseError) {
-            finalResult = msg;
+            console.log("解析错误，使用原始消息:", msg);
+            finalResult = msg || '识别完成但无结果';
             resolve(finalResult);
           }
         });

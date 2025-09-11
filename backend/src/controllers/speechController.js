@@ -192,7 +192,7 @@ const deleteAudio = async (req, res) => {
  */
 const transcribeAudio = async (req, res) => {
   try {
-    const { filename, testMode } = req.body;
+    const { filename, testMode, realtime } = req.body;
     
     if (!filename) {
       return res.status(400).json({
@@ -275,7 +275,8 @@ const transcribeAudio = async (req, res) => {
     console.log('🎤 开始音频转写:', {
       filename,
       publicFileUrl,
-      localPath: audioFilePath
+      localPath: audioFilePath,
+      realtime: realtime || false
     });
 
     // 读取音频文件并调用阿里云语音识别服务
