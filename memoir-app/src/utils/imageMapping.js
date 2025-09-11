@@ -22,16 +22,29 @@ export const imageMapping = {
 export function getWebPPath(originalPath) {
   // 检查是否是生产环境
   const isProduction = process.env.NODE_ENV === 'production' || 
-                      (typeof window !== 'undefined' && window.location.hostname !== 'localhost');
+                      (typeof window !== 'undefined' && 
+                       window.location.hostname !== 'localhost' && 
+                       window.location.hostname !== '127.0.0.1' &&
+                       !window.location.hostname.includes('localhost'));
+  
+  console.log('🔍 图片路径检测:', {
+    originalPath,
+    isProduction,
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'undefined',
+    nodeEnv: process.env.NODE_ENV
+  });
   
   if (isProduction) {
-    // 生产环境：将 /src/images/ 替换为 images_webp/
-    const webpPath = originalPath.replace('/src/images/', 'images_webp/').replace(/\.(png|jpe?g)$/i, '.webp');
+    // 生产环境：将 /src/images/ 替换为 /images_webp/
+    const webpPath = originalPath.replace('/src/images/', '/images_webp/').replace(/\.(png|jpe?g)$/i, '.webp');
+    console.log('🎯 生产环境WebP路径:', webpPath);
     return webpPath;
   }
   
   // 开发环境：使用映射表
-  return imageMapping[originalPath] || originalPath;
+  const devPath = imageMapping[originalPath] || originalPath;
+  console.log('🎯 开发环境路径:', devPath);
+  return devPath;
 }
 
 // 检查是否支持 WebP

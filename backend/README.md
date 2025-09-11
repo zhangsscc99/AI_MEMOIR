@@ -284,8 +284,7 @@ npm run dev:h5 -> frontend
 
 
 
-git fetch origin
-git reset --hard origin/main
+
 
 
 npm run build:serve
@@ -300,7 +299,7 @@ npm run build:serve
 
 
 
-cp -r dist/build/h5/* /var/www/MEMOIR/
+
 
 
 
