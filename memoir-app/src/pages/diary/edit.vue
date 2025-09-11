@@ -147,7 +147,10 @@ export default {
       // Web录音相关
       mediaRecorder: null,
       mediaStream: null,
-      audioChunks: []
+      audioChunks: [],
+      // 实时语音识别相关
+      realtimeRecognitionTimer: null,
+      speechRecognition: null
     };
   },
 
@@ -176,6 +179,13 @@ export default {
     this.stopRecording();
     if (this.recordingTimer) {
       clearInterval(this.recordingTimer);
+    }
+    // 清理实时识别
+    if (this.realtimeRecognitionTimer) {
+      clearInterval(this.realtimeRecognitionTimer);
+    }
+    if (this.speechRecognition) {
+      this.speechRecognition.stop();
     }
     // 清理Web录音资源
     if (this.mediaStream) {
@@ -557,8 +567,11 @@ export default {
         };
         
         // 开始录音
-        this.mediaRecorder.start(100); // 每100ms收集一次数据
+        this.mediaRecorder.start(2000); // 每2秒收集一次数据
         console.log('✅ Web录音开始成功, 状态:', this.mediaRecorder.state);
+        
+        // 开始实时语音识别
+        this.startRealtimeRecognition();
         
         // 设置录音状态
         this.isRecording = true;
@@ -605,6 +618,18 @@ export default {
           });
         }
         
+        // 停止实时识别
+        if (this.realtimeRecognitionTimer) {
+          clearInterval(this.realtimeRecognitionTimer);
+          this.realtimeRecognitionTimer = null;
+        }
+        
+        // 停止Web Speech API识别
+        if (this.speechRecognition) {
+          this.speechRecognition.stop();
+          this.speechRecognition = null;
+        }
+        
         // 设置录音状态
         this.isRecording = false;
         this.stopRecordingTimer();
@@ -641,14 +666,9 @@ export default {
         this.recordingTime = 0;
         
         uni.showToast({
-          title: '录制完成，正在转换文字...',
+          title: '录制完成',
           icon: 'success'
         });
-
-        // 自动开始语音识别
-        setTimeout(() => {
-          this.transcribeRecording(newRecording);
-        }, 1000);
         
       } catch (error) {
         console.error('❌ 处理Web录音失败:', error);
@@ -721,6 +741,154 @@ export default {
       } catch (error) {
         console.error('❌ 上传录音文件失败:', error);
         throw error;
+      }
+    },
+
+    // 实时语音识别
+    async startRealtimeRecognition() {
+      try {
+        console.log('🎤 开始实时语音识别...');
+        
+        // 检查浏览器是否支持Web Speech API
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+          console.log('🌐 使用Web Speech API进行实时识别');
+          this.startWebSpeechRecognition();
+        } else {
+          console.log('📡 使用阿里云语音识别');
+          await this.startAliyunRealtimeRecognition();
+        }
+      } catch (error) {
+        console.error('❌ 实时语音识别启动失败:', error);
+      }
+    },
+
+    // Web Speech API实时识别
+    startWebSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      this.speechRecognition = new SpeechRecognition();
+      
+      this.speechRecognition.continuous = true;
+      this.speechRecognition.interimResults = true;
+      this.speechRecognition.lang = 'zh-CN';
+      
+      this.speechRecognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        
+        // 更新内容区域
+        if (finalTranscript) {
+          console.log('✅ 最终识别结果:', finalTranscript);
+          if (this.diaryContent.trim()) {
+            this.diaryContent += ' ' + finalTranscript;
+          } else {
+            this.diaryContent = finalTranscript;
+          }
+        } else if (interimTranscript) {
+          console.log('🎯 中间识别结果:', interimTranscript);
+        }
+      };
+      
+      this.speechRecognition.onerror = (event) => {
+        console.error('❌ Web Speech API错误:', event.error);
+      };
+      
+      this.speechRecognition.onend = () => {
+        console.log('Web Speech API识别结束');
+      };
+      
+      this.speechRecognition.start();
+      console.log('✅ Web Speech API开始识别');
+    },
+
+    // 阿里云实时识别
+    async startAliyunRealtimeRecognition() {
+      // 获取用户Token
+      const token = uni.getStorageSync('token');
+      if (!token) {
+        console.error('❌ 用户未登录，无法进行实时识别');
+        return;
+      }
+
+      try {
+        // 获取语音识别Token
+        const tokenResponse = await uni.request({
+          url: apiUrl('/speech/token'),
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
+          throw new Error('获取语音识别Token失败');
+        }
+
+        const speechToken = tokenResponse.data.data.token;
+        console.log('✅ 获取语音识别Token成功');
+        
+        // 设置实时识别定时器
+        this.realtimeRecognitionTimer = setInterval(() => {
+          this.performRealtimeRecognition(speechToken);
+        }, 3000); // 每3秒进行一次识别
+      } catch (error) {
+        console.error('❌ 阿里云实时识别启动失败:', error);
+      }
+    },
+
+    // 执行实时语音识别
+    async performRealtimeRecognition(speechToken) {
+      if (!this.isRecording || this.audioChunks.length === 0) {
+        return;
+      }
+
+      try {
+        // 获取最新的音频数据
+        const latestChunk = this.audioChunks[this.audioChunks.length - 1];
+        if (!latestChunk || latestChunk.size === 0) {
+          return;
+        }
+
+        console.log('🎯 执行实时识别，音频大小:', latestChunk.size);
+
+        // 创建FormData
+        const formData = new FormData();
+        const audioFile = new File([latestChunk], 'audio.webm', { type: 'audio/webm' });
+        formData.append('audio', audioFile);
+
+        // 调用实时识别API
+        const response = await fetch(apiUrl('/speech/transcribe'), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${uni.getStorageSync('token')}`
+          },
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data && result.data.transcript) {
+            const transcribedText = result.data.transcript;
+            console.log('✅ 实时识别结果:', transcribedText);
+            
+            // 将识别结果添加到内容区域
+            if (this.diaryContent.trim()) {
+              this.diaryContent += ' ' + transcribedText;
+            } else {
+              this.diaryContent = transcribedText;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ 实时识别失败:', error);
       }
     },
 
