@@ -229,7 +229,20 @@ export default {
     
     loadChapterStatus() {
       try {
-        const savedStatus = uni.getStorageSync('chapter_status');
+        // 获取当前用户ID
+        const userInfo = uni.getStorageSync('user');
+        const userId = userInfo?.id;
+        
+        if (!userId) {
+          // 未登录时重置所有章节状态
+          this.chapters.forEach(chapter => {
+            chapter.completed = false;
+          });
+          return;
+        }
+        
+        // 加载用户特定的章节状态
+        const savedStatus = uni.getStorageSync(`chapter_status_${userId}`);
         if (savedStatus) {
           const statusMap = JSON.parse(savedStatus);
           this.chapters.forEach(chapter => {

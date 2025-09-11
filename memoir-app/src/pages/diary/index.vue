@@ -79,7 +79,15 @@ export default {
       try {
         console.log('🔄 开始加载随记数据...');
         
+        // 获取当前用户ID
+        const userInfo = uni.getStorageSync('user');
+        const userId = userInfo?.id;
+        
         // 清理可能过期的缓存数据
+        if (userId) {
+          uni.removeStorageSync(`diaries_${userId}`);
+          uni.removeStorageSync(`currentDiary_${userId}`);
+        }
         uni.removeStorageSync('diaries');
         uni.removeStorageSync('currentDiary');
         
@@ -87,7 +95,7 @@ export default {
         const token = uni.getStorageSync('token');
         if (!token) {
           console.log('❌ 未登录，使用本地存储数据');
-          const localDiaries = uni.getStorageSync('diaries') || [];
+          const localDiaries = userId ? uni.getStorageSync(`diaries_${userId}`) || [] : uni.getStorageSync('diaries') || [];
           this.diaries = localDiaries;
           return;
         }
@@ -140,12 +148,12 @@ export default {
           console.log('✅ 随记数据加载完成，总数:', this.diaries.length, '数据:', this.diaries);
         } else {
           console.log('❌ 获取随记失败，使用本地存储数据:', response.data);
-          const localDiaries = uni.getStorageSync('diaries') || [];
+          const localDiaries = userId ? uni.getStorageSync(`diaries_${userId}`) || [] : uni.getStorageSync('diaries') || [];
           this.diaries = localDiaries.concat(this.getDefaultDiaries());
         }
       } catch (error) {
         console.error('❌ 加载随记出错，使用本地存储数据:', error);
-        const localDiaries = uni.getStorageSync('diaries') || [];
+        const localDiaries = userId ? uni.getStorageSync(`diaries_${userId}`) || [] : uni.getStorageSync('diaries') || [];
         this.diaries = localDiaries.concat(this.getDefaultDiaries());
       }
     },
@@ -181,7 +189,14 @@ export default {
     viewDiary(diary) {
       console.log('查看随记:', diary);
       
+      // 获取当前用户ID
+      const userInfo = uni.getStorageSync('user');
+      const userId = userInfo?.id;
+      
       // 将完整的随记数据存储到本地，供编辑页面使用
+      if (userId) {
+        uni.setStorageSync(`currentDiary_${userId}`, diary);
+      }
       uni.setStorageSync('currentDiary', diary);
       
       // 跳转到编辑页面，以查看模式打开
@@ -214,7 +229,14 @@ export default {
     editDiary(diary) {
       console.log('编辑随记:', diary);
       
+      // 获取当前用户ID
+      const userInfo = uni.getStorageSync('user');
+      const userId = userInfo?.id;
+      
       // 将完整的随记数据存储到本地，供编辑页面使用
+      if (userId) {
+        uni.setStorageSync(`currentDiary_${userId}`, diary);
+      }
       uni.setStorageSync('currentDiary', diary);
       
       uni.navigateTo({
@@ -302,10 +324,17 @@ export default {
     // 本地删除
     deleteFromLocal(diary) {
       try {
-        const diaries = uni.getStorageSync('diaries') || [];
+        // 获取当前用户ID
+        const userInfo = uni.getStorageSync('user');
+        const userId = userInfo?.id;
+        
+        const diaries = userId ? uni.getStorageSync(`diaries_${userId}`) || [] : uni.getStorageSync('diaries') || [];
         const index = diaries.findIndex(d => d.id === diary.id);
         if (index > -1) {
           diaries.splice(index, 1);
+          if (userId) {
+            uni.setStorageSync(`diaries_${userId}`, diaries);
+          }
           uni.setStorageSync('diaries', diaries);
           this.loadDiaries();
           uni.showToast({

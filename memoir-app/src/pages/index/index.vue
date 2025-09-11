@@ -224,8 +224,21 @@ export default {
     
     loadChapterData() {
       try {
-        // 加载章节状态
-        const savedStatus = uni.getStorageSync('chapter_status');
+        // 获取当前用户ID
+        const userInfo = uni.getStorageSync('user');
+        const userId = userInfo?.id;
+        
+        if (!userId) {
+          // 未登录时重置所有章节状态
+          this.allChapters.forEach(chapter => {
+            chapter.completed = false;
+          });
+          this.progressPercent = 0;
+          return;
+        }
+        
+        // 加载用户特定的章节状态
+        const savedStatus = uni.getStorageSync(`chapter_status_${userId}`);
         if (savedStatus) {
           const statusMap = JSON.parse(savedStatus);
           let completedCount = 0;

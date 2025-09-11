@@ -1077,27 +1077,33 @@ export default {
             lastModified: new Date().toISOString()
           };
 
-          // 保存到本地章节状态
-          uni.setStorageSync(`chapter_${customChapterId}`, JSON.stringify({
-            text: this.diaryContent.trim(),
-            recordings: this.recordings,
-            lastModified: new Date().toISOString(),
-            completed: true
-          }));
+          // 获取当前用户ID
+          const userInfo = uni.getStorageSync('user');
+          const userId = userInfo?.id;
+          
+          if (userId) {
+            // 保存到用户特定的本地章节状态
+            uni.setStorageSync(`chapter_${customChapterId}_${userId}`, JSON.stringify({
+              text: this.diaryContent.trim(),
+              recordings: this.recordings,
+              lastModified: new Date().toISOString(),
+              completed: true
+            }));
 
-          // 更新章节状态映射
-          const savedStatus = uni.getStorageSync('chapter_status') || '{}';
-          const statusMap = JSON.parse(savedStatus);
-          statusMap[customChapterId] = {
-            completed: true,
-            lastModified: new Date().toISOString()
-          };
-          uni.setStorageSync('chapter_status', JSON.stringify(statusMap));
+            // 更新用户特定的章节状态映射
+            const savedStatus = uni.getStorageSync(`chapter_status_${userId}`) || '{}';
+            const statusMap = JSON.parse(savedStatus);
+            statusMap[customChapterId] = {
+              completed: true,
+              lastModified: new Date().toISOString()
+            };
+            uni.setStorageSync(`chapter_status_${userId}`, JSON.stringify(statusMap));
 
-          // 添加到自定义章节列表（用于首页和章节页显示）
-          const customChapters = uni.getStorageSync('custom_chapters') || [];
-          customChapters.unshift(localChapterData);
-          uni.setStorageSync('custom_chapters', customChapters);
+            // 添加到用户特定的自定义章节列表（用于首页和章节页显示）
+            const customChapters = uni.getStorageSync(`custom_chapters_${userId}`) || [];
+            customChapters.unshift(localChapterData);
+            uni.setStorageSync(`custom_chapters_${userId}`, customChapters);
+          }
 
           uni.showToast({
             title: '保存成功',
@@ -1140,17 +1146,23 @@ export default {
               needSync: true // 标记需要同步到服务器
             };
 
-            uni.setStorageSync(`chapter_${customChapterId}`, JSON.stringify({
-              text: this.diaryContent.trim(),
-              recordings: this.recordings,
-              lastModified: new Date().toISOString(),
-              completed: true,
-              needSync: true
-            }));
+            // 获取当前用户ID
+            const userInfo = uni.getStorageSync('user');
+            const userId = userInfo?.id;
+            
+            if (userId) {
+              uni.setStorageSync(`chapter_${customChapterId}_${userId}`, JSON.stringify({
+                text: this.diaryContent.trim(),
+                recordings: this.recordings,
+                lastModified: new Date().toISOString(),
+                completed: true,
+                needSync: true
+              }));
 
-            const customChapters = uni.getStorageSync('custom_chapters') || [];
-            customChapters.unshift(localChapterData);
-            uni.setStorageSync('custom_chapters', customChapters);
+              const customChapters = uni.getStorageSync(`custom_chapters_${userId}`) || [];
+              customChapters.unshift(localChapterData);
+              uni.setStorageSync(`custom_chapters_${userId}`, customChapters);
+            }
 
             uni.showToast({
               title: '已离线保存',

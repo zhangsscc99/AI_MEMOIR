@@ -301,7 +301,16 @@ export default {
     
     loadSavedContent() {
       try {
-        const savedContent = uni.getStorageSync(`chapter_${this.chapterId}`);
+        // 获取当前用户ID
+        const userInfo = uni.getStorageSync('user');
+        const userId = userInfo?.id;
+        
+        if (!userId) {
+          return;
+        }
+        
+        // 加载用户特定的章节内容
+        const savedContent = uni.getStorageSync(`chapter_${this.chapterId}_${userId}`);
         if (savedContent) {
           const content = JSON.parse(savedContent);
           this.contentText = content.text || '';
@@ -356,23 +365,29 @@ export default {
         }
 
         if (response.statusCode === 200 && response.data.success) {
-          // 同时更新本地存储（用于离线查看）
-          const content = {
-            text: this.contentText,
-            recordings: this.recordings,
-            lastModified: new Date().toISOString(),
-            completed: this.contentText.length > 0 || this.recordings.length > 0
-          };
+          // 获取当前用户ID
+          const userInfo = uni.getStorageSync('user');
+          const userId = userInfo?.id;
           
-          uni.setStorageSync(`chapter_${this.chapterId}`, JSON.stringify(content));
-          
-          const savedStatus = uni.getStorageSync('chapter_status') || '{}';
-          const statusMap = JSON.parse(savedStatus);
-          statusMap[this.chapterId] = {
-            completed: content.completed,
-            lastModified: content.lastModified
-          };
-          uni.setStorageSync('chapter_status', JSON.stringify(statusMap));
+          if (userId) {
+            // 同时更新用户特定的本地存储（用于离线查看）
+            const content = {
+              text: this.contentText,
+              recordings: this.recordings,
+              lastModified: new Date().toISOString(),
+              completed: this.contentText.length > 0 || this.recordings.length > 0
+            };
+            
+            uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
+            
+            const savedStatus = uni.getStorageSync(`chapter_status_${userId}`) || '{}';
+            const statusMap = JSON.parse(savedStatus);
+            statusMap[this.chapterId] = {
+              completed: content.completed,
+              lastModified: content.lastModified
+            };
+            uni.setStorageSync(`chapter_status_${userId}`, JSON.stringify(statusMap));
+          }
 
           uni.showToast({
             title: '保存成功',
@@ -393,25 +408,31 @@ export default {
         // 如果是网络错误，尝试本地保存
         if (error.errMsg && error.errMsg.includes('network')) {
           try {
-            const content = {
-              text: this.contentText,
-              recordings: this.recordings,
-              lastModified: new Date().toISOString(),
-              completed: this.contentText.length > 0 || this.recordings.length > 0,
-              needSync: true // 标记需要同步到服务器
-            };
+            // 获取当前用户ID
+            const userInfo = uni.getStorageSync('user');
+            const userId = userInfo?.id;
             
-            uni.setStorageSync(`chapter_${this.chapterId}`, JSON.stringify(content));
-            
-            uni.showToast({
-              title: '已离线保存',
-              icon: 'success'
-            });
-            
-            // 离线保存成功后延迟跳转回去
-            setTimeout(() => {
-              uni.navigateBack();
-            }, 1500);
+            if (userId) {
+              const content = {
+                text: this.contentText,
+                recordings: this.recordings,
+                lastModified: new Date().toISOString(),
+                completed: this.contentText.length > 0 || this.recordings.length > 0,
+                needSync: true // 标记需要同步到服务器
+              };
+              
+              uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
+              
+              uni.showToast({
+                title: '已离线保存',
+                icon: 'success'
+              });
+              
+              // 离线保存成功后延迟跳转回去
+              setTimeout(() => {
+                uni.navigateBack();
+              }, 1500);
+            }
           } catch (localError) {
             uni.showToast({
               title: '保存失败',
