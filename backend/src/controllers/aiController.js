@@ -126,6 +126,111 @@ const getCachedCharacterPrompt = (userId) => {
 };
 
 /**
+ * @desc 未登录用户AI聊天处理
+ * @route POST /api/ai/guest-chat
+ * @access Public
+ */
+const guestChatWithAI = async (req, res) => {
+  try {
+    const { message, stream = true } = req.body;
+
+    if (!message || message.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: '消息内容不能为空'
+      });
+    }
+
+    // 构建未登录用户的系统提示词
+    const systemPrompt = `你是小忆，一个专业的AI回忆录助手。你的任务是：
+
+1. **友好介绍**：向用户介绍回忆录记录的重要性和价值
+2. **功能引导**：介绍我们的回忆录功能，包括语音录制、文字记录、AI补全等
+3. **注册引导**：鼓励用户注册账号来体验完整的个性化AI聊天功能
+4. **通用聊天**：回答用户关于回忆录、人生记录、时间管理等问题
+5. **避免过度推销**：保持自然、友好的对话，不要过于商业化
+
+当用户询问关于回忆录、人生记录、记忆保存等问题时，你可以详细介绍我们的功能。当用户表达对AI聊天感兴趣时，可以引导他们注册账号。
+
+请用温暖、专业的语调与用户交流，展现你对回忆录记录的专业理解。`;
+
+    // 构建消息数组
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message }
+    ];
+
+    if (stream) {
+      // 流式响应
+      res.writeHead(200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+
+      try {
+        const completion = await client.chat.completions.create({
+          model: process.env.DASHSCOPE_MODEL || 'qwen-plus',
+          messages: messages,
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: true
+        });
+
+        for await (const chunk of completion) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            res.write(content);
+          }
+        }
+        res.end();
+      } catch (error) {
+        console.error('流式AI聊天失败:', error);
+        res.write('抱歉，我现在无法回答您的问题，请稍后再试。');
+        res.end();
+      }
+    } else {
+      // 非流式响应
+      try {
+        const completion = await client.chat.completions.create({
+          model: process.env.DASHSCOPE_MODEL || 'qwen-plus',
+          messages: messages,
+          max_tokens: 1000,
+          temperature: 0.7
+        });
+
+        const response = completion.choices[0].message.content;
+
+        res.status(200).json({
+          success: true,
+          message: 'AI聊天成功',
+          data: {
+            response: response,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('AI聊天失败:', error);
+        res.status(500).json({
+          success: false,
+          message: 'AI聊天失败',
+          error: process.env.NODE_ENV === 'development' ? error.message : 'AI服务暂时不可用'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('未登录用户AI聊天失败:', error);
+    res.status(500).json({
+      success: false,
+      message: 'AI聊天失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'AI服务暂时不可用'
+    });
+  }
+};
+
+/**
  * @desc AI聊天处理（支持流式输出和多轮对话）
  * @route POST /api/ai/chat
  * @access Private
@@ -498,6 +603,7 @@ const completeText = async (req, res) => {
 
 module.exports = {
   chatWithAI,
+  guestChatWithAI,
   getConversationHistory,
   clearConversationHistory,
   getUserMemories,

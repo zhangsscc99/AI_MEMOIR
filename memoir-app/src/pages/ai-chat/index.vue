@@ -147,8 +147,9 @@ export default {
         
         if (!token) {
           console.log('用户未登录，使用默认角色信息');
-          // 未登录时保持默认描述
-          this.characterInfo.description = 'AI角色';
+          // 未登录时使用友好的默认人设
+          this.characterInfo.name = '小忆';
+          this.characterInfo.description = '您的AI回忆录助手';
           return;
         }
 
@@ -258,8 +259,10 @@ export default {
     // 流式聊天请求
     async streamChat(message, messageIndex) {
       const token = uni.getStorageSync('token');
+      
+      // 未登录用户使用特殊的聊天接口
       if (!token) {
-        throw new Error('未登录');
+        return await this.guestChat(message, messageIndex);
       }
 
       try {
@@ -503,9 +506,20 @@ export default {
     // 添加欢迎消息
     addWelcomeMessage() {
       if (this.messages.length === 0) {
+        const token = uni.getStorageSync('token');
+        let welcomeMessage;
+        
+        if (token) {
+          // 已登录用户的欢迎消息
+          welcomeMessage = `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`;
+        } else {
+          // 未登录用户的欢迎消息
+          welcomeMessage = `你好！我是${this.characterInfo.name}，您的AI回忆录助手。我可以帮助您了解如何记录和整理人生回忆，或者回答一些通用问题。如果您想体验完整的个性化AI聊天功能，建议您注册账号并开始记录您的回忆录。有什么想了解的吗？`;
+        }
+        
         this.messages.push({
           type: 'ai',
-          content: `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`,
+          content: welcomeMessage,
           timestamp: new Date()
         });
       }
@@ -519,6 +533,35 @@ export default {
         if (firstMessage.type === 'ai' && firstMessage.content.includes('你好！我是')) {
           firstMessage.content = `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`;
         }
+      }
+    },
+
+    // 未登录用户聊天
+    async guestChat(message, messageIndex) {
+      try {
+        const response = await uni.request({
+          url: apiUrl('/ai/guest-chat'),
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: {
+            message: message,
+            stream: false
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          const fullResponse = response.data.data.response || '抱歉，我现在无法回答您的问题。';
+          console.log('AI回复内容:', fullResponse);
+          this.handleStreamResponse(fullResponse, messageIndex);
+        } else {
+          console.error('AI聊天响应错误:', response.data);
+          throw new Error(response.data.message || '请求失败');
+        }
+      } catch (error) {
+        console.error('AI聊天请求失败:', error);
+        throw error;
       }
     }
 

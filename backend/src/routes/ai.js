@@ -3,7 +3,8 @@ const router = express.Router();
 
 // 导入控制器
 const { 
-  chatWithAI, 
+  chatWithAI,
+  guestChatWithAI,
   getConversationHistory, 
   clearConversationHistory, 
   getUserMemories,
@@ -14,6 +15,13 @@ const {
 
 // 导入中间件
 const { authenticateToken } = require('../middleware/auth');
+
+/**
+ * @route   POST /api/ai/guest-chat
+ * @desc    未登录用户AI聊天接口
+ * @access  Public
+ */
+router.post('/guest-chat', guestChatWithAI);
 
 /**
  * @route   POST /api/ai/chat
