@@ -1,0 +1,8 @@
+{
+  "appId": "com.memoir.app",
+  "appName": "Memoir",
+  "webDir": "dist/build/h5",
+  "server": {
+    "androidScheme": "https"
+  }
+}
