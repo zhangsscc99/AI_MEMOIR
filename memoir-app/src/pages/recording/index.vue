@@ -54,21 +54,21 @@
           <view class="voice-control-area">
             <!-- 录制按钮和AI补全按钮 -->
             <view class="control-buttons">
-              <!-- 录制按钮 -->
-              <view class="record-btn-container">
-                <view 
-                  class="record-btn"
-                  :class="{ 'recording': isRecording, 'processing': isProcessing }"
-                  @click="toggleRecording"
-                >
-                  <view class="record-icon">
-                    <view v-if="isRecording" class="recording-animation">
-                      <view class="wave" v-for="i in 3" :key="i"></view>
-                    </view>
-                    <image v-else src="/static/icons/microphone.svg" class="mic-icon" mode="aspectFit"></image>
+            <!-- 录制按钮 -->
+            <view class="record-btn-container">
+            <view 
+              class="record-btn"
+              :class="{ 'recording': isRecording, 'processing': isProcessing }"
+              @click="toggleRecording"
+            >
+                <view class="record-icon">
+                  <view v-if="isRecording" class="recording-animation">
+                    <view class="wave" v-for="i in 3" :key="i"></view>
                   </view>
+                  <image v-else src="/static/icons/microphone.svg" class="mic-icon" mode="aspectFit"></image>
                 </view>
-                <text class="record-text">{{ recordButtonText }}</text>
+              </view>
+              <text class="record-text">{{ recordButtonText }}</text>
               </view>
               
               <!-- AI补全按钮 -->
@@ -100,7 +100,7 @@
             <view class="diff-header">
               <text class="diff-title">AI补全结果</text>
               <text class="diff-subtitle">请选择是否接受AI的修改</text>
-            </view>
+        </view>
             
             <view class="diff-content">
               <!-- AI补全内容（绿色背景） -->
@@ -371,21 +371,21 @@ export default {
           
           if (userId) {
             // 同时更新用户特定的本地存储（用于离线查看）
-            const content = {
-              text: this.contentText,
-              recordings: this.recordings,
-              lastModified: new Date().toISOString(),
-              completed: this.contentText.length > 0 || this.recordings.length > 0
-            };
-            
+          const content = {
+            text: this.contentText,
+            recordings: this.recordings,
+            lastModified: new Date().toISOString(),
+            completed: this.contentText.length > 0 || this.recordings.length > 0
+          };
+          
             uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
-            
+          
             const savedStatus = uni.getStorageSync(`chapter_status_${userId}`) || '{}';
-            const statusMap = JSON.parse(savedStatus);
-            statusMap[this.chapterId] = {
-              completed: content.completed,
-              lastModified: content.lastModified
-            };
+          const statusMap = JSON.parse(savedStatus);
+          statusMap[this.chapterId] = {
+            completed: content.completed,
+            lastModified: content.lastModified
+          };
             uni.setStorageSync(`chapter_status_${userId}`, JSON.stringify(statusMap));
           }
 
@@ -413,25 +413,25 @@ export default {
             const userId = userInfo?.id;
             
             if (userId) {
-              const content = {
-                text: this.contentText,
-                recordings: this.recordings,
-                lastModified: new Date().toISOString(),
-                completed: this.contentText.length > 0 || this.recordings.length > 0,
-                needSync: true // 标记需要同步到服务器
-              };
-              
+            const content = {
+              text: this.contentText,
+              recordings: this.recordings,
+              lastModified: new Date().toISOString(),
+              completed: this.contentText.length > 0 || this.recordings.length > 0,
+              needSync: true // 标记需要同步到服务器
+            };
+            
               uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
-              
-              uni.showToast({
-                title: '已离线保存',
-                icon: 'success'
-              });
-              
-              // 离线保存成功后延迟跳转回去
-              setTimeout(() => {
-                uni.navigateBack();
-              }, 1500);
+            
+            uni.showToast({
+              title: '已离线保存',
+              icon: 'success'
+            });
+            
+            // 离线保存成功后延迟跳转回去
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
             }
           } catch (localError) {
             uni.showToast({
