@@ -643,6 +643,9 @@ export default {
           console.log('🎤 使用Microphone插件...');
           const result = await window.Capacitor.Plugins.Microphone.startRecording();
           console.log('✅ Microphone录音开始成功:', result);
+        } else if (window.Media) {
+          console.log('🎤 使用Cordova Media插件...');
+          await this.startCordovaRecording();
         } else {
           console.log('⚠️ 没有找到录音插件，使用模拟录音模式...');
           // 在Android WebView中，使用模拟录音模式
@@ -654,6 +657,43 @@ export default {
         // 降级到模拟录音
         console.log('🔄 降级到模拟录音...');
         await this.startSimulatedRecording();
+      }
+    },
+
+    // Cordova Media 录音方法
+    async startCordovaRecording() {
+      try {
+        console.log('🎤 开始Cordova录音...');
+        
+        // 创建录音文件路径
+        const fileName = `recording_${Date.now()}.wav`;
+        const filePath = `file:///android_asset/public/${fileName}`;
+        
+        console.log('📁 录音文件路径:', filePath);
+        
+        // 创建Media对象
+        this.mediaRecorder = new Media(filePath, 
+          // 成功回调
+          () => {
+            console.log('✅ Cordova录音开始成功');
+          },
+          // 错误回调
+          (error) => {
+            console.error('❌ Cordova录音开始失败:', error);
+            this.handleRecordingError('录音开始失败');
+          }
+        );
+        
+        // 开始录音
+        this.mediaRecorder.startRecord();
+        console.log('✅ Cordova录音已启动');
+        
+        // 开始状态监控
+        this.startStatusMonitoring();
+        
+      } catch (error) {
+        console.error('❌ Cordova录音启动失败:', error);
+        throw error;
       }
     },
 
@@ -1137,9 +1177,12 @@ export default {
       }
       
       // 检测环境并停止录音
-      if (this.mediaRecorder || this.mediaStream) {
+      if (this.mediaStream) {
         console.log('🌐 停止Web录音...');
         this.stopWebRecording();
+      } else if (this.mediaRecorder && typeof this.mediaRecorder.stopRecord === 'function') {
+        console.log('🎤 停止Cordova录音...');
+        this.stopCordovaRecording();
       } else if (typeof uni !== 'undefined' && typeof uni.stopRecord === 'function') {
         console.log('📱 停止App录音...');
         uni.stopRecord({
@@ -1197,6 +1240,34 @@ export default {
         
       } catch (error) {
         console.error('❌ 停止Web录音失败:', error);
+        this.handleRecordingError('停止录音失败');
+      }
+    },
+
+    // 停止Cordova录音
+    stopCordovaRecording() {
+      try {
+        console.log('🎤 停止Cordova录音...');
+        
+        if (this.mediaRecorder) {
+          // 停止录音
+          this.mediaRecorder.stopRecord();
+          console.log('✅ Cordova录音已停止');
+          
+          // 获取录音文件路径
+          const filePath = this.mediaRecorder.src;
+          console.log('📁 录音文件路径:', filePath);
+          
+          // 处理录音成功
+          this.handleRecordingSuccess(filePath);
+          
+          // 清理Media对象
+          this.mediaRecorder.release();
+          this.mediaRecorder = null;
+        }
+        
+      } catch (error) {
+        console.error('❌ 停止Cordova录音失败:', error);
         this.handleRecordingError('停止录音失败');
       }
     },

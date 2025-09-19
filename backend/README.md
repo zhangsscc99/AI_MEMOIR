@@ -341,3 +341,8 @@ npx cap sync android
 npx cap open android 
 cd android
 ./gradlew assembleDebug
+
+
+1把ai技术在项目里的使用能讲清楚
+2可以添加人生回忆录章节
+3
