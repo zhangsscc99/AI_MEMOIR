@@ -145,7 +145,6 @@ export default {
       recordingTimer: null,
       realtimeRecognitionTimer: null,
       statusMonitorTimer: null,
-      cordovaAudioTimer: null,
       speechRecognition: null,
       prompts: [],
       // Web录音相关
@@ -187,17 +186,12 @@ export default {
     if (this.statusMonitorTimer) {
       clearInterval(this.statusMonitorTimer);
     }
-    if (this.cordovaAudioTimer) {
-      clearInterval(this.cordovaAudioTimer);
-    }
     // 清理语音识别
     if (this.speechRecognition) {
       this.speechRecognition.stop();
     }
     // 停止状态监控
     this.stopStatusMonitoring();
-    // 停止Cordova音频模拟
-    this.stopCordovaAudioSimulation();
   },
   mounted() {
     this.loadChapterData();
@@ -705,12 +699,6 @@ export default {
         this.mediaRecorder.startRecord();
         console.log('✅ Cordova录音已启动');
         
-        // 初始化音频数据数组（用于实时识别）
-        this.audioChunks = [];
-        
-        // 为Cordova录音创建模拟音频数据（用于实时识别）
-        this.startCordovaAudioSimulation();
-        
         // 开始状态监控
         this.startStatusMonitoring();
         
@@ -723,29 +711,6 @@ export default {
       }
     },
 
-    // 为Cordova录音创建模拟音频数据（用于实时识别）
-    startCordovaAudioSimulation() {
-      console.log('🎭 开始Cordova音频数据模拟...');
-      
-      // 每2秒生成一个模拟的音频数据块
-      this.cordovaAudioTimer = setInterval(() => {
-        if (this.isRecording && this.mediaRecorder) {
-          // 创建一个模拟的音频数据块
-          const mockAudioData = new Blob(['mock_audio_data'], { type: 'audio/wav' });
-          this.audioChunks.push(mockAudioData);
-          console.log('🎵 生成模拟音频数据块，大小:', mockAudioData.size, 'bytes');
-        }
-      }, 2000);
-    },
-
-    // 停止Cordova音频数据模拟
-    stopCordovaAudioSimulation() {
-      if (this.cordovaAudioTimer) {
-        clearInterval(this.cordovaAudioTimer);
-        this.cordovaAudioTimer = null;
-        console.log('🎭 停止Cordova音频数据模拟');
-      }
-    },
 
     // 模拟录音模式（用于Android WebView环境）
     async startSimulatedRecording() {
@@ -1001,14 +966,9 @@ export default {
       try {
         console.log('🎤 开始实时语音识别...');
         
-        // 检查浏览器是否支持Web Speech API
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          console.log('🌐 使用Web Speech API进行实时识别');
-          this.startWebSpeechRecognition();
-        } else {
-          console.log('📡 使用阿里云语音识别');
-          await this.startAliyunRealtimeRecognition();
-        }
+        // 强制使用阿里云语音识别，不使用Web Speech API
+        console.log('📡 使用阿里云语音识别');
+        await this.startAliyunRealtimeRecognition();
         
       } catch (error) {
         console.error('❌ 启动实时语音识别失败:', error);
@@ -1102,77 +1062,63 @@ export default {
       }
 
       try {
-        // 检查是否有音频数据
-        if (this.audioChunks.length === 0) {
-          console.log('🎤 等待音频数据...');
-          return;
-        }
-
-        // 获取最新的音频数据
-        const latestChunk = this.audioChunks[this.audioChunks.length - 1];
-        if (!latestChunk || latestChunk.size === 0) {
-          console.log('🎤 音频数据为空，跳过识别...');
-          return;
-        }
-
-        console.log('🎤 开始处理音频数据，大小:', latestChunk.size, 'bytes');
-
-        // 创建音频Blob
-        const audioBlob = new Blob([latestChunk], { 
-          type: this.mediaRecorder.mimeType || 'audio/webm' 
-        });
-
-        // 检查音频大小，太小的音频不进行识别
-        if (audioBlob.size < 1000) { // 小于1KB的音频跳过
-          return;
-        }
-
-        // 上传音频进行识别
-        const formData = new FormData();
-        formData.append('audio', audioBlob);
-
-        const response = await fetch(apiUrl('/speech/upload'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${uni.getStorageSync('token')}`
-          },
-          body: formData
-        });
-
-        const result = await response.json();
+        console.log('🎤 执行实时语音识别...');
         
-        if (response.ok && result.success) {
-          // 调用实时转写API
-          const transcribeResponse = await uni.request({
-            url: apiUrl('/speech/transcribe'),
-            method: 'POST',
-            header: {
-              'Authorization': `Bearer ${uni.getStorageSync('token')}`,
-              'Content-Type': 'application/json'
-            },
-            data: {
-              filename: result.data.file.filename,
-              realtime: true
-            }
-          });
+        // 对于Cordova录音，我们直接调用阿里云API进行识别
+        // 不需要处理音频数据块，因为Cordova录音文件已经生成
+        if (this.mediaRecorder && this.mediaRecorder.src) {
+          console.log('📁 使用Cordova录音文件进行识别:', this.mediaRecorder.src);
+          
+          // 直接调用阿里云识别API
+          await this.callAliyunRecognitionAPI(speechToken, this.mediaRecorder.src);
+        } else {
+          console.log('🎤 等待录音文件生成...');
+        }
+        
+      } catch (error) {
+        console.error('❌ 实时语音识别失败:', error);
+      }
+    },
 
-          if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
-            const transcribedText = transcribeResponse.data.data.transcript;
-            if (transcribedText && transcribedText !== '识别完成但无结果' && transcribedText.length > 0) {
-              console.log('🎯 实时识别结果:', transcribedText);
-              
-              // 将识别结果添加到文本输入框
-              if (this.contentText) {
-                this.contentText += ' ' + transcribedText;
-              } else {
-                this.contentText = transcribedText;
-              }
+    // 调用阿里云识别API
+    async callAliyunRecognitionAPI(speechToken, filePath) {
+      try {
+        console.log('🎯 调用阿里云识别API...');
+        console.log('📁 文件路径:', filePath);
+        
+        // 获取用户Token
+        const token = uni.getStorageSync('token');
+        
+        // 调用阿里云语音识别接口
+        const transcribeResponse = await uni.request({
+          url: apiUrl('/speech/transcribe'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            filename: filePath,
+            realtime: true
+          }
+        });
+
+        if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
+          const transcribedText = transcribeResponse.data.data.transcript;
+          if (transcribedText && transcribedText !== '识别完成但无结果' && transcribedText.length > 0) {
+            console.log('🎯 实时识别结果:', transcribedText);
+            
+            // 将识别结果添加到文本输入框
+            if (this.contentText) {
+              this.contentText += ' ' + transcribedText;
+            } else {
+              this.contentText = transcribedText;
             }
           }
         }
         
       } catch (error) {
-        console.error('❌ 实时语音识别失败:', error);
+        console.error('❌ 阿里云识别API调用失败:', error);
       }
     },
 
@@ -1307,9 +1253,6 @@ export default {
     stopCordovaRecording() {
       try {
         console.log('🎤 停止Cordova录音...');
-        
-        // 停止音频数据模拟
-        this.stopCordovaAudioSimulation();
         
         if (this.mediaRecorder) {
           // 停止录音
