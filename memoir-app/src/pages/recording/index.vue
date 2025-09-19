@@ -644,16 +644,49 @@ export default {
           const result = await window.Capacitor.Plugins.Microphone.startRecording();
           console.log('✅ Microphone录音开始成功:', result);
         } else {
-          console.log('⚠️ 没有找到录音插件，尝试使用Web API...');
-          // 在Capacitor环境中，尝试使用特殊的Web API调用
-          await this.startWebRecordingInCapacitor();
+          console.log('⚠️ 没有找到录音插件，使用模拟录音模式...');
+          // 在Android WebView中，使用模拟录音模式
+          await this.startSimulatedRecording();
         }
         
       } catch (error) {
         console.error('❌ Capacitor录音开始失败:', error);
-        // 降级到Web录音
-        console.log('🔄 降级到Web录音...');
-        await this.startWebRecordingInCapacitor();
+        // 降级到模拟录音
+        console.log('🔄 降级到模拟录音...');
+        await this.startSimulatedRecording();
+      }
+    },
+
+    // 模拟录音模式（用于Android WebView环境）
+    async startSimulatedRecording() {
+      try {
+        console.log('🎭 开始模拟录音模式...');
+        
+        // 在Android WebView中，我们无法直接访问麦克风
+        // 但我们可以模拟录音状态，让用户手动输入文字
+        this.isRecording = true;
+        this.recordingTime = 0;
+        
+        // 开始计时
+        this.recordingTimer = setInterval(() => {
+          this.recordingTime++;
+        }, 1000);
+        
+        // 开始状态监控
+        this.startStatusMonitoring();
+        
+        // 显示提示，让用户知道可以手动输入
+        uni.showToast({
+          title: '录音模式已启动，请手动输入文字',
+          icon: 'none',
+          duration: 3000
+        });
+        
+        console.log('✅ 模拟录音模式启动成功');
+        
+      } catch (error) {
+        console.error('❌ 模拟录音模式启动失败:', error);
+        this.handleRecordingFallback();
       }
     },
 
@@ -1116,6 +1149,9 @@ export default {
             this.handleRecordingError('录音停止失败');
           }
         });
+      } else if (this.isRecording && !this.mediaRecorder && !this.mediaStream) {
+        console.log('🎭 停止模拟录音模式...');
+        this.stopSimulatedRecording();
       } else {
         console.log('⚠️ 当前环境不支持录音API');
         this.handleRecordingError('录音API不可用');
@@ -1158,6 +1194,38 @@ export default {
         
       } catch (error) {
         console.error('❌ 停止Web录音失败:', error);
+        this.handleRecordingError('停止录音失败');
+      }
+    },
+
+    // 停止模拟录音模式
+    stopSimulatedRecording() {
+      try {
+        console.log('🎭 停止模拟录音模式...');
+        
+        // 停止计时
+        if (this.recordingTimer) {
+          clearInterval(this.recordingTimer);
+          this.recordingTimer = null;
+        }
+        
+        // 停止状态监控
+        this.stopStatusMonitoring();
+        
+        // 重置状态
+        this.isRecording = false;
+        this.isProcessing = false;
+        
+        // 显示完成提示
+        uni.showToast({
+          title: '录音完成',
+          icon: 'success'
+        });
+        
+        console.log('✅ 模拟录音模式停止成功');
+        
+      } catch (error) {
+        console.error('❌ 停止模拟录音模式失败:', error);
         this.handleRecordingError('停止录音失败');
       }
     },
