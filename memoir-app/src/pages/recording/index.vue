@@ -1149,7 +1149,7 @@ export default {
             this.handleRecordingError('录音停止失败');
           }
         });
-      } else if (this.isRecording && !this.mediaRecorder && !this.mediaStream) {
+      } else if (this.isRecording) {
         console.log('🎭 停止模拟录音模式...');
         this.stopSimulatedRecording();
       } else {
@@ -1223,10 +1223,18 @@ export default {
         });
         
         console.log('✅ 模拟录音模式停止成功');
+        console.log('📊 录音状态检查 - isRecording:', this.isRecording);
+        console.log('📊 按钮文字检查 - recordButtonText:', this.recordButtonText);
         
       } catch (error) {
         console.error('❌ 停止模拟录音模式失败:', error);
-        this.handleRecordingError('停止录音失败');
+        // 即使出错也要重置状态
+        this.isRecording = false;
+        this.isProcessing = false;
+        uni.showToast({
+          title: '录音停止',
+          icon: 'none'
+        });
       }
     },
 
