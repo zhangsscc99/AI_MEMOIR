@@ -457,6 +457,8 @@ export default {
     // 切换录音状态
     toggleRecording() {
       console.log('🎯 点击录制按钮，当前状态:', this.isRecording);
+      console.log('🎯 处理状态:', this.isProcessing);
+      console.log('🎯 按钮文字:', this.recordButtonText);
       
       if (this.isRecording) {
         console.log('🛑 停止录音');
@@ -547,7 +549,14 @@ export default {
     },
     
     async startRecording(event) {
-      if (this.isProcessing) return;
+      console.log('🚀 startRecording 被调用');
+      console.log('🚀 当前 isProcessing:', this.isProcessing);
+      console.log('🚀 当前 isRecording:', this.isRecording);
+      
+      if (this.isProcessing) {
+        console.log('⚠️ 正在处理中，跳过录音');
+        return;
+      }
       
       // 防止事件影响页面滚动
       if (event) {
@@ -557,9 +566,11 @@ export default {
       
       // 检查录音权限
       try {
+        console.log('🔐 开始检查录音权限...');
         await this.checkRecordingPermission();
+        console.log('✅ 录音权限检查通过');
       } catch (error) {
-        console.error('录音权限检查失败:', error);
+        console.error('❌ 录音权限检查失败:', error);
         uni.showToast({
           title: '需要录音权限才能使用此功能',
           icon: 'error'
@@ -567,8 +578,10 @@ export default {
         return;
       }
       
+      console.log('📝 设置录音状态为 true');
       this.isRecording = true;
       this.recordingTime = 0;
+      console.log('📝 录音状态已设置:', this.isRecording);
       
       // 开始计时
       this.recordingTimer = setInterval(() => {
@@ -577,9 +590,17 @@ export default {
       
       console.log('🎤 开始录音...');
       console.log('运行环境:', uni.getSystemInfoSync().platform);
+      console.log('🔍 检查录音环境支持...');
+      console.log('🔍 navigator存在:', typeof navigator !== 'undefined');
+      console.log('🔍 mediaDevices存在:', typeof navigator?.mediaDevices !== 'undefined');
+      console.log('🔍 getUserMedia存在:', typeof navigator?.mediaDevices?.getUserMedia !== 'undefined');
+      console.log('🔍 uni.startRecord存在:', typeof uni?.startRecord === 'function');
       
-      // 检测浏览器环境并使用Web录音
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      // 检测环境并使用相应的录音方式
+      if (window.Capacitor) {
+        console.log('📱 检测到Capacitor环境，使用Capacitor录音...');
+        await this.startCapacitorRecording();
+      } else if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         console.log('🌐 检测到浏览器环境，使用Web录音...');
         await this.startWebRecording();
       } else if (typeof uni !== 'undefined' && typeof uni.startRecord === 'function') {
@@ -598,10 +619,141 @@ export default {
         this.handleRecordingFallback();
       }
       
+      console.log('📱 显示开始录制提示');
       uni.showToast({
         title: '开始录制',
         icon: 'none'
       });
+      
+      console.log('📊 录音状态检查 - isRecording:', this.isRecording);
+      console.log('📊 按钮文字检查 - recordButtonText:', this.recordButtonText);
+    },
+
+    // Capacitor 录音方法
+    async startCapacitorRecording() {
+      try {
+        console.log('📱 开始Capacitor录音...');
+        
+        // 检查是否有录音插件
+        if (window.Capacitor.Plugins.VoiceRecorder) {
+          console.log('🎤 使用VoiceRecorder插件...');
+          const result = await window.Capacitor.Plugins.VoiceRecorder.startRecording();
+          console.log('✅ VoiceRecorder录音开始成功:', result);
+        } else if (window.Capacitor.Plugins.Microphone) {
+          console.log('🎤 使用Microphone插件...');
+          const result = await window.Capacitor.Plugins.Microphone.startRecording();
+          console.log('✅ Microphone录音开始成功:', result);
+        } else {
+          console.log('⚠️ 没有找到录音插件，尝试使用Web API...');
+          // 在Capacitor环境中，尝试使用特殊的Web API调用
+          await this.startWebRecordingInCapacitor();
+        }
+        
+      } catch (error) {
+        console.error('❌ Capacitor录音开始失败:', error);
+        // 降级到Web录音
+        console.log('🔄 降级到Web录音...');
+        await this.startWebRecordingInCapacitor();
+      }
+    },
+
+    // 在Capacitor环境中使用Web录音
+    async startWebRecordingInCapacitor() {
+      try {
+        console.log('🌐 在Capacitor环境中使用Web录音...');
+        
+        // 在Capacitor环境中，需要特殊处理权限
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 16000,
+            channelCount: 1,
+            // 在Capacitor中添加特殊配置
+            autoGainControl: true,
+            latency: 0.01
+          } 
+        });
+        
+        this.mediaStream = stream;
+        
+        // 检查浏览器支持的mime类型
+        let mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/webm';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/mp4';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = ''; // 使用默认
+            }
+          }
+        }
+        
+        console.log('使用MIME类型:', mimeType);
+        
+        // 创建MediaRecorder
+        this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+        this.audioChunks = [];
+        
+        this.mediaRecorder.ondataavailable = (event) => {
+          console.log('收到音频数据:', event.data.size, 'bytes');
+          if (event.data.size > 0) {
+            this.audioChunks.push(event.data);
+            // 实时处理音频数据
+            this.processRealtimeAudio(event.data);
+          }
+        };
+        
+        this.mediaRecorder.onstart = () => {
+          console.log('🎤 MediaRecorder 已开始录音');
+        };
+        
+        this.mediaRecorder.onstop = () => {
+          console.log('✅ Web录音停止，数据块数量:', this.audioChunks.length);
+          console.log('录音时长:', this.recordingTime, '秒');
+          this.isProcessing = false;
+          this.recordingTime = 0;
+          
+          uni.showToast({
+            title: '录制完成',
+            icon: 'success'
+          });
+        };
+        
+        this.mediaRecorder.onerror = (event) => {
+          console.error('❌ MediaRecorder错误:', event.error);
+          console.error('错误详情:', event);
+          this.handleRecordingError('录音过程中出错');
+        };
+        
+        // 在Capacitor环境中，不使用时间间隔参数
+        this.mediaRecorder.start();
+        console.log('✅ Web录音开始成功 (Capacitor模式), 状态:', this.mediaRecorder.state);
+        
+        // 开始状态监控
+        this.startStatusMonitoring();
+        
+        // 开始实时语音识别
+        this.startRealtimeRecognition();
+        
+      } catch (error) {
+        console.error('❌ Capacitor Web录音开始失败:', error);
+        
+        let errorMessage = '无法访问麦克风';
+        if (error.name === 'NotAllowedError') {
+          errorMessage = '麦克风权限被拒绝，请在设置中允许录音权限';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = '未找到麦克风设备';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = '麦克风被其他应用占用';
+        }
+        
+        uni.showToast({
+          title: errorMessage,
+          icon: 'error'
+        });
+        this.handleRecordingFallback();
+      }
     },
 
     async startWebRecording() {
