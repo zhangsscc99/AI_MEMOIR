@@ -334,3 +334,10 @@ npm install
 
 # 4. 重启服务
 pm2 start memoir-backend
+
+cd /Users/Zhuanz1/Desktop/memoir/memoir-app
+npm run build:h5
+npx cap sync android 
+npx cap open android 
+cd android
+./gradlew assembleDebug

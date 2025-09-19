@@ -460,6 +460,52 @@ export default {
         this.startRecording();
       }
     },
+
+    // 检查录音权限
+    async checkRecordingPermission() {
+      return new Promise((resolve, reject) => {
+        // 检查是否在Capacitor环境中
+        if (window.Capacitor) {
+          // 在Android中检查权限
+          if (window.Capacitor.Plugins.Permissions) {
+            window.Capacitor.Plugins.Permissions.check({
+              name: 'microphone'
+            }).then(result => {
+              if (result.state === 'granted') {
+                resolve();
+              } else {
+                // 请求权限
+                window.Capacitor.Plugins.Permissions.request({
+                  name: 'microphone'
+                }).then(requestResult => {
+                  if (requestResult.state === 'granted') {
+                    resolve();
+                  } else {
+                    reject(new Error('录音权限被拒绝'));
+                  }
+                }).catch(reject);
+              }
+            }).catch(reject);
+          } else {
+            // 如果没有权限插件，直接尝试录音
+            resolve();
+          }
+        } else {
+          // 浏览器环境，直接尝试获取权限
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+              .then(stream => {
+                // 立即停止流，只是检查权限
+                stream.getTracks().forEach(track => track.stop());
+                resolve();
+              })
+              .catch(reject);
+          } else {
+            reject(new Error('当前环境不支持录音'));
+          }
+        }
+      });
+    },
     
     async startRecording(event) {
       if (this.isProcessing) return;
@@ -468,6 +514,18 @@ export default {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
+      }
+      
+      // 检查录音权限
+      try {
+        await this.checkRecordingPermission();
+      } catch (error) {
+        console.error('录音权限检查失败:', error);
+        uni.showToast({
+          title: '需要录音权限才能使用此功能',
+          icon: 'error'
+        });
+        return;
       }
       
       this.isRecording = true;
@@ -511,14 +569,16 @@ export default {
       try {
         console.log('🌐 开始Web录音...');
         
-        // 请求麦克风权限
+        // 请求麦克风权限，添加更详细的错误处理
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            sampleRate: 16000
+            sampleRate: 16000,
+            channelCount: 1
           } 
         });
+        
         this.mediaStream = stream;
         
         // 检查浏览器支持的mime类型
@@ -550,7 +610,6 @@ export default {
         
         this.mediaRecorder.onstop = () => {
           console.log('✅ Web录音停止，数据块数量:', this.audioChunks.length);
-          // 不再进行重复识别，因为已经有实时识别了
           this.isProcessing = false;
           this.recordingTime = 0;
           
@@ -565,8 +624,8 @@ export default {
           this.handleRecordingError('录音过程中出错');
         };
         
-        // 开始录音，更频繁地收集数据以实现实时识别
-        this.mediaRecorder.start(2000); // 每2秒收集一次数据
+        // 开始录音，使用更长的间隔避免频繁触发
+        this.mediaRecorder.start(5000); // 每5秒收集一次数据
         console.log('✅ Web录音开始成功, 状态:', this.mediaRecorder.state);
         
         // 开始实时语音识别
@@ -577,9 +636,11 @@ export default {
         
         let errorMessage = '无法访问麦克风';
         if (error.name === 'NotAllowedError') {
-          errorMessage = '麦克风权限被拒绝';
+          errorMessage = '麦克风权限被拒绝，请在设置中允许录音权限';
         } else if (error.name === 'NotFoundError') {
           errorMessage = '未找到麦克风设备';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = '麦克风被其他应用占用';
         }
         
         uni.showToast({
@@ -790,6 +851,9 @@ export default {
         event.stopPropagation();
       }
       
+      console.log('🛑 停止录音...');
+      
+      // 立即设置状态，防止重复点击
       this.isRecording = false;
       this.isProcessing = true;
       
@@ -811,14 +875,6 @@ export default {
         this.speechRecognition = null;
       }
       
-      // 确保页面滚动恢复正常
-      this.$nextTick(() => {
-        // 强制触发页面重新渲染
-        this.$forceUpdate();
-      });
-      
-      console.log('🛑 停止录音...');
-      
       // 检测环境并停止录音
       if (this.mediaRecorder || this.mediaStream) {
         console.log('🌐 停止Web录音...');
@@ -839,6 +895,12 @@ export default {
         console.log('⚠️ 当前环境不支持录音API');
         this.handleRecordingError('录音API不可用');
       }
+      
+      // 确保页面滚动恢复正常
+      this.$nextTick(() => {
+        // 强制触发页面重新渲染
+        this.$forceUpdate();
+      });
     },
 
     stopWebRecording() {
@@ -863,7 +925,11 @@ export default {
             console.log('停止轨道:', track.kind);
             track.stop();
           });
+          this.mediaStream = null;
         }
+        
+        // 清理MediaRecorder
+        this.mediaRecorder = null;
         
       } catch (error) {
         console.error('❌ 停止Web录音失败:', error);
