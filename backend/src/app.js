@@ -34,13 +34,19 @@ app.use(helmet({
 app.use(cors({
   origin: [
     'http://localhost:5173',  // 前端开发服务器
-    'http://127.0.0.1:5173',
     'http://localhost:3000',
+    'http://localhost',       // Capacitor 默认地址
+    'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'http://127.0.0.1',      // Capacitor 默认地址
     'http://106.15.248.189:5173',  // 服务器前端地址
     'http://106.15.248.189:3000',
     'http://106.15.248.189:8080',
-    'http://106.15.248.189:8081'
+    'http://106.15.248.189:8081',
+    'capacitor://localhost',  // Capacitor 协议
+    'ionic://localhost',      // Ionic 协议
+    'http://localhost:8080',  // 其他可能端口
+    'http://localhost:8081'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
