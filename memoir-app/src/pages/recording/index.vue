@@ -599,7 +599,13 @@ export default {
       // 检测环境并使用相应的录音方式
       if (window.Capacitor) {
         console.log('📱 检测到Capacitor环境，使用Capacitor录音...');
-        await this.startCapacitorRecording();
+        try {
+          await this.startCapacitorRecording();
+        } catch (error) {
+          console.error('❌ Capacitor录音失败:', error);
+          this.handleRecordingError('录音功能不可用: ' + error.message);
+          return;
+        }
       } else if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         console.log('🌐 检测到浏览器环境，使用Web录音...');
         await this.startWebRecording();
@@ -611,12 +617,12 @@ export default {
           },
           fail: (err) => {
             console.error('❌ App录音开始失败:', err);
-            this.handleRecordingFallback();
+            this.handleRecordingError('录音功能不可用');
           }
         });
       } else {
         console.log('⚠️ 当前环境不支持录音API');
-        this.handleRecordingFallback();
+        this.handleRecordingError('录音功能不可用');
       }
       
       console.log('📱 显示开始录制提示');
@@ -635,6 +641,13 @@ export default {
         console.log('📱 开始Capacitor录音...');
         
         // 检查是否有录音插件
+        console.log('🔍 检查录音插件...');
+        console.log('🔍 window.Capacitor.Plugins.VoiceRecorder:', !!window.Capacitor.Plugins.VoiceRecorder);
+        console.log('🔍 window.Capacitor.Plugins.Microphone:', !!window.Capacitor.Plugins.Microphone);
+        console.log('🔍 window.Media:', !!window.Media);
+        console.log('🔍 window.cordova:', !!window.cordova);
+        console.log('🔍 window.device:', !!window.device);
+        
         if (window.Capacitor.Plugins.VoiceRecorder) {
           console.log('🎤 使用VoiceRecorder插件...');
           const result = await window.Capacitor.Plugins.VoiceRecorder.startRecording();
@@ -647,16 +660,14 @@ export default {
           console.log('🎤 使用Cordova Media插件...');
           await this.startCordovaRecording();
         } else {
-          console.log('⚠️ 没有找到录音插件，使用模拟录音模式...');
-          // 在Android WebView中，使用模拟录音模式
-          await this.startSimulatedRecording();
+          console.log('❌ 没有找到任何录音插件！');
+          throw new Error('没有找到可用的录音插件，无法进行真实录音');
         }
         
       } catch (error) {
         console.error('❌ Capacitor录音开始失败:', error);
-        // 降级到模拟录音
-        console.log('🔄 降级到模拟录音...');
-        await this.startSimulatedRecording();
+        // 不允许降级到模拟录音，直接报错
+        throw new Error('录音功能不可用: ' + error.message);
       }
     },
 
