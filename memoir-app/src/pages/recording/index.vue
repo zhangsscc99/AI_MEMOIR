@@ -1069,8 +1069,18 @@ export default {
         if (this.mediaRecorder && this.mediaRecorder.src) {
           console.log('📁 使用Cordova录音文件进行识别:', this.mediaRecorder.src);
           
+          // 检查文件是否已经识别过（避免重复识别）
+          const currentFile = this.mediaRecorder.src;
+          if (this.lastRecognizedFile === currentFile) {
+            console.log('⏭️ 文件已识别过，跳过');
+            return;
+          }
+          
           // 直接调用阿里云识别API
           await this.callAliyunRecognitionAPI(speechToken, this.mediaRecorder.src);
+          
+          // 记录已识别的文件
+          this.lastRecognizedFile = currentFile;
         } else {
           console.log('🎤 等待录音文件生成...');
         }
@@ -1080,16 +1090,25 @@ export default {
       }
     },
 
-    // 调用阿里云识别API
+    // 调用阿里云识别API - 使用流式识别
     async callAliyunRecognitionAPI(speechToken, filePath) {
       try {
-        console.log('🎯 调用阿里云识别API...');
+        console.log('🎯 调用阿里云流式识别API...');
         console.log('📁 文件路径:', filePath);
         
         // 获取用户Token
         const token = uni.getStorageSync('token');
         
-        // 调用阿里云语音识别接口
+        // 读取音频文件
+        console.log('📖 读取音频文件...');
+        const audioData = await this.readAudioFile(filePath);
+        
+        if (!audioData) {
+          console.error('❌ 无法读取音频文件');
+          return;
+        }
+        
+        // 调用阿里云流式语音识别接口
         const transcribeResponse = await uni.request({
           url: apiUrl('/speech/transcribe'),
           method: 'POST',
@@ -1099,14 +1118,15 @@ export default {
           },
           data: {
             filename: filePath,
-            realtime: true
+            realtime: true,
+            streaming: true  // 标记为流式识别
           }
         });
 
         if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
           const transcribedText = transcribeResponse.data.data.transcript;
           if (transcribedText && transcribedText !== '识别完成但无结果' && transcribedText.length > 0) {
-            console.log('🎯 实时识别结果:', transcribedText);
+            console.log('🎯 流式识别结果:', transcribedText);
             
             // 将识别结果添加到文本输入框
             if (this.contentText) {
@@ -1115,10 +1135,36 @@ export default {
               this.contentText = transcribedText;
             }
           }
+        } else {
+          console.error('❌ 流式识别失败:', transcribeResponse.data?.message);
         }
         
       } catch (error) {
-        console.error('❌ 阿里云识别API调用失败:', error);
+        console.error('❌ 阿里云流式识别API调用失败:', error);
+      }
+    },
+
+    // 读取音频文件
+    async readAudioFile(filePath) {
+      try {
+        // 在uni-app中读取文件
+        const fs = uni.getFileSystemManager();
+        return new Promise((resolve, reject) => {
+          fs.readFile({
+            filePath: filePath,
+            success: (res) => {
+              console.log('✅ 音频文件读取成功，大小:', res.data.byteLength);
+              resolve(res.data);
+            },
+            fail: (err) => {
+              console.error('❌ 音频文件读取失败:', err);
+              reject(err);
+            }
+          });
+        });
+      } catch (error) {
+        console.error('❌ 读取音频文件异常:', error);
+        return null;
       }
     },
 
