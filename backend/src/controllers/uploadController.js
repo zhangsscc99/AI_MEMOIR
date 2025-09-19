@@ -83,8 +83,9 @@ const uploadImage = (req, res) => {
         .toFile(webpPath);
       
       // 生成可访问的URL（优先返回WebP）
-      const imageUrl = `http://localhost:3001/uploads/images_webp/${webpFilename}`;
-      const originalUrl = `http://localhost:3001/uploads/images/${req.file.filename}`;
+      const baseUrl = process.env.BASE_URL || `http://${req.get('host')}`;
+      const imageUrl = `${baseUrl}/uploads/images_webp/${webpFilename}`;
+      const originalUrl = `${baseUrl}/uploads/images/${req.file.filename}`;
       
       console.log('✅ 图片上传成功:', {
         originalname: req.file.originalname,
