@@ -119,8 +119,17 @@ export default {
       this.isLoading = true;
       
       try {
+        const loginUrl = apiUrl('/auth/login');
+        console.log('🔐 [Login] 准备发送登录请求...');
+        console.log('🌐 [Login] 请求 URL:', loginUrl);
+        console.log('📱 [Login] 当前环境检测:', {
+          isCapacitor: !!window.Capacitor,
+          userAgent: navigator.userAgent,
+          location: window.location.href
+        });
+        
         const response = await uni.request({
-          url: apiUrl('/auth/login'),
+          url: loginUrl,
           method: 'POST',
           header: {
             'Content-Type': 'application/json'
