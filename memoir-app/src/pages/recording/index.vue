@@ -1108,6 +1108,9 @@ export default {
       
       console.log('🛑 停止录音...');
       
+      // 保存当前录音状态，用于判断录音类型
+      const wasRecording = this.isRecording;
+      
       // 立即设置状态，防止重复点击
       this.isRecording = false;
       this.isProcessing = true;
@@ -1149,7 +1152,7 @@ export default {
             this.handleRecordingError('录音停止失败');
           }
         });
-      } else if (this.isRecording) {
+      } else if (wasRecording) {
         console.log('🎭 停止模拟录音模式...');
         this.stopSimulatedRecording();
       } else {
