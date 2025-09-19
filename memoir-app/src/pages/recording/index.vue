@@ -144,6 +144,7 @@ export default {
       recordings: [],
       recordingTimer: null,
       realtimeRecognitionTimer: null,
+      statusMonitorTimer: null,
       speechRecognition: null,
       prompts: [],
       // Web录音相关
@@ -182,10 +183,15 @@ export default {
     if (this.realtimeRecognitionTimer) {
       clearInterval(this.realtimeRecognitionTimer);
     }
+    if (this.statusMonitorTimer) {
+      clearInterval(this.statusMonitorTimer);
+    }
     // 清理语音识别
     if (this.speechRecognition) {
       this.speechRecognition.stop();
     }
+    // 停止状态监控
+    this.stopStatusMonitoring();
   },
   mounted() {
     this.loadChapterData();
@@ -506,6 +512,39 @@ export default {
         }
       });
     },
+
+    // 开始状态监控
+    startStatusMonitoring() {
+      console.log('🔍 开始监控MediaRecorder状态...');
+      this.statusMonitorTimer = setInterval(() => {
+        if (this.mediaRecorder) {
+          console.log('📊 MediaRecorder状态:', this.mediaRecorder.state);
+          console.log('📊 录音状态:', this.isRecording);
+          console.log('📊 处理状态:', this.isProcessing);
+          
+          // 如果MediaRecorder意外停止但录音状态仍为true，尝试恢复
+          if (this.mediaRecorder.state === 'inactive' && this.isRecording) {
+            console.warn('⚠️ MediaRecorder意外停止，尝试重新启动...');
+            try {
+              this.mediaRecorder.start();
+              console.log('✅ MediaRecorder重新启动成功');
+            } catch (error) {
+              console.error('❌ MediaRecorder重新启动失败:', error);
+              this.handleRecordingError('录音意外停止');
+            }
+          }
+        }
+      }, 2000); // 每2秒检查一次
+    },
+
+    // 停止状态监控
+    stopStatusMonitoring() {
+      if (this.statusMonitorTimer) {
+        clearInterval(this.statusMonitorTimer);
+        this.statusMonitorTimer = null;
+        console.log('🔍 停止状态监控');
+      }
+    },
     
     async startRecording(event) {
       if (this.isProcessing) return;
@@ -608,8 +647,21 @@ export default {
           }
         };
         
+        this.mediaRecorder.onstart = () => {
+          console.log('🎤 MediaRecorder 已开始录音');
+        };
+        
+        this.mediaRecorder.onpause = () => {
+          console.log('⏸️ MediaRecorder 已暂停');
+        };
+        
+        this.mediaRecorder.onresume = () => {
+          console.log('▶️ MediaRecorder 已恢复');
+        };
+        
         this.mediaRecorder.onstop = () => {
           console.log('✅ Web录音停止，数据块数量:', this.audioChunks.length);
+          console.log('录音时长:', this.recordingTime, '秒');
           this.isProcessing = false;
           this.recordingTime = 0;
           
@@ -621,12 +673,30 @@ export default {
         
         this.mediaRecorder.onerror = (event) => {
           console.error('❌ MediaRecorder错误:', event.error);
+          console.error('错误详情:', event);
           this.handleRecordingError('录音过程中出错');
         };
         
-        // 开始录音，使用更长的间隔避免频繁触发
-        this.mediaRecorder.start(5000); // 每5秒收集一次数据
-        console.log('✅ Web录音开始成功, 状态:', this.mediaRecorder.state);
+        // 开始录音，在Capacitor环境中不使用时间间隔参数
+        try {
+          if (window.Capacitor) {
+            // 在Capacitor环境中，不使用时间间隔参数
+            this.mediaRecorder.start();
+            console.log('✅ Web录音开始成功 (Capacitor模式), 状态:', this.mediaRecorder.state);
+          } else {
+            // 在浏览器环境中，使用时间间隔
+            this.mediaRecorder.start(5000); // 每5秒收集一次数据
+            console.log('✅ Web录音开始成功 (浏览器模式), 状态:', this.mediaRecorder.state);
+          }
+        } catch (startError) {
+          console.error('❌ MediaRecorder.start() 失败:', startError);
+          // 尝试不使用参数的方式
+          this.mediaRecorder.start();
+          console.log('✅ Web录音开始成功 (降级模式), 状态:', this.mediaRecorder.state);
+        }
+        
+        // 开始状态监控
+        this.startStatusMonitoring();
         
         // 开始实时语音识别
         this.startRealtimeRecognition();
@@ -868,6 +938,9 @@ export default {
         clearInterval(this.realtimeRecognitionTimer);
         this.realtimeRecognitionTimer = null;
       }
+      
+      // 停止状态监控
+      this.stopStatusMonitoring();
       
       // 停止Web Speech API识别
       if (this.speechRecognition) {
