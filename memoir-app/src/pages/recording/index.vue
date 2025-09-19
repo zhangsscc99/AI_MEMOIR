@@ -145,6 +145,7 @@ export default {
       recordingTimer: null,
       realtimeRecognitionTimer: null,
       statusMonitorTimer: null,
+      cordovaAudioTimer: null,
       speechRecognition: null,
       prompts: [],
       // Web录音相关
@@ -186,12 +187,17 @@ export default {
     if (this.statusMonitorTimer) {
       clearInterval(this.statusMonitorTimer);
     }
+    if (this.cordovaAudioTimer) {
+      clearInterval(this.cordovaAudioTimer);
+    }
     // 清理语音识别
     if (this.speechRecognition) {
       this.speechRecognition.stop();
     }
     // 停止状态监控
     this.stopStatusMonitoring();
+    // 停止Cordova音频模拟
+    this.stopCordovaAudioSimulation();
   },
   mounted() {
     this.loadChapterData();
@@ -699,12 +705,45 @@ export default {
         this.mediaRecorder.startRecord();
         console.log('✅ Cordova录音已启动');
         
+        // 初始化音频数据数组（用于实时识别）
+        this.audioChunks = [];
+        
+        // 为Cordova录音创建模拟音频数据（用于实时识别）
+        this.startCordovaAudioSimulation();
+        
         // 开始状态监控
         this.startStatusMonitoring();
+        
+        // 开始实时语音识别
+        this.startRealtimeRecognition();
         
       } catch (error) {
         console.error('❌ Cordova录音启动失败:', error);
         throw error;
+      }
+    },
+
+    // 为Cordova录音创建模拟音频数据（用于实时识别）
+    startCordovaAudioSimulation() {
+      console.log('🎭 开始Cordova音频数据模拟...');
+      
+      // 每2秒生成一个模拟的音频数据块
+      this.cordovaAudioTimer = setInterval(() => {
+        if (this.isRecording && this.mediaRecorder) {
+          // 创建一个模拟的音频数据块
+          const mockAudioData = new Blob(['mock_audio_data'], { type: 'audio/wav' });
+          this.audioChunks.push(mockAudioData);
+          console.log('🎵 生成模拟音频数据块，大小:', mockAudioData.size, 'bytes');
+        }
+      }, 2000);
+    },
+
+    // 停止Cordova音频数据模拟
+    stopCordovaAudioSimulation() {
+      if (this.cordovaAudioTimer) {
+        clearInterval(this.cordovaAudioTimer);
+        this.cordovaAudioTimer = null;
+        console.log('🎭 停止Cordova音频数据模拟');
       }
     },
 
@@ -1058,16 +1097,25 @@ export default {
 
     // 执行实时语音识别
     async performRealtimeRecognition(speechToken) {
-      if (!this.isRecording || this.audioChunks.length === 0) {
+      if (!this.isRecording) {
         return;
       }
 
       try {
+        // 检查是否有音频数据
+        if (this.audioChunks.length === 0) {
+          console.log('🎤 等待音频数据...');
+          return;
+        }
+
         // 获取最新的音频数据
         const latestChunk = this.audioChunks[this.audioChunks.length - 1];
         if (!latestChunk || latestChunk.size === 0) {
+          console.log('🎤 音频数据为空，跳过识别...');
           return;
         }
+
+        console.log('🎤 开始处理音频数据，大小:', latestChunk.size, 'bytes');
 
         // 创建音频Blob
         const audioBlob = new Blob([latestChunk], { 
@@ -1259,6 +1307,9 @@ export default {
     stopCordovaRecording() {
       try {
         console.log('🎤 停止Cordova录音...');
+        
+        // 停止音频数据模拟
+        this.stopCordovaAudioSimulation();
         
         if (this.mediaRecorder) {
           // 停止录音
