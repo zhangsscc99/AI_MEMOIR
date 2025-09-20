@@ -700,6 +700,11 @@ export default {
       }
     },
 
+    // 检查是否为Capacitor环境
+    isCapacitorEnvironment() {
+      return !!(window.Capacitor && window.Capacitor.isNativePlatform());
+    },
+
     // 检查Web录音权限
     async checkWebRecordingPermission() {
       try {
@@ -707,7 +712,7 @@ export default {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stream.getTracks().forEach(track => track.stop());
           return true;
-      } else {
+        } else {
           throw new Error('Web录音API不可用');
         }
       } catch (error) {
