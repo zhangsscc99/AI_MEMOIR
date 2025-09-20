@@ -380,6 +380,75 @@ const transcribeAudio = async (req, res) => {
 };
 
 /**
+ * @desc WebSocket流式语音识别
+ * @route POST /api/speech/streaming-recognize
+ * @access Private
+ */
+const streamingRecognize = async (req, res) => {
+  try {
+    const { audioData, format, sampleRate, realtime } = req.body;
+    
+    console.log('🎤 ===== WebSocket流式语音识别API调用开始 =====');
+    console.log('📊 请求参数:', { 
+      audioDataLength: audioData ? audioData.length : 0, 
+      format, 
+      sampleRate, 
+      realtime 
+    });
+    console.log('👤 用户ID:', req.user?.id);
+    console.log('⏰ 请求时间:', new Date().toISOString());
+    
+    if (!audioData) {
+      console.log('❌ 缺少音频数据');
+      return res.status(400).json({
+        success: false,
+        message: '缺少音频数据',
+        code: 'MISSING_AUDIO_DATA'
+      });
+    }
+
+    // 将Base64音频数据转换为Buffer
+    const audioBuffer = Buffer.from(audioData, 'base64');
+    console.log('✅ 音频数据转换完成，大小:', audioBuffer.length, 'bytes');
+    
+    // 调用阿里云流式语音识别服务
+    console.log('🚀 调用阿里云流式语音识别服务...');
+    const transcript = await aliyunSpeechService.recognizeAudio(audioBuffer);
+    console.log('✅ 阿里云流式语音识别完成，结果:', transcript);
+
+    console.log('📤 返回流式识别结果:', {
+      transcriptLength: transcript ? transcript.length : 0,
+      hasResult: !!transcript && transcript !== '识别完成但无结果'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: '流式语音识别成功',
+      data: {
+        transcript: transcript,
+        recognizedAt: new Date().toISOString()
+      }
+    });
+
+    console.log('✅ ===== WebSocket流式语音识别API调用完成 =====');
+
+  } catch (error) {
+    console.error('❌ ===== WebSocket流式语音识别API调用失败 =====');
+    console.error('❌ 错误详情:', {
+      message: error.message,
+      stack: error.stack
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: '流式语音识别失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : '识别服务暂时不可用',
+      details: error.message
+    });
+  }
+};
+
+/**
  * @desc 清除Token缓存（用于调试）
  * @route POST /api/speech/clear-token
  * @access Private
@@ -408,5 +477,6 @@ module.exports = {
   uploadAudio,
   deleteAudio,
   transcribeAudio,
+  streamingRecognize,
   clearTokenCache
 };

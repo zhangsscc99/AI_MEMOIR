@@ -146,6 +146,7 @@ export default {
       realtimeRecognitionTimer: null,
       statusMonitorTimer: null,
       speechRecognition: null,
+      lastRecognizedFile: null,
       prompts: [],
       // Web录音相关
       mediaRecorder: null,
@@ -966,13 +967,23 @@ export default {
       try {
         console.log('🎤 开始实时语音识别...');
         
-        // 强制使用阿里云语音识别，不使用Web Speech API
-        console.log('📡 使用阿里云语音识别');
-        await this.startAliyunRealtimeRecognition();
+        // 优先使用Web Speech API（真正的实时识别）
+        if (this.isWebSpeechSupported()) {
+          console.log('📡 使用Web Speech API进行实时识别');
+          this.startWebSpeechRecognition();
+        } else {
+          console.log('📡 使用阿里云WebSocket流式识别');
+          await this.startAliyunWebSocketRecognition();
+        }
         
       } catch (error) {
         console.error('❌ 启动实时语音识别失败:', error);
       }
+    },
+
+    // 检查Web Speech API支持
+    isWebSpeechSupported() {
+      return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     },
 
     // Web Speech API实时识别
@@ -1022,7 +1033,47 @@ export default {
       console.log('✅ Web Speech API开始识别');
     },
 
-    // 阿里云实时识别
+    // 阿里云WebSocket流式识别
+    async startAliyunWebSocketRecognition() {
+      try {
+        console.log('🎤 开始阿里云WebSocket流式识别...');
+        
+        // 获取用户Token
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          console.error('❌ 用户未登录，无法进行实时识别');
+          return;
+        }
+
+        // 获取阿里云语音识别Token
+        const tokenResponse = await uni.request({
+          url: apiUrl('/speech/token'),
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
+          console.error('❌ 获取语音识别Token失败:', tokenResponse.data?.message);
+          return;
+        }
+
+        const speechToken = tokenResponse.data.data.token;
+        console.log('✅ 获取语音识别Token成功');
+        
+        // 设置流式识别定时器（更频繁的识别）
+        this.realtimeRecognitionTimer = setInterval(() => {
+          this.performStreamingRecognition(speechToken);
+        }, 1000); // 每1秒进行一次识别
+        
+      } catch (error) {
+        console.error('❌ 启动阿里云WebSocket流式识别失败:', error);
+      }
+    },
+
+    // 阿里云实时识别（保留原有方法作为备选）
     async startAliyunRealtimeRecognition() {
       // 获取用户Token
       const token = uni.getStorageSync('token');
@@ -1055,7 +1106,41 @@ export default {
       }, 3000); // 每3秒进行一次识别
     },
 
-    // 执行实时语音识别
+    // 执行流式语音识别
+    async performStreamingRecognition(speechToken) {
+      if (!this.isRecording) {
+        return;
+      }
+
+      try {
+        console.log('🎤 执行流式语音识别...');
+        
+        // 对于Cordova录音，我们直接调用阿里云流式识别API
+        if (this.mediaRecorder && this.mediaRecorder.src) {
+          console.log('📁 使用Cordova录音文件进行流式识别:', this.mediaRecorder.src);
+          
+          // 检查文件是否已经识别过（避免重复识别）
+          const currentFile = this.mediaRecorder.src;
+          if (this.lastRecognizedFile === currentFile) {
+            console.log('⏭️ 文件已识别过，跳过');
+            return;
+          }
+          
+          // 调用阿里云流式识别API
+          await this.callStreamingRecognitionAPI(speechToken, this.mediaRecorder.src);
+          
+          // 记录已识别的文件
+          this.lastRecognizedFile = currentFile;
+        } else {
+          console.log('🎤 等待录音文件生成...');
+        }
+        
+      } catch (error) {
+        console.error('❌ 流式语音识别失败:', error);
+      }
+    },
+
+    // 执行实时语音识别（保留原有方法作为备选）
     async performRealtimeRecognition(speechToken) {
       if (!this.isRecording) {
         return;
@@ -1090,7 +1175,65 @@ export default {
       }
     },
 
-    // 调用阿里云识别API - 使用流式识别
+    // 调用阿里云流式识别API
+    async callStreamingRecognitionAPI(speechToken, filePath) {
+      try {
+        console.log('🎯 调用阿里云流式识别API...');
+        console.log('📁 文件路径:', filePath);
+        
+        // 获取用户Token
+        const token = uni.getStorageSync('token');
+        
+        // 读取音频文件
+        console.log('📖 读取音频文件...');
+        const audioData = await this.readAudioFile(filePath);
+        
+        if (!audioData) {
+          console.error('❌ 无法读取音频文件');
+          return;
+        }
+        
+        // 将音频数据转换为Base64
+        const base64AudioData = uni.arrayBufferToBase64(audioData);
+        
+        // 调用阿里云流式语音识别接口
+        const transcribeResponse = await uni.request({
+          url: apiUrl('/speech/streaming-recognize'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            audioData: base64AudioData,
+            format: 'wav',
+            sampleRate: 16000,
+            realtime: true
+          }
+        });
+
+        if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
+          const transcribedText = transcribeResponse.data.data.transcript;
+          if (transcribedText && transcribedText !== '识别完成但无结果' && transcribedText.length > 0) {
+            console.log('🎯 流式识别结果:', transcribedText);
+            
+            // 将识别结果添加到文本输入框
+            if (this.contentText) {
+              this.contentText += ' ' + transcribedText;
+            } else {
+              this.contentText = transcribedText;
+            }
+          }
+        } else {
+          console.error('❌ 流式识别失败:', transcribeResponse.data?.message);
+        }
+        
+      } catch (error) {
+        console.error('❌ 阿里云流式识别API调用失败:', error);
+      }
+    },
+
+    // 调用阿里云识别API - 使用流式识别（保留原有方法作为备选）
     async callAliyunRecognitionAPI(speechToken, filePath) {
       try {
         console.log('🎯 调用阿里云流式识别API...');

@@ -7,6 +7,7 @@ const {
   uploadAudio,
   deleteAudio,
   transcribeAudio,
+  streamingRecognize,
   clearTokenCache
 } = require('../controllers/speechController');
 
@@ -40,6 +41,13 @@ router.delete('/audio/:filename', authenticateToken, deleteAudio);
  * @access  Private
  */
 router.post('/transcribe', authenticateToken, transcribeAudio);
+
+/**
+ * @route   POST /api/speech/streaming-recognize
+ * @desc    WebSocket流式语音识别
+ * @access  Private
+ */
+router.post('/streaming-recognize', authenticateToken, streamingRecognize);
 
 /**
  * @route   POST /api/speech/clear-token
