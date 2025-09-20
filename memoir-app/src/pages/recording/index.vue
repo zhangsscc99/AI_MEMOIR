@@ -1940,6 +1940,11 @@ export default {
         }
       } else {
         console.log('⚠️ WebSocket未连接，无法发送音频数据');
+        // 如果录音还在进行中，尝试重连
+        if (this.isRecording && this.currentToken && this.currentAppkey) {
+          console.log('🔄 尝试重连WebSocket...');
+          this.reconnectWebSocket(this.currentToken, this.currentAppkey);
+        }
       }
     },
     
