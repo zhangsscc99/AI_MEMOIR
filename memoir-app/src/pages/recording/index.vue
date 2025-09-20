@@ -1357,6 +1357,13 @@ export default {
         
         this.websocket.onclose = (event) => {
           console.log('🔌 WebSocket连接已关闭:', event.code, event.reason);
+          // 如果录音还在进行中，尝试重连
+          if (this.isRecording) {
+            console.log('🔄 录音进行中，尝试重连WebSocket...');
+            setTimeout(() => {
+              this.reconnectWebSocket(speechToken, appkey);
+            }, 1000);
+          }
         };
         
         this.websocket.onerror = (error) => {
@@ -1366,6 +1373,34 @@ export default {
       } catch (error) {
         console.error('❌ 启动阿里云WebSocket识别失败:', error);
         throw error;
+      }
+    },
+
+    // WebSocket重连方法
+    async reconnectWebSocket(speechToken, appkey) {
+      try {
+        console.log('🔄 开始重连WebSocket...');
+        const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${speechToken}`;
+        this.websocket = new WebSocket(wsUrl);
+        
+        this.websocket.onopen = () => {
+          console.log('✅ WebSocket重连成功');
+          this.sendStartRequest(speechToken, appkey);
+        };
+        
+        this.websocket.onmessage = (event) => {
+          this.handleWebSocketMessage(event);
+        };
+        
+        this.websocket.onclose = (event) => {
+          console.log('🔌 WebSocket重连后关闭:', event.code, event.reason);
+        };
+        
+        this.websocket.onerror = (error) => {
+          console.error('❌ WebSocket重连错误:', error);
+        };
+      } catch (error) {
+        console.error('❌ WebSocket重连失败:', error);
       }
     },
 
@@ -1856,7 +1891,7 @@ export default {
     },
 
     // 处理实时音频数据
-    processRealtimeAudio(audioData) {
+    async processRealtimeAudio(audioData) {
       // 这里可以添加实时音频处理逻辑
       console.log('处理实时音频数据:', audioData.size, 'bytes');
       console.log('🔍 音频数据类型:', audioData.constructor.name);
@@ -1866,7 +1901,10 @@ export default {
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
-          this.websocket.send(audioData);
+          // 将Blob转换为ArrayBuffer，然后发送
+          const arrayBuffer = await audioData.arrayBuffer();
+          console.log('🔧 转换后的音频数据大小:', arrayBuffer.byteLength, 'bytes');
+          this.websocket.send(arrayBuffer);
           console.log('✅ 音频数据发送成功');
         } catch (error) {
           console.error('❌ 发送音频数据失败:', error);
