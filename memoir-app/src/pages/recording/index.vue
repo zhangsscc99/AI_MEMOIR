@@ -728,7 +728,7 @@ export default {
           console.log('✅ 获取语音识别Token成功');
           console.log('✅ 获取Appkey成功:', appkey);
           return { token: speechToken, appkey: appkey };
-        } else {
+      } else {
           throw new Error('获取语音识别Token失败: ' + tokenResponse.data.message);
         }
       } catch (error) {
@@ -1390,6 +1390,9 @@ export default {
       
       console.log('📤 发送开始识别请求:', JSON.stringify(startRequest, null, 2));
       console.log('📤 发送的JSON字符串:', JSON.stringify(startRequest));
+      console.log('📤 消息ID:', startRequest.header.message_id);
+      console.log('📤 任务ID:', startRequest.header.task_id);
+      console.log('📤 Appkey:', startRequest.payload.appkey);
       
       // 确保消息格式正确
       const messageString = JSON.stringify(startRequest);
@@ -1459,12 +1462,12 @@ export default {
 
     // 生成消息ID (纯数字格式)
     generateMessageId() {
-      return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      return Math.floor(Math.random() * 1000000000).toString();
     },
     
     // 生成任务ID (纯数字格式)
     generateTaskId() {
-      return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      return Math.floor(Math.random() * 1000000000).toString();
     },
 
     // 开始Web音频录音
