@@ -677,9 +677,10 @@ export default {
       try {
         console.log('🎤 开始Cordova录音...');
         
-        // 创建录音文件路径
+        // 创建录音文件路径 - 修复路径问题
         const fileName = `recording_${Date.now()}.wav`;
-        const filePath = `file:///android_asset/public/${fileName}`;
+        // 使用正确的Android文件路径
+        const filePath = `recording_${Date.now()}.wav`;
         
         console.log('📁 录音文件路径:', filePath);
         
@@ -697,8 +698,20 @@ export default {
         );
         
         // 开始录音
+        console.log('🎤 调用 startRecord()...');
         this.mediaRecorder.startRecord();
         console.log('✅ Cordova录音已启动');
+        
+        // 添加录音状态检查
+        setTimeout(() => {
+          if (this.mediaRecorder) {
+            console.log('🔍 录音状态检查:', {
+              mediaRecorder: !!this.mediaRecorder,
+              isRecording: this.isRecording,
+              filePath: filePath
+            });
+          }
+        }, 1000);
         
         // 开始状态监控
         this.startStatusMonitoring();
@@ -984,6 +997,44 @@ export default {
     // 检查Web Speech API支持
     isWebSpeechSupported() {
       return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    },
+
+    // 测试录音功能
+    async testRecording() {
+      try {
+        console.log('🧪 开始测试录音功能...');
+        
+        // 检查Cordova Media插件
+        if (window.Media) {
+          console.log('✅ Cordova Media插件可用');
+          
+          // 创建测试录音
+          const testMedia = new Media('test_recording.wav', 
+            () => {
+              console.log('✅ 测试录音成功');
+            },
+            (error) => {
+              console.error('❌ 测试录音失败:', error);
+            }
+          );
+          
+          // 开始测试录音
+          testMedia.startRecord();
+          console.log('🎤 测试录音已开始');
+          
+          // 3秒后停止
+          setTimeout(() => {
+            testMedia.stopRecord();
+            console.log('🛑 测试录音已停止');
+          }, 3000);
+          
+        } else {
+          console.error('❌ Cordova Media插件不可用');
+        }
+        
+      } catch (error) {
+        console.error('❌ 测试录音失败:', error);
+      }
     },
 
     // Web Speech API实时识别
