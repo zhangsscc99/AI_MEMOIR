@@ -1125,7 +1125,7 @@ export default {
         
         console.log('使用MIME类型:', mimeType);
         
-        // 创建MediaRecorder
+        // 创建MediaRecorder，设置timeslice为100ms以获取实时数据
         this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
         this.audioChunks = [];
         
@@ -1181,7 +1181,7 @@ export default {
             console.log('✅ Web录音开始成功 (Capacitor模式), 状态:', this.mediaRecorder.state);
           } else {
             // 在浏览器环境中，使用时间间隔
-            this.mediaRecorder.start(5000); // 每5秒收集一次数据
+            this.mediaRecorder.start(100); // 每100ms收集一次数据，实现实时流式传输
             console.log('✅ Web录音开始成功 (浏览器模式), 状态:', this.mediaRecorder.state);
           }
         } catch (startError) {
