@@ -1133,12 +1133,8 @@ export default {
           console.log('收到音频数据:', event.data.size, 'bytes');
           if (event.data.size > 0) {
             this.audioChunks.push(event.data);
-            // 实时处理音频数据 - 只在WebSocket连接建立后发送
-            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-              this.processRealtimeAudio(event.data);
-            } else {
-              console.log('⚠️ WebSocket未连接，暂存音频数据');
-            }
+            // 实时处理音频数据 - 立即发送，不管WebSocket状态
+            this.processRealtimeAudio(event.data);
           }
         };
         
@@ -1367,12 +1363,10 @@ export default {
         
         this.websocket.onclose = (event) => {
           console.log('🔌 WebSocket连接已关闭:', event.code, event.reason);
-          // 如果录音还在进行中，尝试重连
+          // 如果录音还在进行中，立即重连
           if (this.isRecording) {
-            console.log('🔄 录音进行中，尝试重连WebSocket...');
-            setTimeout(() => {
-              this.reconnectWebSocket(speechToken, appkey);
-            }, 1000);
+            console.log('🔄 录音进行中，立即重连WebSocket...');
+            this.reconnectWebSocket(speechToken, appkey);
           }
         };
         
@@ -1932,6 +1926,12 @@ export default {
 
     // 处理实时音频数据
     async processRealtimeAudio(audioData) {
+      // 如果录音已停止，不再处理音频数据
+      if (!this.isRecording) {
+        console.log('🛑 录音已停止，忽略音频数据:', audioData.size, 'bytes');
+        return;
+      }
+      
       // 这里可以添加实时音频处理逻辑
       console.log('处理实时音频数据:', audioData.size, 'bytes');
       console.log('🔍 音频数据类型:', audioData.constructor.name);
