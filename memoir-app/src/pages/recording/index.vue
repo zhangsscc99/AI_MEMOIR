@@ -1221,7 +1221,8 @@ export default {
         
         // 只使用阿里云WebSocket流式识别
         console.log('📡 使用阿里云WebSocket流式识别');
-        await this.startAliyunWebSocketRecognition();
+        const { token, appkey } = await this.getAliyunTokenAndAppkey();
+        await this.startAliyunWebSocketRecognition(token, appkey);
         
       } catch (error) {
         console.error('❌ 启动实时语音识别失败:', error);
@@ -1330,6 +1331,8 @@ export default {
     async startAliyunWebSocketRecognition(speechToken, appkey) {
       try {
         console.log('🎤 开始阿里云WebSocket实时识别...');
+        console.log('🔑 传入的Token:', speechToken);
+        console.log('🔑 传入的Appkey:', appkey);
         
         // 如果没有提供appkey，从后端获取
         if (!appkey) {
@@ -1338,7 +1341,8 @@ export default {
         }
         
         // 建立WebSocket连接，Token通过URL参数传递
-        const wsUrl = `wss://nls-gateway.aliyuncs.com/ws/v1?token=${speechToken}`;
+        const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${speechToken}`;
+        console.log('🌐 WebSocket URL:', wsUrl);
         this.websocket = new WebSocket(wsUrl);
         
         this.websocket.onopen = () => {
@@ -1371,7 +1375,6 @@ export default {
         header: {
           namespace: "SpeechTranscriber",
           name: "StartTranscription",
-          status: 20000000,
           message_id: this.generateMessageId(),
           task_id: this.generateTaskId()
         },
@@ -1381,14 +1384,23 @@ export default {
           sample_rate: 16000,
           enable_intermediate_result: true,
           enable_punctuation_prediction: true,
-          enable_inverse_text_normalization: true,
-          enable_timestamp: true,
-          enable_voice_detection: true
+          enable_inverse_text_normalization: true
         }
       };
       
       console.log('📤 发送开始识别请求:', JSON.stringify(startRequest, null, 2));
-      this.websocket.send(JSON.stringify(startRequest));
+      console.log('📤 发送的JSON字符串:', JSON.stringify(startRequest));
+      
+      // 确保消息格式正确
+      const messageString = JSON.stringify(startRequest);
+      console.log('📤 消息长度:', messageString.length);
+      console.log('📤 消息字节:', new TextEncoder().encode(messageString).length);
+      
+      // 检查WebSocket状态
+      console.log('📤 WebSocket状态:', this.websocket.readyState);
+      console.log('📤 WebSocket URL:', this.websocket.url);
+      
+      this.websocket.send(messageString);
     },
 
     // 处理WebSocket消息
@@ -1396,6 +1408,9 @@ export default {
       try {
         const message = JSON.parse(event.data);
         console.log('📨 收到WebSocket消息:', message);
+        console.log('📨 消息类型:', message.header?.name);
+        console.log('📨 消息状态:', message.header?.status);
+        console.log('📨 消息载荷:', message.payload);
         
         const { header, payload } = message;
         
@@ -1422,7 +1437,8 @@ export default {
           console.error('❌ 错误详情:', {
             status: header.status,
             status_text: header.status_text,
-            message: payload.message || '未知错误'
+            message: (payload && payload.message) || '未知错误',
+            full_payload: payload
           });
         }
       } catch (error) {
@@ -1441,14 +1457,14 @@ export default {
       console.log('📝 文本已更新:', this.contentText);
     },
 
-    // 生成消息ID
+    // 生成消息ID (纯数字格式)
     generateMessageId() {
-      return 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      return Date.now().toString() + Math.random().toString(36).substr(2, 9);
     },
-
-    // 生成任务ID
+    
+    // 生成任务ID (纯数字格式)
     generateTaskId() {
-      return 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      return Date.now().toString() + Math.random().toString(36).substr(2, 9);
     },
 
     // 开始Web音频录音
