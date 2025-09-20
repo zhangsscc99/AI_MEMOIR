@@ -1433,14 +1433,14 @@ export default {
 
     // 发送开始识别请求
     sendStartRequest(speechToken, appkey) {
-      const startRequest = this.formatAliyunMessage("StartTranscription", {
-        appkey: appkey,
-        format: "pcm",
-        sample_rate: 16000,
-        enable_intermediate_result: true,
-        enable_punctuation_prediction: true,
-        enable_inverse_text_normalization: true
-      });
+        const startRequest = this.formatAliyunMessage("StartTranscription", {
+          appkey: appkey,
+          format: "pcm", // 使用PCM格式，这是阿里云支持的标准格式
+          sample_rate: 16000,
+          enable_intermediate_result: true,
+          enable_punctuation_prediction: true,
+          enable_inverse_text_normalization: true
+        });
       
       console.log('📤 发送开始识别请求:', JSON.stringify(startRequest, null, 2));
       console.log('📤 消息ID:', startRequest.header.message_id);
@@ -1471,6 +1471,27 @@ export default {
       }
     },
 
+    // 发送停止识别请求
+    sendStopRequest() {
+      if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+        console.log('⚠️ WebSocket未连接，无法发送停止请求');
+        return;
+      }
+
+      const stopRequest = this.formatAliyunMessage("StopTranscription", {
+        appkey: this.currentAppkey
+      });
+      
+      console.log('🛑 发送停止识别请求:', JSON.stringify(stopRequest, null, 2));
+      
+      try {
+        this.websocket.send(JSON.stringify(stopRequest));
+        console.log('✅ 停止识别请求已发送');
+      } catch (error) {
+        console.error('❌ 发送停止识别请求失败:', error);
+      }
+    },
+
     // 处理WebSocket消息
     handleWebSocketMessage(event) {
       try {
@@ -1482,7 +1503,10 @@ export default {
         
         const { header, payload } = message;
         
-        if (header.name === 'TranscriptionResultChanged') {
+        if (header.name === 'SentenceBegin') {
+          // 句子开始
+          console.log('🎬 句子开始:', payload);
+        } else if (header.name === 'TranscriptionResultChanged') {
           // 中间识别结果
           const result = payload.result;
           if (result && result.trim()) {
@@ -1941,9 +1965,14 @@ export default {
       if (this.websocket && (this.websocket.readyState === WebSocket.OPEN || this.websocket.readyState === WebSocket.CONNECTING)) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
-          // 直接发送Blob数据
-          this.websocket.send(audioData);
-          console.log('✅ 音频数据发送成功');
+          // 阿里云只支持PCM格式，需要转换WebM到PCM
+          const pcmData = await this.convertWebMToPCM(audioData);
+          if (pcmData) {
+            this.websocket.send(pcmData);
+            console.log('✅ 音频数据发送成功 (PCM格式)');
+          } else {
+            console.log('⚠️ PCM转换失败，跳过此音频数据块');
+          }
         } catch (error) {
           console.error('❌ 发送音频数据失败:', error);
         }
@@ -1954,6 +1983,39 @@ export default {
           console.log('🔄 尝试重连WebSocket...');
           this.reconnectWebSocket(this.currentToken, this.currentAppkey);
         }
+      }
+    },
+
+    // 将WebM格式转换为PCM格式
+    async convertWebMToPCM(webmBlob) {
+      try {
+        console.log('🔄 开始转换WebM到PCM格式...');
+        
+        // 创建AudioContext
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 将Blob转换为ArrayBuffer
+        const arrayBuffer = await webmBlob.arrayBuffer();
+        
+        // 解码音频数据
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        // 获取PCM数据
+        const pcmData = audioBuffer.getChannelData(0);
+        
+        // 转换为16位PCM
+        const pcm16 = new Int16Array(pcmData.length);
+        for (let i = 0; i < pcmData.length; i++) {
+          pcm16[i] = Math.max(-1, Math.min(1, pcmData[i])) * 0x7FFF;
+        }
+        
+        console.log('✅ WebM到PCM转换完成:', pcm16.length, 'samples');
+        return pcm16.buffer;
+        
+      } catch (error) {
+        console.error('❌ WebM到PCM转换失败:', error);
+        // 如果转换失败，返回null，不发送数据
+        return null;
       }
     },
     
@@ -1994,6 +2056,9 @@ export default {
         clearInterval(this.recordingTimer);
         this.recordingTimer = null;
       }
+      
+      // 发送停止识别请求
+      this.sendStopRequest();
       
       // 停止WebSocket保活
       this.stopKeepWebSocketAlive();
