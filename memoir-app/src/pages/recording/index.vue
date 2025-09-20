@@ -705,6 +705,38 @@ export default {
       return !!(window.Capacitor && window.Capacitor.isNativePlatform());
     },
 
+    // 获取阿里云Token和Appkey
+    async getAliyunTokenAndAppkey() {
+      try {
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录，无法进行语音识别');
+        }
+        
+        const tokenResponse = await uni.request({
+          url: apiUrl('/speech/token'),
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (tokenResponse.data.success) {
+          const speechToken = tokenResponse.data.data.token;
+          const appkey = tokenResponse.data.data.appkey;
+          console.log('✅ 获取语音识别Token成功');
+          console.log('✅ 获取Appkey成功:', appkey);
+          return { token: speechToken, appkey: appkey };
+        } else {
+          throw new Error('获取语音识别Token失败: ' + tokenResponse.data.message);
+        }
+      } catch (error) {
+        console.error('❌ 获取阿里云Token失败:', error);
+        throw error;
+      }
+    },
+
     // 检查Web录音权限
     async checkWebRecordingPermission() {
       try {
