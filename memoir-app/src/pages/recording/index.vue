@@ -980,14 +980,9 @@ export default {
       try {
         console.log('🎤 开始实时语音识别...');
         
-        // 优先使用Web Speech API（真正的实时识别）
-        if (this.isWebSpeechSupported()) {
-          console.log('📡 使用Web Speech API进行实时识别');
-          this.startWebSpeechRecognition();
-        } else {
-          console.log('📡 使用阿里云WebSocket流式识别');
-          await this.startAliyunWebSocketRecognition();
-        }
+        // 只使用阿里云WebSocket流式识别
+        console.log('📡 使用阿里云WebSocket流式识别');
+        await this.startAliyunWebSocketRecognition();
         
       } catch (error) {
         console.error('❌ 启动实时语音识别失败:', error);
@@ -1059,16 +1054,24 @@ export default {
           }
         }
         
-        // 更新文本内容
+        // 更新文本内容 - 修复显示逻辑
         if (finalTranscript) {
+          console.log('🎯 最终识别结果:', finalTranscript);
           if (this.contentText) {
-            this.contentText += finalTranscript;
+            this.contentText += ' ' + finalTranscript;
           } else {
             this.contentText = finalTranscript;
           }
-          console.log('🎯 最终识别结果:', finalTranscript);
-        } else if (interimTranscript) {
+          // 强制更新UI
+          this.$forceUpdate();
+        }
+        
+        if (interimTranscript) {
           console.log('🎯 中间识别结果:', interimTranscript);
+          // 显示中间结果（临时显示）
+          const tempText = this.contentText + ' ' + interimTranscript;
+          this.contentText = tempText;
+          this.$forceUpdate();
         }
       };
       
@@ -1117,7 +1120,7 @@ export default {
         // 设置流式识别定时器（更频繁的识别）
         this.realtimeRecognitionTimer = setInterval(() => {
           this.performStreamingRecognition(speechToken);
-        }, 1000); // 每1秒进行一次识别
+        }, 2000); // 每2秒进行一次识别
         
       } catch (error) {
         console.error('❌ 启动阿里云WebSocket流式识别失败:', error);
@@ -1274,6 +1277,9 @@ export default {
             } else {
               this.contentText = transcribedText;
             }
+            // 强制更新UI
+            this.$forceUpdate();
+            console.log('📝 文本已更新:', this.contentText);
           }
         } else {
           console.error('❌ 流式识别失败:', transcribeResponse.data?.message);
