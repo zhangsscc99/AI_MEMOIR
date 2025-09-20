@@ -1435,7 +1435,7 @@ export default {
     sendStartRequest(speechToken, appkey) {
         const startRequest = this.formatAliyunMessage("StartTranscription", {
           appkey: appkey,
-          format: "pcm", // 使用PCM格式，这是阿里云支持的标准格式
+          format: "opus", // 使用OPUS格式，阿里云支持OGG封装的OPUS
           sample_rate: 16000,
           enable_intermediate_result: true,
           enable_punctuation_prediction: true,
@@ -1965,14 +1965,9 @@ export default {
       if (this.websocket && (this.websocket.readyState === WebSocket.OPEN || this.websocket.readyState === WebSocket.CONNECTING)) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
-          // 阿里云只支持PCM格式，需要转换WebM到PCM
-          const pcmData = await this.convertWebMToPCM(audioData);
-          if (pcmData) {
-            this.websocket.send(pcmData);
-            console.log('✅ 音频数据发送成功 (PCM格式)');
-          } else {
-            console.log('⚠️ PCM转换失败，跳过此音频数据块');
-          }
+          // 阿里云支持OPUS格式，WebM包含OPUS编码，直接发送
+          this.websocket.send(audioData);
+          console.log('✅ 音频数据发送成功 (WebM/OPUS格式)');
         } catch (error) {
           console.error('❌ 发送音频数据失败:', error);
         }
