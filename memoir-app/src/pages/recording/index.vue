@@ -152,6 +152,8 @@ export default {
       mediaRecorder: null,
       mediaStream: null,
       audioChunks: [],
+      // 音频数据队列（用于重连时发送）
+      audioQueue: [],
       // WebSocket相关
       websocket: null,
       audioProcessor: null,
@@ -1390,6 +1392,8 @@ export default {
         this.websocket.onopen = () => {
           console.log('✅ WebSocket重连成功');
           this.sendStartRequest(speechToken, appkey);
+          // 发送队列中的音频数据
+          this.processAudioQueue();
         };
         
         this.websocket.onmessage = (event) => {
@@ -1398,6 +1402,13 @@ export default {
         
         this.websocket.onclose = (event) => {
           console.log('🔌 WebSocket重连后关闭:', event.code, event.reason);
+          // 如果录音还在进行中，继续重连
+          if (this.isRecording) {
+            console.log('🔄 录音进行中，继续重连...');
+            setTimeout(() => {
+              this.reconnectWebSocket(speechToken, appkey);
+            }, 2000); // 2秒后重连
+          }
         };
         
         this.websocket.onerror = (error) => {
@@ -1962,7 +1973,7 @@ export default {
       console.log('🔍 WebSocket状态:', this.websocket ? this.websocket.readyState : 'null');
       
       // 发送音频数据到阿里云WebSocket
-      if (this.websocket && (this.websocket.readyState === WebSocket.OPEN || this.websocket.readyState === WebSocket.CONNECTING)) {
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
           // 阿里云支持OPUS格式，WebM包含OPUS编码，直接发送
@@ -1972,13 +1983,43 @@ export default {
           console.error('❌ 发送音频数据失败:', error);
         }
       } else {
-        console.log('⚠️ WebSocket未连接，无法发送音频数据');
-        // 如果录音还在进行中，尝试重连
-        if (this.isRecording && this.currentToken && this.currentAppkey) {
-          console.log('🔄 尝试重连WebSocket...');
-          this.reconnectWebSocket(this.currentToken, this.currentAppkey);
+        // WebSocket未连接或连接中，将音频数据加入队列
+        console.log('📦 WebSocket未就绪，将音频数据加入队列:', audioData.size, 'bytes');
+        this.audioQueue.push(audioData);
+        
+        // 如果WebSocket未连接，尝试重连
+        if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
+          if (this.isRecording && this.currentToken && this.currentAppkey) {
+            console.log('🔄 尝试重连WebSocket...');
+            this.reconnectWebSocket(this.currentToken, this.currentAppkey);
+          }
         }
       }
+    },
+
+    // 处理音频队列
+    processAudioQueue() {
+      if (this.audioQueue.length === 0) {
+        console.log('📦 音频队列为空');
+        return;
+      }
+      
+      console.log('📦 处理音频队列，队列长度:', this.audioQueue.length);
+      
+      while (this.audioQueue.length > 0 && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        const audioData = this.audioQueue.shift();
+        try {
+          this.websocket.send(audioData);
+          console.log('✅ 发送队列中的音频数据:', audioData.size, 'bytes');
+        } catch (error) {
+          console.error('❌ 发送队列音频数据失败:', error);
+          // 如果发送失败，将数据放回队列
+          this.audioQueue.unshift(audioData);
+          break;
+        }
+      }
+      
+      console.log('📦 音频队列处理完成，剩余:', this.audioQueue.length);
     },
 
     // 将WebM格式转换为PCM格式
@@ -2057,6 +2098,9 @@ export default {
       
       // 停止WebSocket保活
       this.stopKeepWebSocketAlive();
+      
+      // 清空音频队列
+      this.audioQueue = [];
       
       // 停止实时识别
       if (this.realtimeRecognitionTimer) {
