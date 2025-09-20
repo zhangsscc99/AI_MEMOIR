@@ -621,12 +621,18 @@ export default {
       console.log('📊 按钮文字检查 - recordButtonText:', this.recordButtonText);
     },
 
-    // 开始阿里云移动端录音 - 使用WebSocket API
+    // 开始阿里云移动端录音 - 使用原生Android SDK
     async startAliyunMobileRecording() {
       try {
-        console.log('🎯 开始阿里云WebSocket实时语音识别...');
+        console.log('🎯 开始阿里云Android SDK实时语音识别...');
         
-        // 获取语音识别Token
+        // 检查权限
+        const permissionResult = await this.checkAliyunPermission();
+        if (!permissionResult.granted) {
+          throw new Error('需要录音权限才能使用此功能');
+        }
+        
+        // 获取语音识别Token和Appkey
         const token = uni.getStorageSync('token');
         if (!token) {
           throw new Error('用户未登录，无法进行语音识别');
@@ -650,15 +656,115 @@ export default {
         console.log('✅ 获取语音识别Token成功');
         console.log('✅ 获取Appkey成功:', appkey);
         
-        // 开始WebSocket实时识别
-        await this.startAliyunWebSocketRecognition(speechToken, appkey);
+        // 初始化阿里云SDK
+        await this.initializeAliyunSDK(appkey, speechToken);
         
-        // 开始录音并发送音频流
-        await this.startWebAudioRecording();
+        // 开始录音和识别
+        await this.startAliyunRecording();
         
       } catch (error) {
-        console.error('❌ 阿里云WebSocket录音失败:', error);
+        console.error('❌ 阿里云Android SDK录音失败:', error);
         throw error;
+      }
+    },
+
+    // 检查阿里云权限
+    async checkAliyunPermission() {
+      try {
+        // 这里应该调用阿里云插件的权限检查方法
+        // 暂时返回模拟结果
+        console.log('🔐 检查阿里云录音权限...');
+        return {
+          granted: true,
+          denied: false,
+          neverAsked: false
+        };
+      } catch (error) {
+        console.error('❌ 权限检查失败:', error);
+        return {
+          granted: false,
+          denied: true,
+          neverAsked: false
+        };
+      }
+    },
+
+    // 初始化阿里云SDK
+    async initializeAliyunSDK(appkey, token) {
+      try {
+        console.log('🔧 初始化阿里云SDK...');
+        
+        // 创建工作目录
+        const workspace = "/data/data/com.memoir.app/files/asr_my";
+        
+        // 调用阿里云插件的初始化方法
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
+          await window.Capacitor.Plugins.AliyunSpeech.initialize({
+            appkey: appkey,
+            token: token,
+            workspace: workspace
+          });
+          console.log('✅ 阿里云SDK初始化成功');
+        } else {
+          throw new Error('阿里云插件不可用');
+        }
+      } catch (error) {
+        console.error('❌ 阿里云SDK初始化失败:', error);
+        throw error;
+      }
+    },
+
+    // 开始阿里云录音
+    async startAliyunRecording() {
+      try {
+        console.log('🎤 开始阿里云录音和识别...');
+        
+        // 调用阿里云插件的开始录音方法
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
+          await window.Capacitor.Plugins.AliyunSpeech.startRecording({
+            sampleRate: 16000,
+            format: 'pcm',
+            enableIntermediateResult: true,
+            enablePunctuationPrediction: true,
+            enableInverseTextNormalization: true
+          });
+          
+          // 监听识别结果
+          this.setupAliyunListeners();
+          
+          console.log('✅ 阿里云录音已开始');
+        } else {
+          throw new Error('阿里云插件不可用');
+        }
+      } catch (error) {
+        console.error('❌ 阿里云录音失败:', error);
+        throw error;
+      }
+    },
+
+    // 设置阿里云监听器
+    setupAliyunListeners() {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
+        // 监听中间识别结果
+        window.Capacitor.Plugins.AliyunSpeech.addListener('onPartialResult', (result) => {
+          console.log('🎯 中间识别结果:', result.text);
+          this.updateContentText(result.text);
+        });
+        
+        // 监听完整识别结果
+        window.Capacitor.Plugins.AliyunSpeech.addListener('onFinalResult', (result) => {
+          console.log('✅ 完整识别结果:', result.text);
+          this.updateContentText(result.text);
+        });
+        
+        // 监听错误
+        window.Capacitor.Plugins.AliyunSpeech.addListener('onError', (error) => {
+          console.error('❌ 识别错误:', error.message);
+          uni.showToast({
+            title: '识别错误: ' + error.message,
+            icon: 'error'
+          });
+        });
       }
     },
 
@@ -1638,6 +1744,18 @@ export default {
       
       // 停止状态监控
       this.stopStatusMonitoring();
+      
+      // 停止阿里云插件录音
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
+        console.log('🎤 停止阿里云插件录音...');
+        try {
+          window.Capacitor.Plugins.AliyunSpeech.stopRecording();
+          window.Capacitor.Plugins.AliyunSpeech.removeAllListeners();
+          console.log('✅ 阿里云插件录音已停止');
+        } catch (error) {
+          console.error('❌ 停止阿里云插件录音失败:', error);
+        }
+      }
       
       // 停止Web Speech API识别
       if (this.speechRecognition) {

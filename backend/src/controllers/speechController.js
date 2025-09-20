@@ -84,7 +84,7 @@ const getSpeechToken = async (req, res) => {
       message: '获取语音识别Token成功',
       data: {
         token: token,
-        appkey: process.env.ALIYUN_SPEECH_APPKEY,
+        appkey: process.env.ALIYUN_APP_KEY,
         // 出于安全考虑，不返回具体过期时间，只返回是否有效
         isValid: aliyunTokenService.isTokenValid()
       }

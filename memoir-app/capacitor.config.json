@@ -4,5 +4,12 @@
   "webDir": "dist/build/h5",
   "server": {
     "androidScheme": "http"
+  },
+  "plugins": {
+    "AliyunSpeech": {
+      "android": {
+        "package": "com.memoir.aliyunspeech"
+      }
+    }
   }
 }
