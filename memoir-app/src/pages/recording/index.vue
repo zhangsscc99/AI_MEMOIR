@@ -1456,26 +1456,38 @@ export default {
       console.log('📝 文本已更新:', this.contentText);
     },
 
-    // 生成消息ID (阿里云格式)
+    // 生成消息ID (32位十六进制格式)
     generateMessageId() {
-      return Date.now().toString();
+      const hexDigits = "0123456789abcdef";
+      let messageId = "";
+      for (let i = 0; i < 32; i++) {
+        messageId += hexDigits[Math.floor(Math.random() * 16)];
+      }
+      return messageId;
     },
     
-    // 生成任务ID (阿里云格式)
+    // 生成任务ID (32位十六进制格式)
     generateTaskId() {
-      return (Date.now() + 1).toString();
+      const hexDigits = "0123456789abcdef";
+      let taskId = "";
+      for (let i = 0; i < 32; i++) {
+        taskId += hexDigits[Math.floor(Math.random() * 16)];
+      }
+      return taskId;
     },
 
     // 阿里云消息格式转换器
     formatAliyunMessage(type, params = {}) {
+      const { appkey, ...payload } = params;
       const baseMessage = {
         header: {
           namespace: "SpeechTranscriber",
           name: type,
           message_id: this.generateMessageId(),
-          task_id: this.generateTaskId()
+          task_id: this.generateTaskId(),
+          appkey: appkey
         },
-        payload: params
+        payload: payload
       };
       
       console.log('🔧 格式化阿里云消息:', JSON.stringify(baseMessage, null, 2));
