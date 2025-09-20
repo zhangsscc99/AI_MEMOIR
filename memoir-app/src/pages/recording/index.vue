@@ -1133,8 +1133,12 @@ export default {
           console.log('收到音频数据:', event.data.size, 'bytes');
           if (event.data.size > 0) {
             this.audioChunks.push(event.data);
-            // 实时处理音频数据
-            this.processRealtimeAudio(event.data);
+            // 实时处理音频数据 - 只在WebSocket连接建立后发送
+            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+              this.processRealtimeAudio(event.data);
+            } else {
+              console.log('⚠️ WebSocket未连接，暂存音频数据');
+            }
           }
         };
         
@@ -1447,7 +1451,7 @@ export default {
       console.log('📤 发送开始识别请求:', JSON.stringify(startRequest, null, 2));
       console.log('📤 消息ID:', startRequest.header.message_id);
       console.log('📤 任务ID:', startRequest.header.task_id);
-      console.log('📤 Appkey:', startRequest.payload.appkey);
+      console.log('📤 Appkey:', startRequest.header.appkey);
       
       // 确保消息格式正确
       const messageString = JSON.stringify(startRequest);
