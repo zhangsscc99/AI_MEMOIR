@@ -46,6 +46,20 @@ import org.json.JSONException;
 )
 public class AliyunSpeechPlugin extends Plugin implements INativeNuiCallback {
     
+    @Override
+    public void load() {
+        super.load();
+        System.out.println("🔧 阿里云语音插件已加载");
+    }
+    
+    @PluginMethod
+    public void test(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("success", true);
+        result.put("message", "阿里云插件测试成功");
+        call.resolve(result);
+    }
+    
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     private AudioRecord audioRecord;
     private boolean isRecording = false;

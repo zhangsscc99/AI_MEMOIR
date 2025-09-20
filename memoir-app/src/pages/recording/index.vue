@@ -703,8 +703,18 @@ export default {
         console.log('🔍 window.Capacitor.Plugins:', !!window.Capacitor?.Plugins);
         console.log('🔍 window.Capacitor.Plugins.AliyunSpeech:', !!window.Capacitor?.Plugins?.AliyunSpeech);
         
+        // 先测试插件是否可用
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
-          console.log('✅ 插件可用，开始初始化...');
+          console.log('✅ 插件可用，开始测试...');
+          try {
+            const testResult = await window.Capacitor.Plugins.AliyunSpeech.test();
+            console.log('✅ 插件测试成功:', testResult);
+          } catch (error) {
+            console.error('❌ 插件测试失败:', error);
+            throw new Error('插件测试失败: ' + error.message);
+          }
+          
+          console.log('✅ 插件测试通过，开始初始化...');
           await window.Capacitor.Plugins.AliyunSpeech.initialize({
             appkey: appkey,
             token: token,
