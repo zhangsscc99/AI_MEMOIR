@@ -1371,25 +1371,16 @@ export default {
 
     // 发送开始识别请求
     sendStartRequest(speechToken, appkey) {
-      const startRequest = {
-        header: {
-          namespace: "SpeechTranscriber",
-          name: "StartTranscription",
-          message_id: this.generateMessageId(),
-          task_id: this.generateTaskId()
-        },
-        payload: {
-          appkey: appkey,
-          format: "pcm",
-          sample_rate: 16000,
-          enable_intermediate_result: true,
-          enable_punctuation_prediction: true,
-          enable_inverse_text_normalization: true
-        }
-      };
+      const startRequest = this.formatAliyunMessage("StartTranscription", {
+        appkey: appkey,
+        format: "pcm",
+        sample_rate: 16000,
+        enable_intermediate_result: true,
+        enable_punctuation_prediction: true,
+        enable_inverse_text_normalization: true
+      });
       
       console.log('📤 发送开始识别请求:', JSON.stringify(startRequest, null, 2));
-      console.log('📤 发送的JSON字符串:', JSON.stringify(startRequest));
       console.log('📤 消息ID:', startRequest.header.message_id);
       console.log('📤 任务ID:', startRequest.header.task_id);
       console.log('📤 Appkey:', startRequest.payload.appkey);
@@ -1403,7 +1394,12 @@ export default {
       console.log('📤 WebSocket状态:', this.websocket.readyState);
       console.log('📤 WebSocket URL:', this.websocket.url);
       
-      this.websocket.send(messageString);
+      if (this.websocket.readyState === WebSocket.OPEN) {
+        this.websocket.send(messageString);
+        console.log('✅ 消息已发送到阿里云服务器');
+      } else {
+        console.error('❌ WebSocket未连接，无法发送消息');
+      }
     },
 
     // 处理WebSocket消息
@@ -1460,14 +1456,30 @@ export default {
       console.log('📝 文本已更新:', this.contentText);
     },
 
-    // 生成消息ID (纯数字格式)
+    // 生成消息ID (阿里云格式)
     generateMessageId() {
-      return Math.floor(Math.random() * 1000000000).toString();
+      return Date.now().toString();
     },
     
-    // 生成任务ID (纯数字格式)
+    // 生成任务ID (阿里云格式)
     generateTaskId() {
-      return Math.floor(Math.random() * 1000000000).toString();
+      return (Date.now() + 1).toString();
+    },
+
+    // 阿里云消息格式转换器
+    formatAliyunMessage(type, params = {}) {
+      const baseMessage = {
+        header: {
+          namespace: "SpeechTranscriber",
+          name: type,
+          message_id: this.generateMessageId(),
+          task_id: this.generateTaskId()
+        },
+        payload: params
+      };
+      
+      console.log('🔧 格式化阿里云消息:', JSON.stringify(baseMessage, null, 2));
+      return baseMessage;
     },
 
     // 开始Web音频录音
