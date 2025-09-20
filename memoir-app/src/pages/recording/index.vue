@@ -698,7 +698,13 @@ export default {
         const workspace = "/data/data/com.memoir.app/files/asr_my";
         
         // 调用阿里云插件的初始化方法
+        console.log('🔍 检查插件可用性...');
+        console.log('🔍 window.Capacitor:', !!window.Capacitor);
+        console.log('🔍 window.Capacitor.Plugins:', !!window.Capacitor?.Plugins);
+        console.log('🔍 window.Capacitor.Plugins.AliyunSpeech:', !!window.Capacitor?.Plugins?.AliyunSpeech);
+        
         if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
+          console.log('✅ 插件可用，开始初始化...');
           await window.Capacitor.Plugins.AliyunSpeech.initialize({
             appkey: appkey,
             token: token,
@@ -706,6 +712,10 @@ export default {
           });
           console.log('✅ 阿里云SDK初始化成功');
         } else {
+          console.error('❌ 插件不可用，详细信息:');
+          console.error('  - window.Capacitor:', !!window.Capacitor);
+          console.error('  - window.Capacitor.Plugins:', !!window.Capacitor?.Plugins);
+          console.error('  - window.Capacitor.Plugins.AliyunSpeech:', !!window.Capacitor?.Plugins?.AliyunSpeech);
           throw new Error('阿里云插件不可用');
         }
       } catch (error) {
