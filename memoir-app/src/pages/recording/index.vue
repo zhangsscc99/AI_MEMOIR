@@ -1381,11 +1381,13 @@ export default {
           sample_rate: 16000,
           enable_intermediate_result: true,
           enable_punctuation_prediction: true,
-          enable_inverse_text_normalization: true
+          enable_inverse_text_normalization: true,
+          enable_timestamp: true,
+          enable_voice_detection: true
         }
       };
       
-      console.log('📤 发送开始识别请求:', startRequest);
+      console.log('📤 发送开始识别请求:', JSON.stringify(startRequest, null, 2));
       this.websocket.send(JSON.stringify(startRequest));
     },
 
@@ -1417,6 +1419,11 @@ export default {
           console.log('✅ 识别已完成');
         } else if (header.name === 'TaskFailed') {
           console.error('❌ 识别任务失败:', payload);
+          console.error('❌ 错误详情:', {
+            status: header.status,
+            status_text: header.status_text,
+            message: payload.message || '未知错误'
+          });
         }
       } catch (error) {
         console.error('❌ 解析WebSocket消息失败:', error);
