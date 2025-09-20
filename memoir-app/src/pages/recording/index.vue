@@ -1142,6 +1142,9 @@ export default {
           console.log('🎤 MediaRecorder 已开始录音');
           // 开始阿里云WebSocket实时识别
           this.startAliyunWebSocketRecognition(token, null);
+          
+          // 确保WebSocket连接保持活跃
+          this.keepWebSocketAlive();
         };
         
         this.mediaRecorder.onpause = () => {
@@ -1347,6 +1350,9 @@ export default {
         
         this.websocket.onopen = () => {
           console.log('✅ WebSocket连接已建立');
+          // 保存token和appkey用于重连
+          this.currentToken = speechToken;
+          this.currentAppkey = appkey;
           // 发送开始识别请求
           this.sendStartRequest(speechToken, appkey);
         };
@@ -1401,6 +1407,29 @@ export default {
         };
       } catch (error) {
         console.error('❌ WebSocket重连失败:', error);
+      }
+    },
+
+    // 保持WebSocket连接活跃
+    keepWebSocketAlive() {
+      // 每5秒检查一次WebSocket连接状态
+      this.websocketKeepAliveTimer = setInterval(() => {
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+          console.log('💓 WebSocket连接正常');
+        } else if (this.isRecording) {
+          console.log('⚠️ WebSocket连接异常，尝试重连...');
+          // 重连WebSocket
+          this.reconnectWebSocket(this.currentToken, this.currentAppkey);
+        }
+      }, 5000);
+    },
+
+    // 停止保持WebSocket活跃
+    stopKeepWebSocketAlive() {
+      if (this.websocketKeepAliveTimer) {
+        clearInterval(this.websocketKeepAliveTimer);
+        this.websocketKeepAliveTimer = null;
+        console.log('🛑 停止WebSocket保活');
       }
     },
 
@@ -1951,6 +1980,9 @@ export default {
         clearInterval(this.recordingTimer);
         this.recordingTimer = null;
       }
+      
+      // 停止WebSocket保活
+      this.stopKeepWebSocketAlive();
       
       // 停止实时识别
       if (this.realtimeRecognitionTimer) {
