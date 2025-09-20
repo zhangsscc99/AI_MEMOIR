@@ -601,14 +601,18 @@ export default {
       console.log('🔍 getUserMedia存在:', typeof navigator?.mediaDevices?.getUserMedia !== 'undefined');
       console.log('🔍 uni.startRecord存在:', typeof uni?.startRecord === 'function');
       
-      // 使用纯阿里云移动端SDK方案
-      console.log('🎯 使用纯阿里云移动端SDK进行录音和识别...');
-      try {
-        await this.startAliyunMobileRecording();
-      } catch (error) {
-        console.error('❌ 阿里云录音失败:', error);
-        this.handleRecordingError('录音功能不可用: ' + error.message);
-        return;
+      // 根据环境选择录音方式
+      if (this.isCapacitorEnvironment()) {
+        console.log('🎯 检测到Capacitor环境，尝试使用移动端SDK...');
+        try {
+          await this.startAliyunMobileRecording();
+        } catch (error) {
+          console.log('⚠️ 移动端SDK不可用，降级到Web API...');
+          await this.startAliyunWebRecording();
+        }
+      } else {
+        console.log('🌐 检测到Web环境，使用Web API进行录音和识别...');
+        await this.startAliyunWebRecording();
       }
       
       console.log('📱 显示开始录制提示');
@@ -619,6 +623,34 @@ export default {
       
       console.log('📊 录音状态检查 - isRecording:', this.isRecording);
       console.log('📊 按钮文字检查 - recordButtonText:', this.recordButtonText);
+    },
+
+    // 开始阿里云Web API录音 - 通过后端
+    async startAliyunWebRecording() {
+      try {
+        console.log('🌐 开始阿里云Web API实时语音识别...');
+        
+        // 检查录音权限
+        console.log('🔐 检查Web录音权限...');
+        const hasPermission = await this.checkWebRecordingPermission();
+        if (!hasPermission) {
+          throw new Error('录音权限被拒绝');
+        }
+        
+        // 获取Token
+        console.log('🔑 获取阿里云Token...');
+        const { token } = await this.getAliyunTokenAndAppkey();
+        console.log('✅ 获取语音识别Token成功');
+        
+        // 开始Web录音和识别
+        await this.startWebRecording(token);
+        
+        console.log('✅ 阿里云Web API录音和识别已开始');
+        
+      } catch (error) {
+        console.error('❌ 阿里云Web API录音失败:', error);
+        throw error;
+      }
     },
 
     // 开始阿里云移动端录音 - 使用原生Android SDK
@@ -665,6 +697,22 @@ export default {
       } catch (error) {
         console.error('❌ 阿里云Android SDK录音失败:', error);
         throw error;
+      }
+    },
+
+    // 检查Web录音权限
+    async checkWebRecordingPermission() {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+          return true;
+      } else {
+          throw new Error('Web录音API不可用');
+        }
+      } catch (error) {
+        console.error('❌ 检查Web录音权限失败:', error);
+        return false;
       }
     },
 
@@ -967,8 +1015,8 @@ export default {
           console.log('录音时长:', this.recordingTime, '秒');
           this.isProcessing = false;
           this.recordingTime = 0;
-          
-          uni.showToast({
+      
+      uni.showToast({
             title: '录制完成',
             icon: 'success'
           });
@@ -1010,7 +1058,7 @@ export default {
       }
     },
 
-    async startWebRecording() {
+    async startWebRecording(token) {
       try {
         console.log('🌐 开始Web录音...');
         
@@ -1055,6 +1103,8 @@ export default {
         
         this.mediaRecorder.onstart = () => {
           console.log('🎤 MediaRecorder 已开始录音');
+          // 开始阿里云WebSocket实时识别
+          this.startAliyunWebSocketRecognition(token, null);
         };
         
         this.mediaRecorder.onpause = () => {
@@ -1243,6 +1293,12 @@ export default {
     async startAliyunWebSocketRecognition(speechToken, appkey) {
       try {
         console.log('🎤 开始阿里云WebSocket实时识别...');
+        
+        // 如果没有提供appkey，从后端获取
+        if (!appkey) {
+          const { appkey: fetchedAppkey } = await this.getAliyunTokenAndAppkey();
+          appkey = fetchedAppkey;
+        }
         
         // 建立WebSocket连接，Token通过URL参数传递
         const wsUrl = `wss://nls-gateway.aliyuncs.com/ws/v1?token=${speechToken}`;
