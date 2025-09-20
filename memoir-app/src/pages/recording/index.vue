@@ -1458,7 +1458,14 @@ export default {
       console.log('📤 WebSocket状态:', this.websocket.readyState);
       console.log('📤 WebSocket URL:', this.websocket.url);
       
-      if (this.websocket.readyState === WebSocket.OPEN) {
+      // 等待WebSocket连接建立
+      if (this.websocket.readyState === WebSocket.CONNECTING) {
+        console.log('⏳ WebSocket连接中，等待连接建立...');
+        this.websocket.onopen = () => {
+          this.websocket.send(messageString);
+          console.log('✅ 消息已发送到阿里云服务器');
+        };
+      } else if (this.websocket.readyState === WebSocket.OPEN) {
         this.websocket.send(messageString);
         console.log('✅ 消息已发送到阿里云服务器');
       } else {
@@ -1927,13 +1934,11 @@ export default {
       console.log('🔍 WebSocket状态:', this.websocket ? this.websocket.readyState : 'null');
       
       // 发送音频数据到阿里云WebSocket
-      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+      if (this.websocket && (this.websocket.readyState === WebSocket.OPEN || this.websocket.readyState === WebSocket.CONNECTING)) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
-          // 将Blob转换为ArrayBuffer，然后发送
-          const arrayBuffer = await audioData.arrayBuffer();
-          console.log('🔧 转换后的音频数据大小:', arrayBuffer.byteLength, 'bytes');
-          this.websocket.send(arrayBuffer);
+          // 直接发送Blob数据
+          this.websocket.send(audioData);
           console.log('✅ 音频数据发送成功');
         } catch (error) {
           console.error('❌ 发送音频数据失败:', error);
