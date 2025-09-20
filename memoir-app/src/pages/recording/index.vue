@@ -1859,6 +1859,21 @@ export default {
     processRealtimeAudio(audioData) {
       // 这里可以添加实时音频处理逻辑
       console.log('处理实时音频数据:', audioData.size, 'bytes');
+      console.log('🔍 音频数据类型:', audioData.constructor.name);
+      console.log('🔍 WebSocket状态:', this.websocket ? this.websocket.readyState : 'null');
+      
+      // 发送音频数据到阿里云WebSocket
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
+        try {
+          this.websocket.send(audioData);
+          console.log('✅ 音频数据发送成功');
+        } catch (error) {
+          console.error('❌ 发送音频数据失败:', error);
+        }
+      } else {
+        console.log('⚠️ WebSocket未连接，无法发送音频数据');
+      }
     },
     
     handleRecordingFallback() {
