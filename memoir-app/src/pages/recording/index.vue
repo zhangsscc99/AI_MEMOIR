@@ -707,12 +707,50 @@ export default {
       return !!(window.Capacitor && window.Capacitor.isNativePlatform());
     },
 
+    // 自动登录方法
+    async autoLogin() {
+      try {
+        console.log('🔐 开始自动登录...');
+        const loginResponse = await uni.request({
+          url: apiUrl('/auth/login'),
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: {
+            identifier: 'demo',
+            password: 'demo123'
+          }
+        });
+        
+        if (loginResponse.data.success) {
+          const { token, user } = loginResponse.data.data;
+          uni.setStorageSync('token', token);
+          uni.setStorageSync('user', user);
+          console.log('✅ 自动登录成功');
+          return true;
+        } else {
+          console.error('❌ 自动登录失败:', loginResponse.data.message);
+          return false;
+        }
+      } catch (error) {
+        console.error('❌ 自动登录异常:', error);
+        return false;
+      }
+    },
+
     // 获取阿里云Token和Appkey
     async getAliyunTokenAndAppkey() {
       try {
-        const token = uni.getStorageSync('token');
+        let token = uni.getStorageSync('token');
         if (!token) {
-          throw new Error('用户未登录，无法进行语音识别');
+          console.log('🔐 用户未登录，尝试自动登录...');
+          // 尝试自动登录
+          await this.autoLogin();
+          token = uni.getStorageSync('token');
+          if (!token) {
+            throw new Error('用户未登录，无法进行语音识别');
+          }
         }
         
         const tokenResponse = await uni.request({
