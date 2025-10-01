@@ -90,14 +90,14 @@
         let mediaRecorder = null;
         let websocket = null;
         let token = null;
-        let appkey = null;
-        const TARGET_SAMPLE_RATE = 16000;
+        let appId = null;
+        let apiKey = null;
+        let devPid = 15372;
+        let sampleRate = 16000;
+        let cuid = null;
+        const DEFAULT_SAMPLE_RATE = 16000;
         let decodeAudioContext = null;
         let audioProcessingPromise = Promise.resolve();
-        let clientTaskId = null;
-        let serverTaskId = null;
-        let pendingStop = false;
-        let stopTimeout = null;
         let allowAudioStreaming = false;
 
         function log(message, type = 'info') {
@@ -132,7 +132,7 @@
         async function testToken() {
             const result = document.getElementById('tokenResult');
             log('🔑 测试Token获取...');
-            
+
             try {
                 const response = await fetch('/api/speech/token', {
                     headers: {
@@ -140,12 +140,26 @@
                     }
                 });
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    token = data.data.token;
-                    appkey = data.data.appkey;
-                    result.innerHTML = `<div class="success">✅ Token: ${token.substring(0, 30)}...<br>✅ Appkey: ${appkey}</div>`;
-                    log(`✅ Token获取成功`, 'success');
+                    const payload = data.data || {};
+                    token = payload.token;
+                    appId = payload.appId || null;
+                    apiKey = payload.apiKey || null;
+                    devPid = Number(payload.devPid || 15372);
+                    sampleRate = Number(payload.sampleRate || DEFAULT_SAMPLE_RATE);
+                    cuid = payload.cuid || `debug-${generateId().slice(0, 8)}`;
+
+                    result.innerHTML = `
+                        <div class="success">
+                            ✅ Token: ${token.substring(0, 30)}...<br>
+                            ✅ AppID: ${appId || '未提供'}<br>
+                            ✅ API Key: ${apiKey ? apiKey.substring(0, 12) + '...' : '未提供'}<br>
+                            ✅ dev_pid: ${devPid}<br>
+                            ✅ sample_rate: ${sampleRate}<br>
+                            ✅ cuid: ${cuid}
+                        </div>`;
+                    log('✅ 百度Token与配置获取成功', 'success');
                 } else {
                     result.innerHTML = `<div class="error">❌ ${data.message}</div>`;
                     log(`❌ Token获取失败: ${data.message}`, 'error');
@@ -168,10 +182,6 @@
             document.getElementById('stopBtn').disabled = false;
             document.getElementById('result').textContent = '等待识别结果...';
 
-            clientTaskId = null;
-            serverTaskId = null;
-            pendingStop = false;
-            clearTimeout(stopTimeout);
             if (decodeAudioContext && decodeAudioContext.state !== 'closed') {
                 try {
                     await decodeAudioContext.close();
@@ -193,10 +203,17 @@
                     return;
                 }
             }
-            
+
+            if (!appId || !apiKey) {
+                log('❌ 缺少百度语音识别配置，测试终止', 'error');
+                allowAudioStreaming = false;
+                return;
+            }
+
             // 2. 连接WebSocket
             log('🌐 连接WebSocket...');
-            const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${token}`;
+            const sn = generateId();
+            const wsUrl = `wss://vop.baidu.com/realtime_asr?sn=${sn}`;
             log(`🌐 URL: ${wsUrl}`);
             
             websocket = new WebSocket(wsUrl);
@@ -204,29 +221,23 @@
 
             websocket.onopen = () => {
                 log('✅ WebSocket连接成功', 'success');
-
-                clientTaskId = generateId();
                 allowAudioStreaming = true;
 
-                const startMsg = {
-                    header: {
-                        namespace: "SpeechTranscriber",
-                        name: "StartTranscription",
-                        message_id: generateId(),
-                        task_id: clientTaskId,
-                        appkey: appkey
-                    },
-                    payload: {
-                        format: "pcm",
-                        sample_rate: TARGET_SAMPLE_RATE,
-                        enable_intermediate_result: true,
-                        enable_punctuation_prediction: true,
-                        enable_inverse_text_normalization: true
+                const startFrame = {
+                    type: 'START',
+                    data: {
+                        appid: appId,
+                        appkey: apiKey,
+                        token,
+                        dev_pid: devPid,
+                        cuid: cuid || `debug-${generateId().slice(0, 8)}`,
+                        format: 'pcm',
+                        sample: sampleRate
                     }
                 };
 
-                websocket.send(JSON.stringify(startMsg));
-                log(`📤 发送开始识别请求 (task_id: ${clientTaskId})`, 'success');
+                websocket.send(JSON.stringify(startFrame));
+                log('📤 已发送百度START帧', 'success');
 
                 startRecording();
             };
@@ -234,42 +245,39 @@
             websocket.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
-                    log(`📨 收到消息: ${message.header.name}`);
+                    const type = message.type;
+                    log(`📨 收到消息: ${type}`);
 
-                    const incomingTaskId = message.header?.task_id || message.payload?.task_id || message.payload?.TaskId;
-                    if (incomingTaskId) {
-                        if (serverTaskId && serverTaskId !== incomingTaskId) {
-                            log(`🔁 服务端更新 task_id: ${incomingTaskId}`, 'warn');
-                        } else if (!serverTaskId) {
-                            log(`✅ 服务端task_id确认: ${incomingTaskId}`, 'success');
-                        }
-                        serverTaskId = incomingTaskId;
-
-                        if (pendingStop && websocket?.readyState === WebSocket.OPEN) {
-                            log('🛑 发送等待中的停止请求');
-                            sendStopMessage();
-                        }
+                    if (type === 'HEARTBEAT') {
+                        log('💓 心跳帧', 'info');
+                        return;
                     }
-                    
-                    if (message.header.name === 'TranscriptionResultChanged') {
-                        const result = message.payload.result;
-                        document.getElementById('result').textContent = result;
-                        log(`🎯 中间结果: ${result}`, 'success');
-                    } else if (message.header.name === 'SentenceEnd') {
-                        const result = message.payload.result;
-                        document.getElementById('result').textContent = result;
-                        log(`✅ 完整结果: ${result}`, 'success');
-                    } else if (message.header.name === 'TranscriptionCompleted') {
-                        allowAudioStreaming = false;
-                        log('🏁 识别已完成');
-                    } else if (message.header.name === 'TaskFailed') {
-                        const statusText = message.header.status_text || '未知错误';
-                        if (message.header.status === 40000004) {
-                            log(`ℹ️ 任务超时: ${statusText}`, 'warn');
-                        } else {
-                            log(`❌ 任务失败: ${statusText}`, 'error');
-                        }
-                        allowAudioStreaming = false;
+
+                    if (typeof message.err_no !== 'undefined' && message.err_no !== 0) {
+                        log(`❌ 识别错误 (${message.err_no}): ${message.err_msg || '未知错误'}`, 'error');
+                        return;
+                    }
+
+                    let text = '';
+                    if (Array.isArray(message.result)) {
+                        text = message.result.join('');
+                    } else if (typeof message.result === 'string') {
+                        text = message.result;
+                    }
+
+                    if (!text) {
+                        log('⚠️ 识别结果为空', 'warn');
+                        return;
+                    }
+
+                    document.getElementById('result').textContent = text;
+
+                    if (type === 'MID_TEXT') {
+                        log(`🎯 中间结果: ${text}`, 'success');
+                    } else if (type === 'FIN_TEXT') {
+                        log(`✅ 完整结果: ${text}`, 'success');
+                    } else {
+                        log(`ℹ️ 未处理的消息类型: ${type}`, 'warn');
                     }
                 } catch (error) {
                     log(`❌ 解析消息失败: ${error.message}`, 'error');
@@ -283,7 +291,6 @@
             
             websocket.onclose = (event) => {
                 log(`🔌 WebSocket关闭: ${event.code}`, 'warn');
-                clearTimeout(stopTimeout);
                 allowAudioStreaming = false;
             };
         }
@@ -291,7 +298,14 @@
         async function startRecording() {
             try {
                 log('🎤 请求麦克风权限...');
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: sampleRate || DEFAULT_SAMPLE_RATE,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
                 log('✅ 麦克风权限获取成功', 'success');
                 
                 mediaRecorder = new MediaRecorder(stream, {
@@ -348,7 +362,8 @@
 
                 const arrayBuffer = await blob.arrayBuffer();
                 const audioBuffer = await decodeAudioContext.decodeAudioData(arrayBuffer.slice(0));
-                const resampledData = await resampleAudioData(audioBuffer, TARGET_SAMPLE_RATE);
+                const targetRate = sampleRate || DEFAULT_SAMPLE_RATE;
+                const resampledData = await resampleAudioData(audioBuffer, targetRate);
 
                 if (!resampledData || !resampledData.length) {
                     throw new Error('重采样失败');
@@ -418,35 +433,17 @@
         function sendStopMessage() {
             if (!websocket || websocket.readyState !== WebSocket.OPEN) {
                 log('⚠️ WebSocket未连接，无法发送停止请求', 'warn');
-                pendingStop = true;
                 return;
             }
 
-            const resolvedTaskId = serverTaskId || clientTaskId;
-
-            if (!resolvedTaskId) {
-                log('⚠️ 尚未获取 task_id，等待后再发送停止请求', 'warn');
-                pendingStop = true;
-                return;
+            try {
+                websocket.send(JSON.stringify({ type: 'FINISH' }));
+                log('✅ 已发送百度FINISH帧', 'success');
+            } catch (error) {
+                log(`❌ 发送FINISH帧失败: ${error.message}`, 'error');
             }
 
-            const stopMsg = {
-                header: {
-                    namespace: "SpeechTranscriber",
-                    name: "StopTranscription",
-                    message_id: generateId(),
-                    task_id: resolvedTaskId,
-                    appkey: appkey
-                },
-                payload: {}
-            };
-
-            websocket.send(JSON.stringify(stopMsg));
-            pendingStop = false;
-            log(`✅ 已发送停止请求 (task_id: ${resolvedTaskId})`, 'success');
-
-            clearTimeout(stopTimeout);
-            stopTimeout = setTimeout(() => {
+            setTimeout(() => {
                 if (websocket && websocket.readyState === WebSocket.OPEN) {
                     websocket.close();
                 }

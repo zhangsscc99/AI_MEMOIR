@@ -1,5 +1,5 @@
-const aliyunTokenService = require('../utils/aliyunToken');
-const aliyunSpeechService = require('../utils/aliyunSpeechService');
+const baiduTokenService = require('../utils/baiduToken');
+const baiduSpeechService = require('../utils/baiduSpeechService');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -71,22 +71,27 @@ const getSpeechToken = async (req, res) => {
     console.log('👤 用户ID:', req.user?.id);
     console.log('⏰ 请求时间:', new Date().toISOString());
     
-    const token = await aliyunTokenService.getToken();
-    
-    console.log('✅ Token获取成功:', {
+    const token = await baiduTokenService.getToken();
+
+    console.log('✅ 百度Access Token获取成功:', {
       tokenLength: token ? token.length : 0,
       tokenPrefix: token ? token.substring(0, 20) + '...' : 'null',
-      isValid: aliyunTokenService.isTokenValid()
+      isValid: baiduTokenService.isTokenValid()
     });
-    
+
     res.status(200).json({
       success: true,
       message: '获取语音识别Token成功',
       data: {
         token: token,
-        appkey: process.env.ALIYUN_APP_KEY,
+        appId: process.env.BAIDU_SPEECH_APP_ID,
+        apiKey: process.env.BAIDU_SPEECH_API_KEY,
+        devPid: Number(process.env.BAIDU_SPEECH_DEV_PID || 15372),
+        sampleRate: Number(process.env.BAIDU_SPEECH_SAMPLE_RATE || 16000),
+        format: 'pcm',
+        cuid: process.env.BAIDU_SPEECH_CUID || 'memoir-memo-device',
         // 出于安全考虑，不返回具体过期时间，只返回是否有效
-        isValid: aliyunTokenService.isTokenValid()
+        isValid: baiduTokenService.isTokenValid()
       }
     });
 
@@ -249,49 +254,48 @@ const transcribeAudio = async (req, res) => {
 
     // 检查是否为测试模式
     if (testMode === true || filename === 'test_mode') {
-      console.log('🧪 测试模式: 模拟阿里云API调用...');
-      
+      console.log('🧪 测试模式: 模拟百度语音识别API调用...');
+
       // 检查环境变量配置
-      const hasValidConfig = process.env.ALIYUN_AK_ID && 
-                            process.env.ALIYUN_AK_SECRET && 
-                            process.env.ALIYUN_APP_KEY && 
-                            process.env.ALIYUN_APP_KEY !== 'your_app_key_here';
-      
+      const hasValidConfig = process.env.BAIDU_SPEECH_APP_ID &&
+                            process.env.BAIDU_SPEECH_API_KEY &&
+                            process.env.BAIDU_SPEECH_SECRET_KEY;
+
       if (!hasValidConfig) {
         return res.status(500).json({
           success: false,
-          message: '阿里云配置不完整',
-          details: '请检查 ALIYUN_AK_ID, ALIYUN_AK_SECRET, ALIYUN_APP_KEY 环境变量',
+          message: '百度语音识别配置不完整',
+          details: '请检查 BAIDU_SPEECH_APP_ID, BAIDU_SPEECH_API_KEY, BAIDU_SPEECH_SECRET_KEY 环境变量',
           testMode: true
         });
       }
-      
+
       try {
-        // 使用新的阿里云语音服务进行测试
-        const transcript = await aliyunSpeechService.testSpeechRecognition('阿里云语音识别测试');
-        
+        const transcript = await baiduSpeechService.testSpeechRecognition();
+
         res.status(200).json({
           success: true,
-          message: '阿里云语音识别配置验证成功',
+          message: '百度语音识别配置验证成功',
           data: {
             filename: 'test_mode',
             transcript: transcript,
             transcribedAt: new Date().toISOString(),
             testMode: true,
             config: {
-              hasAccessKey: !!process.env.ALIYUN_AK_ID,
-              hasSecret: !!process.env.ALIYUN_AK_SECRET,
-              hasAppKey: !!process.env.ALIYUN_APP_KEY,
-              appKey: process.env.ALIYUN_APP_KEY.substring(0, 8) + '...'
+              hasAppId: !!process.env.BAIDU_SPEECH_APP_ID,
+              hasApiKey: !!process.env.BAIDU_SPEECH_API_KEY,
+              hasSecretKey: !!process.env.BAIDU_SPEECH_SECRET_KEY,
+              appId: process.env.BAIDU_SPEECH_APP_ID,
+              apiKey: process.env.BAIDU_SPEECH_API_KEY?.substring(0, 8) + '...'
             }
           }
         });
-        
+
       } catch (testError) {
-        console.error('❌ 阿里云语音识别测试失败:', testError);
+        console.error('❌ 百度语音识别测试失败:', testError);
         res.status(500).json({
           success: false,
-          message: '阿里云语音识别测试失败',
+          message: '百度语音识别测试失败',
           error: testError.message,
           details: `测试错误: ${testError.message}`,
           testMode: true
@@ -341,9 +345,14 @@ const transcribeAudio = async (req, res) => {
     const audioBuffer = fs.readFileSync(audioFilePath);
     console.log('✅ 音频文件读取完成，大小:', audioBuffer.length, 'bytes');
     
-    console.log('🚀 调用阿里云语音识别服务...');
-    const transcript = await aliyunSpeechService.recognizeAudio(audioBuffer);
-    console.log('✅ 阿里云语音识别完成，结果:', transcript);
+    console.log('🚀 调用百度语音识别服务...');
+    const transcript = await baiduSpeechService.recognizeAudio(audioBuffer, {
+      filename,
+      sampleRate: Number(process.env.BAIDU_SPEECH_SAMPLE_RATE || 16000),
+      devPid: Number(process.env.BAIDU_SPEECH_DEV_PID || 15372),
+      cuid: process.env.BAIDU_SPEECH_CUID || 'memoir-memo-device'
+    });
+    console.log('✅ 百度语音识别完成，结果:', transcript);
 
     console.log('📤 返回识别结果:', {
       filename,
@@ -412,10 +421,14 @@ const streamingRecognize = async (req, res) => {
     const audioBuffer = Buffer.from(audioData, 'base64');
     console.log('✅ 音频数据转换完成，大小:', audioBuffer.length, 'bytes');
     
-    // 调用阿里云流式语音识别服务
-    console.log('🚀 调用阿里云流式语音识别服务...');
-    const transcript = await aliyunSpeechService.recognizeAudio(audioBuffer);
-    console.log('✅ 阿里云流式语音识别完成，结果:', transcript);
+    // 调用百度语音识别服务
+    console.log('🚀 调用百度流式语音识别服务...');
+    const transcript = await baiduSpeechService.recognizeAudio(audioBuffer, {
+      sampleRate: Number(process.env.BAIDU_SPEECH_SAMPLE_RATE || 16000),
+      devPid: Number(process.env.BAIDU_SPEECH_DEV_PID || 15372),
+      cuid: process.env.BAIDU_SPEECH_CUID || 'memoir-memo-device'
+    });
+    console.log('✅ 百度流式语音识别完成，结果:', transcript);
 
     console.log('📤 返回流式识别结果:', {
       transcriptLength: transcript ? transcript.length : 0,
@@ -456,7 +469,7 @@ const streamingRecognize = async (req, res) => {
  */
 const clearTokenCache = async (req, res) => {
   try {
-    aliyunTokenService.clearTokenCache();
+    baiduTokenService.clearTokenCache();
     
     res.status(200).json({
       success: true,

@@ -750,8 +750,8 @@ export default {
           console.log('🌐 使用Web Speech API进行实时识别');
           this.startWebSpeechRecognition();
         } else {
-          console.log('📡 使用阿里云语音识别');
-          await this.startAliyunRealtimeRecognition();
+          console.log('📡 使用百度语音识别');
+          await this.startBaiduRealtimeRecognition();
         }
       } catch (error) {
         console.error('❌ 实时语音识别启动失败:', error);
@@ -805,8 +805,8 @@ export default {
       console.log('✅ Web Speech API开始识别');
     },
 
-    // 阿里云实时识别
-    async startAliyunRealtimeRecognition() {
+    // 百度实时识别
+    async startBaiduRealtimeRecognition() {
       // 获取用户Token
       const token = uni.getStorageSync('token');
       if (!token) {
@@ -836,7 +836,7 @@ export default {
           this.performRealtimeRecognition(speechToken);
         }, 3000); // 每3秒进行一次识别
       } catch (error) {
-        console.error('❌ 阿里云实时识别启动失败:', error);
+        console.error('❌ 百度实时识别启动失败:', error);
       }
     },
 
