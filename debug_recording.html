@@ -91,6 +91,14 @@
         let websocket = null;
         let token = null;
         let appkey = null;
+        const TARGET_SAMPLE_RATE = 16000;
+        let decodeAudioContext = null;
+        let audioProcessingPromise = Promise.resolve();
+        let clientTaskId = null;
+        let serverTaskId = null;
+        let pendingStop = false;
+        let stopTimeout = null;
+        let allowAudioStreaming = false;
 
         function log(message, type = 'info') {
             const logDiv = document.getElementById('log');
@@ -159,6 +167,21 @@
             document.getElementById('startBtn').disabled = true;
             document.getElementById('stopBtn').disabled = false;
             document.getElementById('result').textContent = '等待识别结果...';
+
+            clientTaskId = null;
+            serverTaskId = null;
+            pendingStop = false;
+            clearTimeout(stopTimeout);
+            if (decodeAudioContext && decodeAudioContext.state !== 'closed') {
+                try {
+                    await decodeAudioContext.close();
+                } catch (closeError) {
+                    console.warn('⚠️ 关闭旧 AudioContext 失败:', closeError);
+                }
+            }
+            decodeAudioContext = null;
+            audioProcessingPromise = Promise.resolve();
+            allowAudioStreaming = true;
             
             // 1. 获取Token
             if (!token) {
@@ -166,6 +189,7 @@
                 await testToken();
                 if (!token) {
                     log('❌ Token获取失败，测试终止', 'error');
+                    allowAudioStreaming = false;
                     return;
                 }
             }
@@ -176,39 +200,56 @@
             log(`🌐 URL: ${wsUrl}`);
             
             websocket = new WebSocket(wsUrl);
-            
+            websocket.binaryType = 'arraybuffer';
+
             websocket.onopen = () => {
                 log('✅ WebSocket连接成功', 'success');
-                
-                // 发送开始识别请求
+
+                clientTaskId = generateId();
+                allowAudioStreaming = true;
+
                 const startMsg = {
                     header: {
                         namespace: "SpeechTranscriber",
                         name: "StartTranscription",
                         message_id: generateId(),
-                        task_id: generateId(),
+                        task_id: clientTaskId,
                         appkey: appkey
                     },
                     payload: {
-                        format: "opus",
-                        sample_rate: 16000,
+                        format: "pcm",
+                        sample_rate: TARGET_SAMPLE_RATE,
                         enable_intermediate_result: true,
                         enable_punctuation_prediction: true,
                         enable_inverse_text_normalization: true
                     }
                 };
-                
+
                 websocket.send(JSON.stringify(startMsg));
-                log('📤 发送开始识别请求', 'success');
-                
-                // 开始录音
+                log(`📤 发送开始识别请求 (task_id: ${clientTaskId})`, 'success');
+
                 startRecording();
             };
-            
+
             websocket.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
                     log(`📨 收到消息: ${message.header.name}`);
+
+                    const incomingTaskId = message.header?.task_id || message.payload?.task_id || message.payload?.TaskId;
+                    if (incomingTaskId) {
+                        if (serverTaskId && serverTaskId !== incomingTaskId) {
+                            log(`🔁 服务端更新 task_id: ${incomingTaskId}`, 'warn');
+                        } else if (!serverTaskId) {
+                            log(`✅ 服务端task_id确认: ${incomingTaskId}`, 'success');
+                        }
+                        serverTaskId = incomingTaskId;
+
+                        if (pendingStop && websocket?.readyState === WebSocket.OPEN) {
+                            log('🛑 发送等待中的停止请求');
+                            sendStopMessage();
+                        }
+                    }
                     
                     if (message.header.name === 'TranscriptionResultChanged') {
                         const result = message.payload.result;
@@ -218,8 +259,17 @@
                         const result = message.payload.result;
                         document.getElementById('result').textContent = result;
                         log(`✅ 完整结果: ${result}`, 'success');
+                    } else if (message.header.name === 'TranscriptionCompleted') {
+                        allowAudioStreaming = false;
+                        log('🏁 识别已完成');
                     } else if (message.header.name === 'TaskFailed') {
-                        log(`❌ 任务失败: ${message.header.status_text}`, 'error');
+                        const statusText = message.header.status_text || '未知错误';
+                        if (message.header.status === 40000004) {
+                            log(`ℹ️ 任务超时: ${statusText}`, 'warn');
+                        } else {
+                            log(`❌ 任务失败: ${statusText}`, 'error');
+                        }
+                        allowAudioStreaming = false;
                     }
                 } catch (error) {
                     log(`❌ 解析消息失败: ${error.message}`, 'error');
@@ -228,10 +278,13 @@
             
             websocket.onerror = (error) => {
                 log(`❌ WebSocket错误`, 'error');
+                allowAudioStreaming = false;
             };
             
             websocket.onclose = (event) => {
                 log(`🔌 WebSocket关闭: ${event.code}`, 'warn');
+                clearTimeout(stopTimeout);
+                allowAudioStreaming = false;
             };
         }
 
@@ -245,11 +298,33 @@
                     mimeType: 'audio/webm;codecs=opus'
                 });
                 
-                mediaRecorder.ondataavailable = async (event) => {
-                    if (event.data.size > 0 && websocket && websocket.readyState === WebSocket.OPEN) {
-                        websocket.send(event.data);
-                        log(`📤 发送音频: ${event.data.size} bytes`);
+                mediaRecorder.ondataavailable = (event) => {
+                    if (!event.data || event.data.size === 0) {
+                        return;
                     }
+
+                    audioProcessingPromise = audioProcessingPromise.then(async () => {
+                        if (!allowAudioStreaming) {
+                            log('🛑 音频流已停止，忽略数据块', 'warn');
+                            return;
+                        }
+
+                        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                            log('⚠️ WebSocket未连接，丢弃音频块', 'warn');
+                            return;
+                        }
+
+                        const pcmBuffer = await convertBlobToPCM(event.data);
+
+                        if (pcmBuffer && pcmBuffer.byteLength) {
+                            websocket.send(pcmBuffer);
+                            log(`📤 发送PCM音频: ${pcmBuffer.byteLength} bytes`);
+                        } else {
+                            log('⚠️ PCM转换结果为空，跳过当前音频块', 'warn');
+                        }
+                    }).catch(error => {
+                        log(`❌ 处理音频数据失败: ${error.message}`, 'error');
+                    });
                 };
                 
                 mediaRecorder.start(100);
@@ -260,31 +335,143 @@
             }
         }
 
+        async function convertBlobToPCM(blob) {
+            try {
+                const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!NativeAudioContext) {
+                    throw new Error('AudioContext 不可用');
+                }
+
+                if (!decodeAudioContext || decodeAudioContext.state === 'closed') {
+                    decodeAudioContext = new NativeAudioContext();
+                }
+
+                const arrayBuffer = await blob.arrayBuffer();
+                const audioBuffer = await decodeAudioContext.decodeAudioData(arrayBuffer.slice(0));
+                const resampledData = await resampleAudioData(audioBuffer, TARGET_SAMPLE_RATE);
+
+                if (!resampledData || !resampledData.length) {
+                    throw new Error('重采样失败');
+                }
+
+                return float32ToPCM(resampledData);
+            } catch (error) {
+                log(`❌ PCM转换失败: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function resampleAudioData(audioBuffer, targetRate) {
+            if (audioBuffer.sampleRate === targetRate) {
+                return audioBuffer.getChannelData(0);
+            }
+
+            const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+
+            if (OfflineContext) {
+                try {
+                    const frameCount = Math.ceil(audioBuffer.duration * targetRate);
+                    const offlineContext = new OfflineContext(1, frameCount, targetRate);
+                    const bufferSource = offlineContext.createBufferSource();
+                    bufferSource.buffer = audioBuffer;
+                    bufferSource.connect(offlineContext.destination);
+                    bufferSource.start(0);
+                    const renderedBuffer = await offlineContext.startRendering();
+                    return renderedBuffer.getChannelData(0);
+                } catch (error) {
+                    log(`⚠️ OfflineAudioContext重采样失败: ${error.message}`, 'warn');
+                }
+            }
+
+            return downsampleBuffer(audioBuffer.getChannelData(0), audioBuffer.sampleRate, targetRate);
+        }
+
+        function downsampleBuffer(channelData, sourceRate, targetRate) {
+            if (!channelData || sourceRate === targetRate) {
+                return channelData;
+            }
+
+            const ratio = sourceRate / targetRate;
+            const newLength = Math.round(channelData.length / ratio);
+            const result = new Float32Array(newLength);
+
+            for (let i = 0; i < newLength; i++) {
+                const idx = Math.floor(i * ratio);
+                result[i] = channelData[idx];
+            }
+
+            return result;
+        }
+
+        function float32ToPCM(channelData) {
+            const buffer = new ArrayBuffer(channelData.length * 2);
+            const view = new DataView(buffer);
+
+            for (let i = 0; i < channelData.length; i++) {
+                const sample = Math.max(-1, Math.min(1, channelData[i]));
+                view.setInt16(i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+            }
+
+            return buffer;
+        }
+
+        function sendStopMessage() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                log('⚠️ WebSocket未连接，无法发送停止请求', 'warn');
+                pendingStop = true;
+                return;
+            }
+
+            const resolvedTaskId = serverTaskId || clientTaskId;
+
+            if (!resolvedTaskId) {
+                log('⚠️ 尚未获取 task_id，等待后再发送停止请求', 'warn');
+                pendingStop = true;
+                return;
+            }
+
+            const stopMsg = {
+                header: {
+                    namespace: "SpeechTranscriber",
+                    name: "StopTranscription",
+                    message_id: generateId(),
+                    task_id: resolvedTaskId,
+                    appkey: appkey
+                },
+                payload: {}
+            };
+
+            websocket.send(JSON.stringify(stopMsg));
+            pendingStop = false;
+            log(`✅ 已发送停止请求 (task_id: ${resolvedTaskId})`, 'success');
+
+            clearTimeout(stopTimeout);
+            stopTimeout = setTimeout(() => {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.close();
+                }
+            }, 1000);
+
+            allowAudioStreaming = false;
+        }
+
         function stopTest() {
             log('🛑 停止测试...');
-            
+
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
                 mediaRecorder.stream.getTracks().forEach(track => track.stop());
                 log('✅ 录音已停止');
             }
-            
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                const stopMsg = {
-                    header: {
-                        namespace: "SpeechTranscriber",
-                        name: "StopTranscription",
-                        message_id: generateId(),
-                        task_id: generateId(),
-                        appkey: appkey
-                    },
-                    payload: {}
-                };
-                websocket.send(JSON.stringify(stopMsg));
-                setTimeout(() => websocket.close(), 1000);
-                log('✅ 已发送停止请求');
-            }
-            
+
+            audioProcessingPromise
+                .catch(error => {
+                    log(`❌ 音频处理失败: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    sendStopMessage();
+                });
+
             document.getElementById('startBtn').disabled = false;
             document.getElementById('stopBtn').disabled = true;
         }

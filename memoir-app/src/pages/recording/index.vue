@@ -154,11 +154,17 @@ export default {
       audioChunks: [],
       // 音频数据队列（用于重连时发送）
       audioQueue: [],
+      audioProcessingPromise: null,
+      decodeAudioContext: null,
+      pcmSampleRate: 16000,
+      allowAudioStreaming: false,
       // WebSocket相关
       websocket: null,
       audioProcessor: null,
       audioContext: null,
       currentTaskId: null, // 当前WebSocket会话的task_id，必须保持一致
+      clientTaskId: null, // 客户端发送的task_id
+      pendingStopRequest: false, // 等待获取task_id后发送Stop消息
       // AI补全相关
       isAiCompleting: false,
       showAiDiff: false,
@@ -590,7 +596,11 @@ export default {
       this.isRecording = true;
       this.recordingTime = 0;
       console.log('📝 录音状态已设置:', this.isRecording);
-      
+
+      this.allowAudioStreaming = true;
+      this.audioQueue = [];
+      this.audioProcessingPromise = Promise.resolve();
+
       // 开始计时
       this.recordingTimer = setInterval(() => {
         this.recordingTime++;
@@ -1384,13 +1394,28 @@ export default {
           appkey = fetchedAppkey;
         }
 
-        // 每次新会话开始前重置当前task_id
+        // 每次新会话开始前重置状态
         this.currentTaskId = null;
-        
+        this.clientTaskId = null;
+        this.pendingStopRequest = false;
+        this.audioQueue = [];
+
+        if (this.decodeAudioContext && this.decodeAudioContext.state !== 'closed') {
+          try {
+            this.decodeAudioContext.close();
+          } catch (closeError) {
+            console.warn('⚠️ 关闭上一轮AudioContext失败:', closeError);
+          }
+        }
+        this.decodeAudioContext = null;
+        this.audioProcessingPromise = Promise.resolve();
+        this.allowAudioStreaming = true;
+
         // 建立WebSocket连接，Token通过URL参数传递
         const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${speechToken}`;
         console.log('🌐 WebSocket URL:', wsUrl);
         this.websocket = new WebSocket(wsUrl);
+        this.websocket.binaryType = 'arraybuffer';
         
         this.websocket.onopen = () => {
           console.log('✅ WebSocket连接已建立');
@@ -1407,6 +1432,7 @@ export default {
         
         this.websocket.onclose = (event) => {
           console.log('🔌 WebSocket连接已关闭:', event.code, event.reason);
+          this.allowAudioStreaming = false;
           // 如果录音还在进行中，立即重连
           if (this.isRecording) {
             console.log('🔄 录音进行中，立即重连WebSocket...');
@@ -1418,10 +1444,12 @@ export default {
         
         this.websocket.onerror = (error) => {
           console.error('❌ WebSocket连接错误:', error);
+          this.allowAudioStreaming = false;
         };
         
       } catch (error) {
         console.error('❌ 启动阿里云WebSocket识别失败:', error);
+        this.allowAudioStreaming = false;
         throw error;
       }
     },
@@ -1432,20 +1460,26 @@ export default {
         console.log('🔄 开始重连WebSocket...');
         const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${speechToken}`;
         this.websocket = new WebSocket(wsUrl);
-        
+        this.websocket.binaryType = 'arraybuffer';
+
         this.websocket.onopen = () => {
           console.log('✅ WebSocket重连成功');
+          this.allowAudioStreaming = true;
+          if (!this.audioProcessingPromise) {
+            this.audioProcessingPromise = Promise.resolve();
+          }
           this.sendStartRequest(speechToken, appkey);
           // 发送队列中的音频数据
           this.processAudioQueue();
         };
-        
+
         this.websocket.onmessage = (event) => {
           this.handleWebSocketMessage(event);
         };
-        
+
         this.websocket.onclose = (event) => {
           console.log('🔌 WebSocket重连后关闭:', event.code, event.reason);
+          this.allowAudioStreaming = false;
           // 如果录音还在进行中，继续重连
           if (this.isRecording) {
             console.log('🔄 录音进行中，继续重连...');
@@ -1456,9 +1490,10 @@ export default {
             console.log('✅ 录音已停止，WebSocket正常关闭');
           }
         };
-        
+
         this.websocket.onerror = (error) => {
           console.error('❌ WebSocket重连错误:', error);
+          this.allowAudioStreaming = false;
         };
       } catch (error) {
         console.error('❌ WebSocket重连失败:', error);
@@ -1492,8 +1527,8 @@ export default {
     sendStartRequest(speechToken, appkey) {
         const startRequest = this.formatAliyunMessage("StartTranscription", {
           appkey: appkey,
-          format: "opus", // 使用OPUS格式，WebM包含OPUS编码，直接发送
-          sample_rate: 16000,
+          format: "pcm",
+          sample_rate: this.pcmSampleRate,
           enable_intermediate_result: true,
           enable_punctuation_prediction: true,
           enable_inverse_text_normalization: true
@@ -1519,10 +1554,12 @@ export default {
         this.websocket.onopen = () => {
           this.websocket.send(messageString);
           console.log('✅ 消息已发送到阿里云服务器');
+          this.processAudioQueue();
         };
       } else if (this.websocket.readyState === WebSocket.OPEN) {
         this.websocket.send(messageString);
         console.log('✅ 消息已发送到阿里云服务器');
+        this.processAudioQueue();
       } else {
         console.error('❌ WebSocket未连接，无法发送消息');
       }
@@ -1536,10 +1573,12 @@ export default {
       }
 
       if (!this.currentTaskId) {
-        console.warn('⚠️ 当前无有效task_id，跳过停止请求');
+        console.warn('⚠️ 当前未获取到服务端task_id，延迟发送停止请求');
+        this.pendingStopRequest = true;
         return;
       }
 
+      this.pendingStopRequest = false;
       const stopRequest = this.formatAliyunMessage("StopTranscription", {
         appkey: this.currentAppkey
       });
@@ -1562,6 +1601,35 @@ export default {
       }
     },
 
+    scheduleStopRequest() {
+      (async () => {
+        try {
+          if (this.audioProcessingPromise) {
+            await this.audioProcessingPromise.catch(error => {
+              console.error('❌ 等待音频处理完成时出错:', error);
+            });
+          }
+
+          await this.processAudioQueue();
+        } catch (error) {
+          console.error('❌ 停止前处理音频队列失败:', error);
+        } finally {
+          this.sendStopRequest();
+          this.audioQueue = [];
+          this.audioProcessingPromise = null;
+          this.allowAudioStreaming = false;
+          if (this.decodeAudioContext && this.decodeAudioContext.state !== 'closed') {
+            try {
+              this.decodeAudioContext.close();
+            } catch (closeError) {
+              console.warn('⚠️ 关闭AudioContext时出错:', closeError);
+            }
+          }
+          this.decodeAudioContext = null;
+        }
+      })();
+    },
+
     // 处理WebSocket消息
     handleWebSocketMessage(event) {
       try {
@@ -1573,14 +1641,26 @@ export default {
 
         const { header, payload } = message;
 
-        if (header?.task_id) {
-          if (this.currentTaskId && this.currentTaskId !== header.task_id) {
+        const headerTaskId = header?.task_id;
+        const payloadTaskId = payload?.task_id || payload?.TaskId || payload?.taskId;
+        const incomingTaskId = headerTaskId || payloadTaskId;
+
+        if (incomingTaskId) {
+          if (this.currentTaskId && this.currentTaskId !== incomingTaskId) {
             console.log('🔁 检测到服务端task_id更新:', {
               previous: this.currentTaskId,
-              incoming: header.task_id
+              incoming: incomingTaskId
             });
+          } else if (!this.currentTaskId) {
+            console.log('✅ 服务端task_id已确定:', incomingTaskId);
           }
-          this.currentTaskId = header.task_id;
+
+          this.currentTaskId = incomingTaskId;
+
+          if (this.pendingStopRequest) {
+            console.log('🛑 处理等待中的停止请求');
+            this.sendStopRequest();
+          }
         }
         
         if (header.name === 'SentenceBegin') {
@@ -1608,8 +1688,10 @@ export default {
           }
         } else if (header.name === 'TranscriptionStarted') {
           console.log('🎤 识别已开始');
+          this.processAudioQueue();
         } else if (header.name === 'TranscriptionCompleted') {
           console.log('✅ 识别已完成');
+          this.allowAudioStreaming = false;
         } else if (header.name === 'TaskFailed') {
           console.error('❌ 识别任务失败:', payload);
           console.error('❌ 错误详情:', {
@@ -1618,6 +1700,7 @@ export default {
             message: (payload && payload.message) || '未知错误',
             full_payload: payload
           });
+          this.allowAudioStreaming = false;
           // 如果是空闲超时错误，这是正常的，不需要特殊处理
           if (header.status === 40000004) {
             console.log('ℹ️ 检测到空闲超时，这是正常的连接关闭');
@@ -1673,26 +1756,37 @@ export default {
 
     // 阿里云消息格式转换器
     formatAliyunMessage(type, params = {}) {
-      const { appkey, ...payload } = params;
+      const { appkey, taskId, ...payload } = params;
 
-      // 如果是StartTranscription，生成新的task_id并保存
       if (type === 'StartTranscription') {
-        this.currentTaskId = this.generateTaskId();
-      } else if (!this.currentTaskId) {
-        console.warn(`⚠️ 未检测到有效的task_id，消息类型: ${type}`);
+        this.clientTaskId = this.generateTaskId();
+        this.currentTaskId = null; // 等待服务端返回真实task_id
+      }
+
+      let resolvedTaskId = taskId || this.currentTaskId;
+
+      if (!resolvedTaskId && type !== 'StartTranscription') {
+        resolvedTaskId = this.clientTaskId;
+      }
+
+      const header = {
+        namespace: "SpeechTranscriber",
+        name: type,
+        message_id: this.generateMessageId(),
+        appkey: appkey
+      };
+
+      if (type === 'StartTranscription') {
+        header.task_id = this.clientTaskId;
+      } else if (resolvedTaskId) {
+        header.task_id = resolvedTaskId;
       }
 
       const baseMessage = {
-        header: {
-          namespace: "SpeechTranscriber",
-          name: type,
-          message_id: this.generateMessageId(),
-          task_id: this.currentTaskId,
-          appkey: appkey
-        },
-        payload: payload
+        header,
+        payload
       };
-      
+
       console.log('🔧 格式化阿里云消息:', JSON.stringify(baseMessage, null, 2));
       return baseMessage;
     },
@@ -2059,66 +2153,136 @@ export default {
     },
 
     // 处理实时音频数据
-    async processRealtimeAudio(audioData) {
-      // 如果录音已停止，不再处理音频数据
-      if (!this.isRecording) {
-        console.log('🛑 录音已停止，忽略音频数据:', audioData.size, 'bytes');
+    processRealtimeAudio(audioData) {
+      if (!audioData) {
+        console.warn('⚠️ 未接收到有效的音频数据');
         return;
       }
-      
-      // 这里可以添加实时音频处理逻辑
-      console.log('处理实时音频数据:', audioData.size, 'bytes');
-      console.log('🔍 音频数据类型:', audioData.constructor.name);
-      console.log('🔍 WebSocket状态:', this.websocket ? this.websocket.readyState : 'null');
-      
-      // 发送音频数据到阿里云WebSocket
-      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-        console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
-        try {
-          // 直接发送WebM/OPUS格式的音频数据
-          this.websocket.send(audioData);
-          console.log('✅ 音频数据发送成功 (OPUS格式)');
-        } catch (error) {
-          console.error('❌ 发送音频数据失败:', error);
+
+      if (!this.allowAudioStreaming) {
+        console.log('🛑 当前不允许发送音频流，忽略数据');
+        return;
+      }
+
+      const handleChunk = async () => {
+        if (!this.allowAudioStreaming) {
+          console.log('🛑 音频流已停止，跳过处理');
+          return;
         }
-      } else {
-        // WebSocket未连接或连接中，将音频数据加入队列
-        console.log('📦 WebSocket未就绪，将音频数据加入队列:', audioData.size, 'bytes');
-        this.audioQueue.push(audioData);
-        
-        // 如果WebSocket未连接，尝试重连
-        if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
-          if (this.isRecording && this.currentToken && this.currentAppkey) {
-            console.log('🔄 尝试重连WebSocket...');
-            this.reconnectWebSocket(this.currentToken, this.currentAppkey);
+
+        console.log('处理实时音频数据:', audioData.size || audioData.byteLength || 0, 'bytes');
+        console.log('🔍 音频数据类型:', audioData.constructor ? audioData.constructor.name : typeof audioData);
+        console.log('🔍 WebSocket状态:', this.websocket ? this.websocket.readyState : 'null');
+
+        const pcmBuffer = await this.preparePcmBuffer(audioData);
+
+        if (!pcmBuffer || !pcmBuffer.byteLength) {
+          console.warn('⚠️ PCM转换失败或为空，跳过当前音频块');
+          return;
+        }
+
+        if (!this.allowAudioStreaming) {
+          console.log('🛑 音频流已停止，在发送前终止');
+          return;
+        }
+
+        if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+          try {
+            this.websocket.send(pcmBuffer);
+            console.log('✅ 音频数据发送成功 (PCM格式)，大小:', pcmBuffer.byteLength, 'bytes');
+          } catch (error) {
+            console.error('❌ 发送音频数据失败:', error);
+            if (this.allowAudioStreaming) {
+              this.audioQueue.push(pcmBuffer);
+            }
+          }
+        } else if (this.allowAudioStreaming) {
+          console.log('📦 WebSocket未就绪，将PCM音频数据加入队列:', pcmBuffer.byteLength, 'bytes');
+          this.audioQueue.push(pcmBuffer);
+
+          if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
+            if ((this.isRecording || this.isProcessing) && this.currentToken && this.currentAppkey) {
+              console.log('🔄 尝试重连WebSocket...');
+              this.reconnectWebSocket(this.currentToken, this.currentAppkey);
+            }
           }
         }
+      };
+
+      const basePromise = this.audioProcessingPromise || Promise.resolve();
+      this.audioProcessingPromise = basePromise
+        .then(handleChunk)
+        .catch(error => {
+          console.error('❌ 处理音频数据失败:', error);
+        });
+    },
+
+    async preparePcmBuffer(audioData) {
+      try {
+        if (!audioData) {
+          return null;
+        }
+
+        if (audioData instanceof ArrayBuffer) {
+          return audioData;
+        }
+
+        if (ArrayBuffer.isView(audioData)) {
+          return audioData.buffer;
+        }
+
+        if (audioData instanceof Blob) {
+          return await this.convertWebMToPCM(audioData);
+        }
+
+        if (typeof audioData.arrayBuffer === 'function') {
+          return await audioData.arrayBuffer();
+        }
+
+        console.warn('⚠️ 不支持的音频数据类型，无法转换为PCM');
+        return null;
+      } catch (error) {
+        console.error('❌ 准备PCM音频数据失败:', error);
+        return null;
       }
     },
 
     // 处理音频队列
     async processAudioQueue() {
+      if (!this.allowAudioStreaming) {
+        if (this.audioQueue.length) {
+          console.log('🧹 音频流已关闭，清空待发送队列');
+        }
+        this.audioQueue = [];
+        return;
+      }
+
       if (this.audioQueue.length === 0) {
         console.log('📦 音频队列为空');
         return;
       }
-      
+
       console.log('📦 处理音频队列，队列长度:', this.audioQueue.length);
       
       while (this.audioQueue.length > 0 && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-        const audioData = this.audioQueue.shift();
+        const queuedData = this.audioQueue.shift();
+        const buffer = queuedData instanceof ArrayBuffer ? queuedData : queuedData?.buffer;
+
+        if (!buffer || !buffer.byteLength) {
+          console.warn('⚠️ 队列中的音频数据无效，已跳过');
+          continue;
+        }
+
         try {
-          // 直接发送WebM/OPUS格式的音频数据
-          this.websocket.send(audioData);
-          console.log('✅ 发送队列中的音频数据:', audioData.size, 'bytes (OPUS格式)');
+          this.websocket.send(buffer);
+          console.log('✅ 发送队列中的音频数据:', buffer.byteLength, 'bytes (PCM格式)');
         } catch (error) {
           console.error('❌ 发送队列音频数据失败:', error);
-          // 如果发送失败，将数据放回队列
-          this.audioQueue.unshift(audioData);
+          this.audioQueue.unshift(buffer);
           break;
         }
       }
-      
+
       console.log('📦 音频队列处理完成，剩余:', this.audioQueue.length);
     },
 
@@ -2126,39 +2290,106 @@ export default {
     async convertWebMToPCM(webmBlob) {
       try {
         console.log('🔄 开始转换WebM到PCM格式...');
-        
-        // 创建AudioContext
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // 将Blob转换为ArrayBuffer
-        const arrayBuffer = await webmBlob.arrayBuffer();
-        
-        // 解码音频数据
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        
-        // 获取PCM数据
-        const pcmData = audioBuffer.getChannelData(0);
-        
-        // 转换为16位PCM
-        const pcm16 = new Int16Array(pcmData.length);
-        for (let i = 0; i < pcmData.length; i++) {
-          pcm16[i] = Math.max(-1, Math.min(1, pcmData[i])) * 0x7FFF;
+
+        const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!NativeAudioContext) {
+          throw new Error('AudioContext 不可用');
         }
-        
-        console.log('✅ WebM到PCM转换完成:', pcm16.length, 'samples');
-        return pcm16.buffer;
-        
+
+        if (!this.decodeAudioContext || this.decodeAudioContext.state === 'closed') {
+          this.decodeAudioContext = new NativeAudioContext();
+        }
+
+        const arrayBuffer = await webmBlob.arrayBuffer();
+
+        const audioBuffer = await new Promise((resolve, reject) => {
+          this.decodeAudioContext.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+        });
+
+        const resampledData = await this.resampleAudioData(audioBuffer, this.pcmSampleRate);
+
+        if (!resampledData || !resampledData.length) {
+          throw new Error('重采样结果为空');
+        }
+
+        const pcmBuffer = this.float32ToPCM(resampledData);
+        console.log('✅ WebM到PCM转换完成，字节数:', pcmBuffer.byteLength);
+        return pcmBuffer;
       } catch (error) {
         console.error('❌ WebM到PCM转换失败:', error);
         // 如果转换失败，返回null，不发送数据
         return null;
       }
     },
+
+    async resampleAudioData(audioBuffer, targetSampleRate) {
+      if (!audioBuffer) {
+        return null;
+      }
+
+      if (audioBuffer.sampleRate === targetSampleRate) {
+        return audioBuffer.getChannelData(0);
+      }
+
+      const OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+
+      if (OfflineAudioContext) {
+        try {
+          const frameCount = Math.ceil(audioBuffer.duration * targetSampleRate);
+          const offlineContext = new OfflineAudioContext(1, frameCount, targetSampleRate);
+          const bufferSource = offlineContext.createBufferSource();
+          bufferSource.buffer = audioBuffer;
+          bufferSource.connect(offlineContext.destination);
+          bufferSource.start(0);
+          const renderedBuffer = await offlineContext.startRendering();
+          return renderedBuffer.getChannelData(0);
+        } catch (error) {
+          console.warn('⚠️ OfflineAudioContext 重采样失败，使用降级算法:', error);
+        }
+      }
+
+      const channelData = audioBuffer.getChannelData(0);
+      return this.downsampleBuffer(channelData, audioBuffer.sampleRate, targetSampleRate);
+    },
+
+    downsampleBuffer(channelData, sourceSampleRate, targetSampleRate) {
+      if (!channelData || sourceSampleRate === targetSampleRate) {
+        return channelData;
+      }
+
+      const sampleRateRatio = sourceSampleRate / targetSampleRate;
+      const newLength = Math.round(channelData.length / sampleRateRatio);
+      const downsampledData = new Float32Array(newLength);
+
+      for (let i = 0; i < newLength; i++) {
+        const sourceIndex = Math.floor(i * sampleRateRatio);
+        downsampledData[i] = channelData[sourceIndex];
+      }
+
+      return downsampledData;
+    },
+
+    float32ToPCM(channelData) {
+      if (!channelData) {
+        return new ArrayBuffer(0);
+      }
+
+      const buffer = new ArrayBuffer(channelData.length * 2);
+      const view = new DataView(buffer);
+
+      for (let i = 0; i < channelData.length; i++) {
+        let sample = Math.max(-1, Math.min(1, channelData[i]));
+        view.setInt16(i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      }
+
+      return buffer;
+    },
     
     handleRecordingFallback() {
       console.log('🔄 录音API不可用，使用降级处理');
       this.isRecording = false;
       this.isProcessing = false;
+      this.allowAudioStreaming = false;
       if (this.recordingTimer) {
         clearInterval(this.recordingTimer);
         this.recordingTimer = null;
@@ -2194,13 +2425,10 @@ export default {
       }
       
       // 发送停止识别请求
-      this.sendStopRequest();
-      
+      this.scheduleStopRequest();
+
       // 停止WebSocket保活
       this.stopKeepWebSocketAlive();
-      
-      // 清空音频队列
-      this.audioQueue = [];
       
       // 停止实时识别
       if (this.realtimeRecognitionTimer) {
@@ -2287,7 +2515,7 @@ export default {
       try {
         console.log('🌐 停止Web录音...');
         console.log('MediaRecorder状态:', this.mediaRecorder?.state);
-        
+
         if (this.mediaRecorder) {
           if (this.mediaRecorder.state === 'recording') {
             console.log('停止MediaRecorder...');
@@ -2311,6 +2539,8 @@ export default {
         // 清理MediaRecorder
         this.mediaRecorder = null;
         
+        this.allowAudioStreaming = false;
+
       } catch (error) {
         console.error('❌ 停止Web录音失败:', error);
         this.handleRecordingError('停止录音失败');
@@ -2338,7 +2568,9 @@ export default {
           this.mediaRecorder.release();
           this.mediaRecorder = null;
         }
-        
+
+        this.allowAudioStreaming = false;
+
       } catch (error) {
         console.error('❌ 停止Cordova录音失败:', error);
         this.handleRecordingError('停止录音失败');
@@ -2362,7 +2594,8 @@ export default {
         // 重置状态
         this.isRecording = false;
         this.isProcessing = false;
-        
+        this.allowAudioStreaming = false;
+
         // 显示完成提示
         uni.showToast({
           title: '录音完成',
