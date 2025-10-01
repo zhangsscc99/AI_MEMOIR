@@ -1377,12 +1377,15 @@ export default {
         console.log('🎤 开始阿里云WebSocket实时识别...');
         console.log('🔑 传入的Token:', speechToken);
         console.log('🔑 传入的Appkey:', appkey);
-        
+
         // 如果没有提供appkey，从后端获取
         if (!appkey) {
           const { appkey: fetchedAppkey } = await this.getAliyunTokenAndAppkey();
           appkey = fetchedAppkey;
         }
+
+        // 每次新会话开始前重置当前task_id
+        this.currentTaskId = null;
         
         // 建立WebSocket连接，Token通过URL参数传递
         const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${speechToken}`;
@@ -1532,6 +1535,11 @@ export default {
         return;
       }
 
+      if (!this.currentTaskId) {
+        console.warn('⚠️ 当前无有效task_id，跳过停止请求');
+        return;
+      }
+
       const stopRequest = this.formatAliyunMessage("StopTranscription", {
         appkey: this.currentAppkey
       });
@@ -1562,8 +1570,18 @@ export default {
         console.log('📨 消息类型:', message.header?.name);
         console.log('📨 消息状态:', message.header?.status);
         console.log('📨 消息载荷:', message.payload);
-        
+
         const { header, payload } = message;
+
+        if (header?.task_id) {
+          if (this.currentTaskId && this.currentTaskId !== header.task_id) {
+            console.log('🔁 检测到服务端task_id更新:', {
+              previous: this.currentTaskId,
+              incoming: header.task_id
+            });
+          }
+          this.currentTaskId = header.task_id;
+        }
         
         if (header.name === 'SentenceBegin') {
           // 句子开始
@@ -1656,18 +1674,20 @@ export default {
     // 阿里云消息格式转换器
     formatAliyunMessage(type, params = {}) {
       const { appkey, ...payload } = params;
-      
+
       // 如果是StartTranscription，生成新的task_id并保存
       if (type === 'StartTranscription') {
         this.currentTaskId = this.generateTaskId();
+      } else if (!this.currentTaskId) {
+        console.warn(`⚠️ 未检测到有效的task_id，消息类型: ${type}`);
       }
-      
+
       const baseMessage = {
         header: {
           namespace: "SpeechTranscriber",
           name: type,
           message_id: this.generateMessageId(),
-          task_id: this.currentTaskId || this.generateTaskId(), // 使用保存的task_id
+          task_id: this.currentTaskId,
           appkey: appkey
         },
         payload: payload
