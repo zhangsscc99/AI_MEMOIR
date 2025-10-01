@@ -223,16 +223,17 @@
                 log('✅ WebSocket连接成功', 'success');
                 allowAudioStreaming = true;
 
+                log(`🔧 使用配置 -> AppID: ${appId}, dev_pid: ${devPid}, sample: ${sampleRate}, cuid: ${cuid}`, 'info');
+
                 const startFrame = {
                     type: 'START',
                     data: {
-                        appid: appId,
+                        appid: Number(appId),
                         appkey: apiKey,
-                        token,
-                        dev_pid: devPid,
+                        dev_pid: Number(devPid),
                         cuid: cuid || `debug-${generateId().slice(0, 8)}`,
                         format: 'pcm',
-                        sample: sampleRate
+                        sample: Number(sampleRate || DEFAULT_SAMPLE_RATE)
                     }
                 };
 
