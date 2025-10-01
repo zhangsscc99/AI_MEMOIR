@@ -17,7 +17,7 @@ export function getApiBase() {
   // 检查是否在移动应用中（Capacitor 环境）- 优先判断
   if (typeof window !== 'undefined' && window.Capacitor) {
     console.log('📱 [API Config] 检测到 Capacitor 环境，使用服务器地址');
-    const apiUrl = 'http://106.15.248.189:3001/api';
+    const apiUrl = 'http://103.146.125.208:3001/api';
     console.log('🎯 [API Config] 最终 API 地址:', apiUrl);
     return apiUrl;
   }
@@ -35,15 +35,15 @@ export function getApiBase() {
     }
     
     // 生产环境（服务器域名）
-    if (hostname === '106.15.248.189') {
-      console.log('🌍 [API Config] 检测到生产环境，使用服务器地址');
-      return 'http://106.15.248.189:3001/api';
+    if (hostname === '103.146.125.208') {
+      console.log('🌍 [API Config] 检测到生产环境，使用Nginx代理');
+      return '/api';
     }
   }
   
-  // 默认返回服务器地址（生产环境）
-  console.log('⚙️ [API Config] 使用默认服务器地址');
-  const defaultUrl = 'http://106.15.248.189:3001/api';
+  // 默认返回相对路径（生产环境）
+  console.log('⚙️ [API Config] 使用默认相对路径');
+  const defaultUrl = '/api';
   console.log('🎯 [API Config] 最终 API 地址:', defaultUrl);
   return defaultUrl;
 }

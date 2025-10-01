@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 部署脚本
-SERVER_IP="106.15.248.189"
+SERVER_IP="103.146.125.208"
 SERVER_USER="root"
 FRONTEND_DIR="/var/www/MEMOIR"
 BACKEND_DIR="/srv/memoir"

@@ -8,7 +8,7 @@ let html = fs.readFileSync(indexPath, 'utf8');
 // 在head标签中注入API_BASE全局变量
 const apiBaseScript = `
   <script>
-    window.API_BASE = 'http://106.15.248.189:3001/api';
+    window.API_BASE = 'http://103.146.125.208:3001/api';
   </script>`;
 
 // 在</head>之前插入脚本

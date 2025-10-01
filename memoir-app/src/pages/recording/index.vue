@@ -1407,6 +1407,8 @@ export default {
           if (this.isRecording) {
             console.log('🔄 录音进行中，立即重连WebSocket...');
             this.reconnectWebSocket(speechToken, appkey);
+          } else {
+            console.log('✅ 录音已停止，WebSocket正常关闭');
           }
         };
         
@@ -1446,6 +1448,8 @@ export default {
             setTimeout(() => {
               this.reconnectWebSocket(speechToken, appkey);
             }, 2000); // 2秒后重连
+          } else {
+            console.log('✅ 录音已停止，WebSocket正常关闭');
           }
         };
         
@@ -1484,7 +1488,7 @@ export default {
     sendStartRequest(speechToken, appkey) {
         const startRequest = this.formatAliyunMessage("StartTranscription", {
           appkey: appkey,
-          format: "opus", // 使用OPUS格式，阿里云支持OGG封装的OPUS
+          format: "pcm", // 改为PCM格式，阿里云WebSocket实时识别需要PCM格式
           sample_rate: 16000,
           enable_intermediate_result: true,
           enable_punctuation_prediction: true,
@@ -1536,6 +1540,14 @@ export default {
       try {
         this.websocket.send(JSON.stringify(stopRequest));
         console.log('✅ 停止识别请求已发送');
+        
+        // 发送停止请求后，延迟关闭WebSocket连接
+        setTimeout(() => {
+          if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            console.log('🔌 主动关闭WebSocket连接');
+            this.websocket.close();
+          }
+        }, 1000); // 1秒后关闭连接
       } catch (error) {
         console.error('❌ 发送停止识别请求失败:', error);
       }
@@ -1558,16 +1570,22 @@ export default {
         } else if (header.name === 'TranscriptionResultChanged') {
           // 中间识别结果
           const result = payload.result;
+          console.log('🎯 中间识别结果原始数据:', payload);
           if (result && result.trim()) {
             console.log('🎯 中间识别结果:', result);
             this.updateContentText(result);
+          } else {
+            console.log('⚠️ 中间识别结果为空或无效');
           }
         } else if (header.name === 'SentenceEnd') {
           // 句子结束，完整识别结果
           const result = payload.result;
+          console.log('✅ 完整识别结果原始数据:', payload);
           if (result && result.trim()) {
             console.log('✅ 完整识别结果:', result);
             this.updateContentText(result);
+          } else {
+            console.log('⚠️ 完整识别结果为空或无效');
           }
         } else if (header.name === 'TranscriptionStarted') {
           console.log('🎤 识别已开始');
@@ -1581,6 +1599,10 @@ export default {
             message: (payload && payload.message) || '未知错误',
             full_payload: payload
           });
+          // 如果是空闲超时错误，这是正常的，不需要特殊处理
+          if (header.status === 40000004) {
+            console.log('ℹ️ 检测到空闲超时，这是正常的连接关闭');
+          }
         }
       } catch (error) {
         console.error('❌ 解析WebSocket消息失败:', error);
@@ -1589,13 +1611,25 @@ export default {
 
     // 更新文本内容
     updateContentText(newText) {
-      if (this.contentText) {
-        this.contentText += ' ' + newText;
-      } else {
-        this.contentText = newText;
+      if (!newText || !newText.trim()) {
+        console.log('⚠️ 空文本，跳过更新');
+        return;
       }
-      this.$forceUpdate();
+      
+      const trimmedText = newText.trim();
+      if (this.contentText) {
+        this.contentText += ' ' + trimmedText;
+      } else {
+        this.contentText = trimmedText;
+      }
+      
       console.log('📝 文本已更新:', this.contentText);
+      console.log('📝 新增文本:', trimmedText);
+      
+      // 强制更新视图
+      this.$nextTick(() => {
+        this.$forceUpdate();
+      });
     },
 
     // 生成消息ID (32位十六进制格式)
@@ -2014,9 +2048,14 @@ export default {
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
-          // 阿里云支持OPUS格式，WebM包含OPUS编码，直接发送
-          this.websocket.send(audioData);
-          console.log('✅ 音频数据发送成功 (WebM/OPUS格式)');
+          // 阿里云需要PCM格式，需要转换WebM到PCM
+          const pcmData = await this.convertWebMToPCM(audioData);
+          if (pcmData) {
+            this.websocket.send(pcmData);
+            console.log('✅ 音频数据发送成功 (PCM格式)');
+          } else {
+            console.log('⚠️ PCM转换失败，跳过此音频数据');
+          }
         } catch (error) {
           console.error('❌ 发送音频数据失败:', error);
         }
@@ -2036,7 +2075,7 @@ export default {
     },
 
     // 处理音频队列
-    processAudioQueue() {
+    async processAudioQueue() {
       if (this.audioQueue.length === 0) {
         console.log('📦 音频队列为空');
         return;
@@ -2047,8 +2086,14 @@ export default {
       while (this.audioQueue.length > 0 && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         const audioData = this.audioQueue.shift();
         try {
-          this.websocket.send(audioData);
-          console.log('✅ 发送队列中的音频数据:', audioData.size, 'bytes');
+          // 转换WebM到PCM格式
+          const pcmData = await this.convertWebMToPCM(audioData);
+          if (pcmData) {
+            this.websocket.send(pcmData);
+            console.log('✅ 发送队列中的音频数据:', audioData.size, 'bytes (PCM格式)');
+          } else {
+            console.log('⚠️ 队列音频数据PCM转换失败，跳过');
+          }
         } catch (error) {
           console.error('❌ 发送队列音频数据失败:', error);
           // 如果发送失败，将数据放回队列

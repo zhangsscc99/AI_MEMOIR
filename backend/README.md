@@ -314,7 +314,7 @@ cp -r dist/build/h5/* /var/www/MEMOIR/
 
 # 在assets目录中查找
 grep -r "apiUrl" dist/build/h5/assets/
-grep -r "106.15.248.189" dist/build/h5/assets/
+grep -r "103.146.125.208" dist/build/h5/assets/
 
 
 pm2 delete memoir-backend
@@ -346,3 +346,26 @@ cd android
 1把ai技术在项目里的使用能讲清楚
 2可以添加人生回忆录章节
 3
+
+
+
+
+
+服务器IP
+
+103.146.125.208
+
+服务器端口
+
+22  
+
+服务器账号
+
+root
+
+服务器密码
+
+bmk733kd
+
+
+能否帮我思考一下 如何部署这个应用呢 前后端都要 前端我要求
