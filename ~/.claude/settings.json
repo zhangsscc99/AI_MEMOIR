@@ -1,0 +1,11 @@
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "替换客服提供的key",
+    "ANTHROPIC_BASE_URL": "https://api.aiclaude.site"
+  },
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "apiKeyHelper": "echo '替换客服提供的key'"
+}

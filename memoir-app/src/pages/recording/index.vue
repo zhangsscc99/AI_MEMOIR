@@ -158,6 +158,7 @@ export default {
       websocket: null,
       audioProcessor: null,
       audioContext: null,
+      currentTaskId: null, // 当前WebSocket会话的task_id，必须保持一致
       // AI补全相关
       isAiCompleting: false,
       showAiDiff: false,
@@ -1488,7 +1489,7 @@ export default {
     sendStartRequest(speechToken, appkey) {
         const startRequest = this.formatAliyunMessage("StartTranscription", {
           appkey: appkey,
-          format: "pcm", // 改为PCM格式，阿里云WebSocket实时识别需要PCM格式
+          format: "opus", // 使用OPUS格式，WebM包含OPUS编码，直接发送
           sample_rate: 16000,
           enable_intermediate_result: true,
           enable_punctuation_prediction: true,
@@ -1655,12 +1656,18 @@ export default {
     // 阿里云消息格式转换器
     formatAliyunMessage(type, params = {}) {
       const { appkey, ...payload } = params;
+      
+      // 如果是StartTranscription，生成新的task_id并保存
+      if (type === 'StartTranscription') {
+        this.currentTaskId = this.generateTaskId();
+      }
+      
       const baseMessage = {
         header: {
           namespace: "SpeechTranscriber",
           name: type,
           message_id: this.generateMessageId(),
-          task_id: this.generateTaskId(),
+          task_id: this.currentTaskId || this.generateTaskId(), // 使用保存的task_id
           appkey: appkey
         },
         payload: payload
@@ -2048,14 +2055,9 @@ export default {
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         console.log('📤 发送音频数据到阿里云:', audioData.size, 'bytes');
         try {
-          // 阿里云需要PCM格式，需要转换WebM到PCM
-          const pcmData = await this.convertWebMToPCM(audioData);
-          if (pcmData) {
-            this.websocket.send(pcmData);
-            console.log('✅ 音频数据发送成功 (PCM格式)');
-          } else {
-            console.log('⚠️ PCM转换失败，跳过此音频数据');
-          }
+          // 直接发送WebM/OPUS格式的音频数据
+          this.websocket.send(audioData);
+          console.log('✅ 音频数据发送成功 (OPUS格式)');
         } catch (error) {
           console.error('❌ 发送音频数据失败:', error);
         }
@@ -2086,14 +2088,9 @@ export default {
       while (this.audioQueue.length > 0 && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         const audioData = this.audioQueue.shift();
         try {
-          // 转换WebM到PCM格式
-          const pcmData = await this.convertWebMToPCM(audioData);
-          if (pcmData) {
-            this.websocket.send(pcmData);
-            console.log('✅ 发送队列中的音频数据:', audioData.size, 'bytes (PCM格式)');
-          } else {
-            console.log('⚠️ 队列音频数据PCM转换失败，跳过');
-          }
+          // 直接发送WebM/OPUS格式的音频数据
+          this.websocket.send(audioData);
+          console.log('✅ 发送队列中的音频数据:', audioData.size, 'bytes (OPUS格式)');
         } catch (error) {
           console.error('❌ 发送队列音频数据失败:', error);
           // 如果发送失败，将数据放回队列

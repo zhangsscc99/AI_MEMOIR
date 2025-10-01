@@ -327,6 +327,7 @@ pm2 stop memoir-backend
 
 # 2. 删除损坏的 node_modules
 cd /root/AI_MEMOIR/backend
+cd /opt/AI_MEMOIR/backend
 rm -rf node_modules package-lock.json
 
 # 3. 重新安装依赖

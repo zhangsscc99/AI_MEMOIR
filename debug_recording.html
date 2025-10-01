@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>录音调试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-item {
+            margin: 3px 0;
+            padding: 3px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warn { color: #ff9800; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+        #result {
+            background: white;
+            padding: 15px;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            min-height: 100px;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 录音功能调试工具</h1>
+    
+    <div class="section">
+        <h3>1. 环境检测</h3>
+        <button onclick="checkEnvironment()">检测环境</button>
+        <div id="envResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>2. Token获取测试</h3>
+        <button onclick="testToken()">测试Token</button>
+        <div id="tokenResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>3. 完整录音测试</h3>
+        <button id="startBtn" onclick="startFullTest()">开始完整测试</button>
+        <button id="stopBtn" onclick="stopTest()" disabled>停止测试</button>
+    </div>
+    
+    <div class="section">
+        <h3>识别结果：</h3>
+        <div id="result">等待识别结果...</div>
+    </div>
+    
+    <div class="section">
+        <h3>详细日志：</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let mediaRecorder = null;
+        let websocket = null;
+        let token = null;
+        let appkey = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const item = document.createElement('div');
+            item.className = `log-item ${type}`;
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(item);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function checkEnvironment() {
+            const result = document.getElementById('envResult');
+            let html = '<ul>';
+            
+            html += `<li>浏览器: ${navigator.userAgent}</li>`;
+            html += `<li>HTTPS: ${location.protocol === 'https:'  ? '✅' : '❌'}</li>`;
+            html += `<li>MediaDevices: ${navigator.mediaDevices ? '✅' : '❌'}</li>`;
+            html += `<li>getUserMedia: ${navigator.mediaDevices?.getUserMedia ? '✅' : '❌'}</li>`;
+            html += `<li>MediaRecorder: ${window.MediaRecorder ? '✅' : '❌'}</li>`;
+            html += `<li>WebSocket: ${window.WebSocket ? '✅' : '❌'}</li>`;
+            
+            if (window.MediaRecorder) {
+                html += `<li>支持 audio/webm;codecs=opus: ${MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? '✅' : '❌'}</li>`;
+            }
+            
+            html += '</ul>';
+            result.innerHTML = html;
+        }
+
+        async function testToken() {
+            const result = document.getElementById('tokenResult');
+            log('🔑 测试Token获取...');
+            
+            try {
+                const response = await fetch('/api/speech/token', {
+                    headers: {
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjBlYzVmMDZiLWVlMTAtNDlhZC1hZmQxLTRjYjJhZjNmZjRhZiIsInVzZXJuYW1lIjoidGVzdDIiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiaXNfdmlwIjpmYWxzZSwiaWF0IjoxNzU5MzA0MzE1LCJleHAiOjE3NTk5MDkxMTUsImlzcyI6Im1lbW9pci1hcHAifQ.4Jgc3bYl8sj87sjn2DvXB1-zvh9oS_33uNKDJVQnAUw'
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    token = data.data.token;
+                    appkey = data.data.appkey;
+                    result.innerHTML = `<div class="success">✅ Token: ${token.substring(0, 30)}...<br>✅ Appkey: ${appkey}</div>`;
+                    log(`✅ Token获取成功`, 'success');
+                } else {
+                    result.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+                    log(`❌ Token获取失败: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+                log(`❌ Token获取异常: ${error.message}`, 'error');
+            }
+        }
+
+        function generateId() {
+            return Array.from({length: 32}, () => 
+                Math.floor(Math.random() * 16).toString(16)
+            ).join('');
+        }
+
+        async function startFullTest() {
+            log('🎬 开始完整测试...');
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('result').textContent = '等待识别结果...';
+            
+            // 1. 获取Token
+            if (!token) {
+                log('🔑 获取Token...');
+                await testToken();
+                if (!token) {
+                    log('❌ Token获取失败，测试终止', 'error');
+                    return;
+                }
+            }
+            
+            // 2. 连接WebSocket
+            log('🌐 连接WebSocket...');
+            const wsUrl = `wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1?token=${token}`;
+            log(`🌐 URL: ${wsUrl}`);
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = () => {
+                log('✅ WebSocket连接成功', 'success');
+                
+                // 发送开始识别请求
+                const startMsg = {
+                    header: {
+                        namespace: "SpeechTranscriber",
+                        name: "StartTranscription",
+                        message_id: generateId(),
+                        task_id: generateId(),
+                        appkey: appkey
+                    },
+                    payload: {
+                        format: "opus",
+                        sample_rate: 16000,
+                        enable_intermediate_result: true,
+                        enable_punctuation_prediction: true,
+                        enable_inverse_text_normalization: true
+                    }
+                };
+                
+                websocket.send(JSON.stringify(startMsg));
+                log('📤 发送开始识别请求', 'success');
+                
+                // 开始录音
+                startRecording();
+            };
+            
+            websocket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    log(`📨 收到消息: ${message.header.name}`);
+                    
+                    if (message.header.name === 'TranscriptionResultChanged') {
+                        const result = message.payload.result;
+                        document.getElementById('result').textContent = result;
+                        log(`🎯 中间结果: ${result}`, 'success');
+                    } else if (message.header.name === 'SentenceEnd') {
+                        const result = message.payload.result;
+                        document.getElementById('result').textContent = result;
+                        log(`✅ 完整结果: ${result}`, 'success');
+                    } else if (message.header.name === 'TaskFailed') {
+                        log(`❌ 任务失败: ${message.header.status_text}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ 解析消息失败: ${error.message}`, 'error');
+                }
+            };
+            
+            websocket.onerror = (error) => {
+                log(`❌ WebSocket错误`, 'error');
+            };
+            
+            websocket.onclose = (event) => {
+                log(`🔌 WebSocket关闭: ${event.code}`, 'warn');
+            };
+        }
+
+        async function startRecording() {
+            try {
+                log('🎤 请求麦克风权限...');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                log('✅ 麦克风权限获取成功', 'success');
+                
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                
+                mediaRecorder.ondataavailable = async (event) => {
+                    if (event.data.size > 0 && websocket && websocket.readyState === WebSocket.OPEN) {
+                        websocket.send(event.data);
+                        log(`📤 发送音频: ${event.data.size} bytes`);
+                    }
+                };
+                
+                mediaRecorder.start(100);
+                log('✅ 录音已开始', 'success');
+                
+            } catch (error) {
+                log(`❌ 录音失败: ${error.message}`, 'error');
+            }
+        }
+
+        function stopTest() {
+            log('🛑 停止测试...');
+            
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                log('✅ 录音已停止');
+            }
+            
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const stopMsg = {
+                    header: {
+                        namespace: "SpeechTranscriber",
+                        name: "StopTranscription",
+                        message_id: generateId(),
+                        task_id: generateId(),
+                        appkey: appkey
+                    },
+                    payload: {}
+                };
+                websocket.send(JSON.stringify(stopMsg));
+                setTimeout(() => websocket.close(), 1000);
+                log('✅ 已发送停止请求');
+            }
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        // 页面加载时自动检测环境
+        window.onload = () => {
+            checkEnvironment();
+        };
+    </script>
+</body>
+</html>
