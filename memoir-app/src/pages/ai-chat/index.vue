@@ -245,33 +245,22 @@ export default {
         return this.buildDefaultIntroduction(true);
       }
 
-      const topMemories = this.userMemories.slice(0, 3);
-      const primary = topMemories[0];
-      let highlight = '';
+      const total = this.userMemories.length;
+      const diaryCount = this.userMemories.filter(item => item.type === '随记').length;
+      const chapterCount = total - diaryCount;
 
-      if (primary) {
-        const formattedDate = this.formatDate(primary.createdAt);
-        const title = primary.title || '一段故事';
-        highlight = formattedDate
-          ? `我记得在${formattedDate}你写下的《${title}》`
-          : `我记得《${title}》这段经历`;
+      const parts = [];
+      if (chapterCount > 0) {
+        parts.push(`记录下来的那些章节故事`);
+      }
+      if (diaryCount > 0) {
+        parts.push('日常随记里的点滴');
       }
 
-      const additionalTitles = topMemories.slice(1).map(item => `《${item.title}》`).filter(Boolean);
-      let additional = '';
-      if (additionalTitles.length === 1) {
-        additional = `，还有${additionalTitles[0]}同样珍贵`;
-      } else if (additionalTitles.length > 1) {
-        additional = `，以及${additionalTitles.join('、')}等故事陪伴着我`;
-      }
+      const summary = parts.length ? parts.join('和') : '回忆录里的故事';
+      const countText = total > 1 ? `${total}段故事` : '那段故事';
 
-      const remaining = this.userMemories.length - topMemories.length;
-      if (remaining > 0) {
-        additional += `，还有其他${remaining}段珍贵记忆`;
-      }
-
-      const memorySummary = highlight ? `${highlight}${additional}` : '我珍藏着你回忆录里的那些故事';
-      return `我是${name}，根据你的回忆录打造的AI伙伴，${memorySummary}。随时可以和我聊聊这些经历，或继续记录新的篇章。`;
+      return `我是${name}，根据你的回忆录打造的AI伙伴。我珍藏着${summary}，共计${countText}，随时可以和你聊聊这些经历，或继续记录新的篇章。`;
     },
 
     refreshCharacterPersona() {
