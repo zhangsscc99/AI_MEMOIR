@@ -1,6 +1,6 @@
 <template>
   <view class="container">
-    <!-- 回忆录工坊卡片 -->
+    <!-- 岁月镜像卡片 -->
     <view class="memoir-card" @click="goToMemoir">
       <view class="memoir-card-left">
         <image 
@@ -374,7 +374,7 @@ export default {
     },
 
     goToChapters() {
-      console.log('点击开始录制按钮，准备跳转到回忆录工坊');
+      console.log('点击开始录制按钮，准备跳转到岁月镜像');
       uni.switchTab({
         url: '/pages/memoir/index'
       });

@@ -11,7 +11,7 @@
 		{
 			"path": "pages/memoir/index",
 			"style": {
-				"navigationBarTitleText": "回忆录工坊",
+				"navigationBarTitleText": "岁月镜像",
 				"navigationBarBackgroundColor": "#ffffff",
 				"navigationBarTextStyle": "black"
 			}

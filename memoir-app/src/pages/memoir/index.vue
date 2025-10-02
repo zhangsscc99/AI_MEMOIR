@@ -13,7 +13,7 @@
 
     <!-- 欢迎文案 -->
     <view class="welcome-section">
-      <view class="welcome-title">欢迎来到回忆录工坊！</view>
+      <view class="welcome-title">欢迎来到岁月镜像！</view>
       <view class="welcome-description">
         <text>选择您想要记录的人生章节，</text>
         <text class="description-line">开始您的回忆之旅</text>
