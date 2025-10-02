@@ -213,7 +213,12 @@
             // 2. 连接WebSocket
             log('🌐 连接WebSocket...');
             const sn = generateId();
-            const wsUrl = `wss://vop.baidu.com/realtime_asr?sn=${sn}`;
+            const urlParams = new URLSearchParams({
+                sn,
+                appid: appId,
+                token
+            });
+            const wsUrl = `wss://vop.baidu.com/realtime_asr?${urlParams.toString()}`;
             log(`🌐 URL: ${wsUrl}`);
             
             websocket = new WebSocket(wsUrl);

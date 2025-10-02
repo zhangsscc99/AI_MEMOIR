@@ -1405,7 +1405,12 @@ export default {
         this.allowAudioStreaming = true;
 
         const sn = this.generateMessageId();
-        const wsUrl = `wss://vop.baidu.com/realtime_asr?sn=${sn}`;
+        const urlParams = new URLSearchParams({
+          sn,
+          appid: appId,
+          token
+        });
+        const wsUrl = `wss://vop.baidu.com/realtime_asr?${urlParams.toString()}`;
         console.log('🌐 WebSocket URL:', wsUrl);
 
         if (this.websocket) {
@@ -1424,13 +1429,13 @@ export default {
           const startFrame = {
             type: 'START',
             data: {
-              appid: appId,
+              appid: Number(appId),
               appkey: apiKey,
               token,
-              dev_pid: devPid,
+              dev_pid: Number(devPid),
               cuid,
               format: 'pcm',
-              sample: sampleRate
+              sample: Number(sampleRate)
             }
           };
           try {

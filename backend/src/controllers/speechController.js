@@ -84,7 +84,7 @@ const getSpeechToken = async (req, res) => {
       message: '获取语音识别Token成功',
       data: {
         token: token,
-        appId: process.env.BAIDU_SPEECH_APP_ID,
+        appId: Number(process.env.BAIDU_SPEECH_APP_ID),
         apiKey: process.env.BAIDU_SPEECH_API_KEY,
         devPid: Number(process.env.BAIDU_SPEECH_DEV_PID || 15372),
         sampleRate: Number(process.env.BAIDU_SPEECH_SAMPLE_RATE || 16000),
