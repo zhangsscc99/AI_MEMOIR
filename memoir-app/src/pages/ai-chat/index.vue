@@ -299,9 +299,9 @@ export default {
           return;
         }
 
-        const customName = uni.getStorageSync('customCharacterName');
-        if (customName && customName !== '小忆') {
-          // 用户自定义了昵称，不自动覆盖
+        const manualName = uni.getStorageSync('manualCharacterName');
+        if (manualName) {
+          // 用户手动设置了昵称，不自动覆盖
           return;
         }
 
@@ -316,11 +316,12 @@ export default {
 
         if (response.statusCode === 200 && response.data.success) {
           const { characterName } = response.data.data;
-          if (characterName && characterName !== this.characterInfo.name) {
+          const autoName = uni.getStorageSync('autoCharacterName');
+          if (characterName && characterName !== autoName) {
             console.log('🎭 自动识别角色姓名:', characterName);
             this.characterInfo.name = characterName;
             this.refreshCharacterPersona();
-            uni.setStorageSync('customCharacterName', characterName);
+            uni.setStorageSync('autoCharacterName', characterName);
 
             // 更新本地缓存的用户信息
             const userInfo = uni.getStorageSync('user');
@@ -580,8 +581,9 @@ export default {
               const userInfo = response.data.data.user;
               uni.setStorageSync('user', userInfo);
               
-              // 清除自定义角色名称缓存（因为现在使用数据库中的昵称）
-              uni.removeStorageSync('customCharacterName');
+              // 记录手动设置的角色名称，清除自动缓存
+              uni.setStorageSync('manualCharacterName', newName);
+              uni.removeStorageSync('autoCharacterName');
               
               console.log('✅ 角色名称已更新到数据库:', newName);
               
@@ -609,17 +611,30 @@ export default {
       }
     },
 
-    // 加载自定义角色名称
+    // 加载手动/自动识别的角色名称
     loadCustomCharacterName() {
-      const customName = uni.getStorageSync('customCharacterName');
-      if (customName) {
-        const trimmed = customName.trim();
-        if (!trimmed || trimmed.toLowerCase() === 'demo' || trimmed === '小忆') {
-          uni.removeStorageSync('customCharacterName');
+      const legacy = uni.getStorageSync('customCharacterName');
+      if (legacy) {
+        uni.removeStorageSync('customCharacterName');
+      }
+
+      const manualName = uni.getStorageSync('manualCharacterName');
+      if (manualName) {
+        const trimmed = manualName.trim();
+        if (trimmed && trimmed.toLowerCase() !== 'demo' && trimmed !== '小忆') {
+          this.characterInfo.name = trimmed;
+          console.log('📝 使用手动设置的角色名称:', trimmed);
+          this.refreshCharacterPersona();
           return;
+        } else {
+          uni.removeStorageSync('manualCharacterName');
         }
-        this.characterInfo.name = customName;
-        console.log('📝 加载自定义角色名称:', customName);
+      }
+
+      const autoName = uni.getStorageSync('autoCharacterName');
+      if (autoName) {
+        this.characterInfo.name = autoName;
+        console.log('📝 使用自动识别的角色名称:', autoName);
         this.refreshCharacterPersona();
       }
     },
