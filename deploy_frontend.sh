@@ -86,6 +86,12 @@ if [ -f "test_aliyun_speech.html" ]; then
         ./test_aliyun_speech.html ${SERVER_USER}@${SERVER_IP}:${FRONTEND_PATH}/
     echo -e "${GREEN}✅ test_aliyun_speech.html 已上传${NC}"
 fi
+
+if [ -f "aliyun_debug.html" ]; then
+    sshpass -p ${SERVER_PASSWORD} scp -o 'StrictHostKeyChecking=no' \
+        ./aliyun_debug.html ${SERVER_USER}@${SERVER_IP}:${FRONTEND_PATH}/
+    echo -e "${GREEN}✅ aliyun_debug.html 已上传${NC}"
+fi
 echo ""
 
 # 完成
@@ -101,4 +107,3 @@ echo -e "${BLUE}说明：${NC}"
 echo -e "  前端已部署，Nginx会自动提供服务"
 echo -e "  无需重启任何服务"
 echo ""
-
