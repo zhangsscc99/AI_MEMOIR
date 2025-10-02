@@ -258,9 +258,7 @@ export default {
       }
 
       const summary = parts.length ? parts.join('和') : '回忆录里的故事';
-      const countText = total > 1 ? `${total}段故事` : '那段故事';
-
-      return `我是${name}，根据你的回忆录打造的AI伙伴。我珍藏着${summary}，共计${countText}，随时可以和你聊聊这些经历，或继续记录新的篇章。`;
+      return `我是${name}，根据你的回忆录打造的AI伙伴。我珍藏着${summary}，随时可以和你聊聊这些经历，或继续记录新的篇章。`;
     },
 
     refreshCharacterPersona() {
