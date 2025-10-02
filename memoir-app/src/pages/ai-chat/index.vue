@@ -129,6 +129,7 @@ export default {
     await this.loadUserMemories();
     this.loadCustomCharacterName();
     await this.preBuildCharacter();
+    await this.fetchGeneratedCharacterName();
     this.addWelcomeMessage();
   },
 
@@ -137,6 +138,7 @@ export default {
     console.log('🔄 AI聊天页面显示，重新预构建角色...');
     await this.loadUserMemories();
     await this.preBuildCharacter();
+    await this.fetchGeneratedCharacterName();
     this.updateWelcomeMessage();
   },
   
@@ -288,6 +290,44 @@ export default {
       }
 
       this.updateWelcomeMessage();
+    },
+
+    async fetchGeneratedCharacterName() {
+      try {
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          return;
+        }
+
+        const customName = uni.getStorageSync('customCharacterName');
+        if (customName && customName !== '小忆') {
+          // 用户自定义了昵称，不自动覆盖
+          return;
+        }
+
+        const response = await uni.request({
+          url: apiUrl('/ai/character-name'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          const { characterName } = response.data.data;
+          if (characterName && characterName !== this.characterInfo.name) {
+            console.log('🎭 自动识别角色姓名:', characterName);
+            this.characterInfo.name = characterName;
+            this.refreshCharacterPersona();
+            uni.setStorageSync('customCharacterName', characterName);
+          }
+        } else {
+          console.log('⚠️ 角色姓名识别失败:', response.data?.message);
+        }
+      } catch (error) {
+        console.error('自动生成角色姓名失败:', error);
+      }
     },
 
     buildWelcomeMessageText() {

@@ -10,7 +10,8 @@ const {
   getUserMemories,
   prebuildCharacter,
   refreshCharacter,
-  completeText
+  completeText,
+  generateCharacterName
 } = require('../controllers/aiController');
 
 // 导入中间件
@@ -57,6 +58,13 @@ router.get('/memories', authenticateToken, getUserMemories);
  * @access  Private
  */
 router.post('/prebuild', authenticateToken, prebuildCharacter);
+
+/**
+ * @route   POST /api/ai/character-name
+ * @desc    从回忆录生成角色名称
+ * @access  Private
+ */
+router.post('/character-name', authenticateToken, generateCharacterName);
 
 /**
  * @route   POST /api/ai/refresh

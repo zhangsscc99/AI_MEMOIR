@@ -1,5 +1,6 @@
 const OpenAI = require('openai');
 const Chapter = require('../models/Chapter');
+const User = require('../models/User');
 require('dotenv').config();
 
 // 初始化通义千问客户端
@@ -53,6 +54,55 @@ const getUserMemoirContent = async (userId) => {
     console.error('获取用户回忆录内容失败:', error);
     return [];
   }
+};
+
+// 从回忆录内容中提取可能的角色姓名
+const extractCharacterNameFromMemories = (memories = []) => {
+  if (!memories.length) {
+    return null;
+  }
+
+  const patterns = [
+    /姓名[:：]\s*([\u4e00-\u9fa5a-zA-Z·•\s]{1,12})/,
+    /名字[:：]?\s*(叫|是)?\s*([\u4e00-\u9fa5a-zA-Z·•\s]{1,12})/,
+    /我叫([\u4e00-\u9fa5a-zA-Z·•]{1,12})/,
+    /我的名字叫([\u4e00-\u9fa5a-zA-Z·•]{1,12})/,
+    /大家都叫我([\u4e00-\u9fa5a-zA-Z·•]{1,12})/
+  ];
+
+  const sanitizeName = (name) => {
+    if (!name) return '';
+    return name
+      .replace(/^[^\u4e00-\u9fa5a-zA-Z·•]+/, '')
+      .replace(/[^\u4e00-\u9fa5a-zA-Z·•]+$/, '')
+      .replace(/\s+/g, '')
+      .trim();
+  };
+
+  for (const memory of memories) {
+    const content = (memory.content || '').trim();
+    if (!content) continue;
+
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match) {
+        const raw = match[2] || match[1] || '';
+        const candidate = sanitizeName(raw);
+        if (candidate && candidate.length >= 2 && candidate.length <= 8) {
+          return {
+            name: candidate,
+            source: {
+              title: memory.title,
+              type: memory.type,
+              createdAt: memory.createdAt
+            }
+          };
+        }
+      }
+    }
+  }
+
+  return null;
 };
 
 // 构建智能角色提示词
@@ -472,6 +522,72 @@ const prebuildCharacter = async (req, res) => {
 };
 
 /**
+ * @desc 生成或更新用户角色姓名
+ * @route POST /api/ai/character-name
+ * @access Private
+ */
+const generateCharacterName = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const memories = await getUserMemoirContent(userId);
+    const extraction = extractCharacterNameFromMemories(memories);
+
+    if (!extraction) {
+      return res.status(200).json({
+        success: true,
+        message: '未在回忆录中找到可用的姓名',
+        data: {
+          characterName: null,
+          detected: false
+        }
+      });
+    }
+
+    const { name: detectedName, source } = extraction;
+    let updatedProfile = false;
+
+    try {
+      const user = await User.findByPk(userId);
+      if (user) {
+        const currentNickname = (user.nickname || '').trim();
+        if (!currentNickname || currentNickname.toLowerCase() === 'demo' || currentNickname === '小忆') {
+          user.nickname = detectedName;
+          await user.save();
+          updatedProfile = true;
+        }
+      }
+    } catch (profileError) {
+      console.error('更新用户昵称失败:', profileError);
+    }
+
+    const cached = characterPromptCache.get(userId);
+    if (cached) {
+      cached.characterName = detectedName;
+      characterPromptCache.set(userId, cached);
+    }
+
+    res.json({
+      success: true,
+      message: '角色姓名生成成功',
+      data: {
+        characterName: detectedName,
+        detected: true,
+        updatedProfile,
+        source
+      }
+    });
+  } catch (error) {
+    console.error('生成角色姓名失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '生成角色姓名失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * @desc 刷新用户角色缓存
  * @route POST /api/ai/refresh
  * @access Private
@@ -609,5 +725,6 @@ module.exports = {
   getUserMemories,
   prebuildCharacter,
   refreshCharacter,
-  completeText
+  completeText,
+  generateCharacterName
 };
