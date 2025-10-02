@@ -1180,6 +1180,99 @@ export default {
       }
     },
 
+    async setupAudioProcessing(stream) {
+      try {
+        const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!NativeAudioContext) {
+          console.warn('⚠️ AudioContext不可用，继续使用MediaRecorder回退');
+          this.useAudioProcessorStreaming = false;
+          return;
+        }
+
+        if (!this.audioContext || this.audioContext.state === 'closed') {
+          this.audioContext = new NativeAudioContext({
+            sampleRate: this.pcmSampleRate
+          });
+        }
+
+        if (this.audioContext.state === 'suspended' && typeof this.audioContext.resume === 'function') {
+          await this.audioContext.resume();
+        }
+
+        if (this.audioSourceNode) {
+          try {
+            this.audioSourceNode.disconnect();
+          } catch (error) {
+            console.warn('⚠️ 断开旧音频源失败:', error);
+          }
+          this.audioSourceNode = null;
+        }
+
+        if (this.audioProcessor) {
+          try {
+            this.audioProcessor.disconnect();
+          } catch (error) {
+            console.warn('⚠️ 断开旧音频处理器失败:', error);
+          }
+          this.audioProcessor = null;
+        }
+
+        const sourceNode = this.audioContext.createMediaStreamSource(stream);
+        const processorNode = this.audioContext.createScriptProcessor(4096, 1, 1);
+        const contextRate = this.audioContext.sampleRate;
+        const targetRate = this.pcmSampleRate;
+
+        processorNode.onaudioprocess = (event) => {
+          if (!this.allowAudioStreaming || !this.isRecording) {
+            return;
+          }
+
+          const inputBuffer = event.inputBuffer;
+          if (!inputBuffer) {
+            return;
+          }
+
+          const channelData = inputBuffer.getChannelData(0);
+          if (!channelData || !channelData.length) {
+            return;
+          }
+
+          const sourceRate = inputBuffer.sampleRate || contextRate;
+          let processed = channelData;
+
+          if (sourceRate !== targetRate) {
+            processed = this.downsampleBuffer(channelData, sourceRate, targetRate);
+          }
+
+          if (!processed || !processed.length) {
+            return;
+          }
+
+          const pcmBuffer = this.float32ToPCM(processed);
+
+          if (pcmBuffer && pcmBuffer.byteLength && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            try {
+              this.websocket.send(pcmBuffer);
+            } catch (error) {
+              console.error('❌ 通过音频处理器发送音频失败:', error);
+            }
+          }
+        };
+
+        sourceNode.connect(processorNode);
+        processorNode.connect(this.audioContext.destination);
+
+        this.audioSourceNode = sourceNode;
+        this.audioProcessor = processorNode;
+        this.useAudioProcessorStreaming = true;
+
+        console.log('✅ 音频处理器初始化完成，采样率:', contextRate, '→', targetRate);
+      } catch (error) {
+        console.error('❌ 初始化音频处理器失败:', error);
+        this.useAudioProcessorStreaming = false;
+      }
+    },
+
     // 检查Web Speech API支持
     isWebSpeechSupported() {
       return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
