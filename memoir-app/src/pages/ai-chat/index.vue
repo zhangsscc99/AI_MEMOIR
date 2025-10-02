@@ -101,8 +101,8 @@ export default {
     return {
       // 角色信息
       characterInfo: {
-        name: '',
-        description: '',
+        name: '小忆',
+        description: '我是小忆，你的AI回忆录助手，可以陪你聊天、整理回忆并记录新的故事。',
         avatar: '/src/images/default-avatar.png'
       },
       
@@ -116,6 +116,7 @@ export default {
       
       // 记忆相关
       userMemories: [],
+      hasPersona: false,
       
       // 编辑相关
       isEditingName: false,
@@ -125,16 +126,18 @@ export default {
   
   async onLoad() {
     await this.loadCharacterInfo();
-    this.loadUserMemories();
+    await this.loadUserMemories();
     this.loadCustomCharacterName();
-    this.preBuildCharacter();
+    await this.preBuildCharacter();
     this.addWelcomeMessage();
   },
 
   // 每次显示页面时都重新预构建角色（确保数据最新）
   async onShow() {
     console.log('🔄 AI聊天页面显示，重新预构建角色...');
+    await this.loadUserMemories();
     await this.preBuildCharacter();
+    this.updateWelcomeMessage();
   },
   
   methods: {
@@ -147,9 +150,9 @@ export default {
         
         if (!token) {
           console.log('用户未登录，使用默认角色信息');
-          // 未登录时使用友好的默认人设
           this.characterInfo.name = '小忆';
-          this.characterInfo.description = '您的AI回忆录助手';
+          this.characterInfo.description = this.buildDefaultIntroduction(false);
+          this.refreshCharacterPersona();
           return;
         }
 
@@ -169,21 +172,29 @@ export default {
         if (response.statusCode === 200 && response.data.success) {
           const userInfo = response.data.data.user; // 注意：后端返回的是 { user: userProfile }
           console.log('👤 用户信息:', userInfo);
-          const userName = userInfo.nickname || userInfo.username || '用户';
-          console.log('📝 用户名:', userName);
+          const nickname = (userInfo.nickname || '').trim();
+          const username = (userInfo.username || '').trim();
+          let displayName = nickname;
+
+          if (!displayName || displayName.toLowerCase() === 'demo' || displayName === username) {
+            displayName = '小忆';
+          }
+
+          console.log('📝 角色名称:', displayName);
           
-          this.characterInfo.name = userName;
-          // 只有登录用户才显示基于回忆录的描述
-          this.characterInfo.description = `基于${userName}的回忆录生成的AI角色`;
+          this.characterInfo.name = displayName;
+          this.characterInfo.description = this.buildDefaultIntroduction(true);
+          this.refreshCharacterPersona();
           console.log('✅ 角色信息更新完成:', this.characterInfo);
         } else {
           console.log('❌ 获取用户信息失败，使用默认角色信息:', response.data);
-          this.characterInfo.description = 'AI角色';
+          this.characterInfo.description = this.buildDefaultIntroduction(true);
+          this.refreshCharacterPersona();
         }
       } catch (error) {
         console.error('❌ 加载角色信息失败:', error);
-        // 出错时使用默认描述
-        this.characterInfo.description = 'AI角色';
+        this.characterInfo.description = this.buildDefaultIntroduction(true);
+        this.refreshCharacterPersona();
       }
     },
 
@@ -193,12 +204,13 @@ export default {
         const token = uni.getStorageSync('token');
         if (!token) {
           console.log('用户未登录');
+          this.refreshCharacterPersona();
           return;
         }
 
         // 获取用户的章节数据作为记忆
         const response = await uni.request({
-          url: apiUrl('/chapters'),
+          url: apiUrl('/ai/memories'),
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`,
@@ -207,12 +219,98 @@ export default {
         });
 
         if (response.statusCode === 200 && response.data.success) {
-          const chapters = response.data.data.chapters || [];
-          this.userMemories = chapters;
+          const memories = response.data.data.memories || [];
+          this.userMemories = memories;
+          this.refreshCharacterPersona();
         }
       } catch (error) {
         console.error('加载用户记忆失败:', error);
+        this.refreshCharacterPersona();
       }
+    },
+
+    buildDefaultIntroduction(isLoggedIn) {
+      const name = this.characterInfo.name || '小忆';
+      if (isLoggedIn) {
+        return `我是${name}，你的AI回忆录助手。我可以帮你梳理已经记录的章节、整理随记内容，还能陪你聊天，继续探索新的故事。`;
+      }
+      return `我是${name}，你的AI回忆录助手，可以指导你如何记录人生点滴，整理回忆，并陪你轻松聊天。`;
+    },
+
+    buildPersonaIntroduction() {
+      const name = this.characterInfo.name || '小忆';
+      if (!this.userMemories || this.userMemories.length === 0) {
+        return this.buildDefaultIntroduction(true);
+      }
+
+      const topMemories = this.userMemories.slice(0, 3);
+      const primary = topMemories[0];
+      let highlight = '';
+
+      if (primary) {
+        const formattedDate = this.formatDate(primary.createdAt);
+        const title = primary.title || '一段故事';
+        highlight = formattedDate
+          ? `我记得在${formattedDate}你写下的《${title}》`
+          : `我记得《${title}》这段经历`;
+      }
+
+      const additionalTitles = topMemories.slice(1).map(item => `《${item.title}》`).filter(Boolean);
+      let additional = '';
+      if (additionalTitles.length === 1) {
+        additional = `，还有${additionalTitles[0]}同样珍贵`;
+      } else if (additionalTitles.length > 1) {
+        additional = `，以及${additionalTitles.join('、')}等故事陪伴着我`;
+      }
+
+      const remaining = this.userMemories.length - topMemories.length;
+      if (remaining > 0) {
+        additional += `，还有其他${remaining}段珍贵记忆`;
+      }
+
+      const memorySummary = highlight ? `${highlight}${additional}` : '我保存着你记录的许多珍贵记忆';
+      return `我是${name}，根据你的回忆录打造的AI伙伴，${memorySummary}。随时可以和我聊聊这些故事，或继续记录新的篇章。`;
+    },
+
+    refreshCharacterPersona() {
+      const token = uni.getStorageSync('token');
+      const hasLogin = !!token;
+      const hasMemories = hasLogin && this.userMemories && this.userMemories.length > 0;
+
+      this.hasPersona = hasMemories;
+
+      if (!hasLogin) {
+        this.characterInfo.description = this.buildDefaultIntroduction(false);
+      } else if (hasMemories) {
+        this.characterInfo.description = this.buildPersonaIntroduction();
+      } else {
+        this.characterInfo.description = this.buildDefaultIntroduction(true);
+      }
+
+      this.updateWelcomeMessage();
+    },
+
+    buildWelcomeMessageText() {
+      const token = uni.getStorageSync('token');
+      const intro = this.characterInfo.description || this.buildDefaultIntroduction(!!token);
+      if (!token) {
+        return `你好！${intro}如果你想体验完整的个性化聊天功能，可以登录并开始记录你的回忆。`;
+      }
+
+      if (this.hasPersona) {
+        return `你好！${intro}想和我聊聊这些故事，或者继续记录新的篇章吗？`;
+      }
+
+      return `你好！${intro}如果你已经准备好开始记录或提问，随时告诉我。`;
+    },
+
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      if (Number.isNaN(date.getTime())) {
+        return '';
+      }
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
     },
 
     // 发送消息（支持流式输出）
@@ -425,7 +523,7 @@ export default {
             if (response.statusCode === 200 && response.data.success) {
               // 更新本地角色信息
               this.characterInfo.name = newName;
-              this.characterInfo.description = `基于${newName}的回忆录生成的AI角色`;
+              this.refreshCharacterPersona();
               
               // 更新本地存储的用户信息
               const userInfo = response.data.data.user;
@@ -463,11 +561,10 @@ export default {
     // 加载自定义角色名称
     loadCustomCharacterName() {
       const customName = uni.getStorageSync('customCharacterName');
-      if (customName && !this.characterInfo.name) {
-        // 只有在没有从用户信息获取到名称时才使用自定义名称
+      if (customName) {
         this.characterInfo.name = customName;
-        this.characterInfo.description = `基于${customName}的回忆录生成的AI角色`;
         console.log('📝 加载自定义角色名称:', customName);
+        this.refreshCharacterPersona();
       }
     },
 
@@ -492,13 +589,15 @@ export default {
 
         if (response.statusCode === 200 && response.data.success) {
           console.log('✅ AI角色预构建成功，记忆数量:', response.data.data.memoryCount);
-          // 更新角色描述（不显示记忆数量）
-          this.characterInfo.description = `基于您的回忆录生成的AI角色`;
+          this.hasPersona = (response.data.data.memoryCount || 0) > 0;
+          this.refreshCharacterPersona();
         } else {
           console.log('⚠️ AI角色预构建失败，将使用实时构建');
+          this.refreshCharacterPersona();
         }
       } catch (error) {
         console.error('预构建AI角色失败:', error);
+        this.refreshCharacterPersona();
       }
     },
 
@@ -506,20 +605,9 @@ export default {
     // 添加欢迎消息
     addWelcomeMessage() {
       if (this.messages.length === 0) {
-        const token = uni.getStorageSync('token');
-        let welcomeMessage;
-        
-        if (token) {
-          // 已登录用户的欢迎消息
-          welcomeMessage = `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`;
-        } else {
-          // 未登录用户的欢迎消息
-          welcomeMessage = `你好！我是${this.characterInfo.name}，您的AI回忆录助手。我可以帮助您了解如何记录和整理人生回忆，或者回答一些通用问题。如果您想体验完整的个性化AI聊天功能，建议您注册账号并开始记录您的回忆录。有什么想了解的吗？`;
-        }
-        
         this.messages.push({
           type: 'ai',
-          content: welcomeMessage,
+          content: this.buildWelcomeMessageText(),
           timestamp: new Date()
         });
       }
@@ -530,8 +618,8 @@ export default {
       if (this.messages.length > 0) {
         // 更新第一条AI消息（欢迎消息）
         const firstMessage = this.messages[0];
-        if (firstMessage.type === 'ai' && firstMessage.content.includes('你好！我是')) {
-          firstMessage.content = `你好！我是${this.characterInfo.name}，基于您的回忆录生成的AI角色。我可以和您聊关于您的经历，或者回答关于您回忆录内容的问题。有什么想聊的吗？`;
+        if (firstMessage.type === 'ai') {
+          firstMessage.content = this.buildWelcomeMessageText();
         }
       }
     },
