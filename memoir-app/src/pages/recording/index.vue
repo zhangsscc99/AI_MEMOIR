@@ -156,6 +156,7 @@ export default {
       audioQueue: [],
       audioProcessingPromise: Promise.resolve(),
       pcmSampleRate: 16000,
+      useAudioProcessorStreaming: false,
       allowAudioStreaming: false,
       // WebSocket相关
       websocket: null,
@@ -166,10 +167,16 @@ export default {
       decodeAudioContext: null,
       currentToken: null,
       currentApiKey: null,
+      speechProvider: 'aliyun',
+      currentSpeechConfig: null,
       baiduAppId: null,
       baiduApiKey: null,
       baiduDevPid: 15372,
       baiduCuid: null,
+      aliyunAppKey: null,
+      aliyunRegion: null,
+      aliyunWsUrl: null,
+      aliyunTaskId: null,
       // AI补全相关
       isAiCompleting: false,
       showAiDiff: false,
@@ -620,8 +627,14 @@ export default {
       console.log('🔍 uni.startRecord存在:', typeof uni?.startRecord === 'function');
       
       // 根据环境选择录音方式
-      console.log('🌐 使用百度语音实时识别...');
-      await this.startBaiduWebRecording();
+      try {
+        console.log('🌐 使用阿里云语音实时识别...');
+        await this.startAliyunWebRecording();
+      } catch (error) {
+        console.error('❌ 阿里云实时识别启动失败:', error);
+        this.handleRecordingError(error.message || '语音识别启动失败');
+        return;
+      }
       
       console.log('📱 显示开始录制提示');
       uni.showToast({
@@ -631,6 +644,93 @@ export default {
       
       console.log('📊 录音状态检查 - isRecording:', this.isRecording);
       console.log('📊 按钮文字检查 - recordButtonText:', this.recordButtonText);
+    },
+
+    // 开始阿里云Web实时语音识别
+    async startAliyunWebRecording() {
+      try {
+        console.log('🌐 开始阿里云Web实时语音识别...');
+
+        console.log('🔐 检查Web录音权限...');
+        const hasPermission = await this.checkWebRecordingPermission();
+        if (!hasPermission) {
+          throw new Error('录音权限被拒绝');
+        }
+
+        console.log('🔑 获取阿里云语音识别配置...');
+        const config = await this.getAliyunSpeechConfig();
+        console.log('✅ 语音识别配置已获取 (阿里云)');
+
+        this.speechProvider = 'aliyun';
+        this.currentSpeechConfig = config;
+        await this.startWebRecording(config);
+
+        console.log('✅ 阿里云Web实时语音识别已开始');
+
+      } catch (error) {
+        console.error('❌ 阿里云Web实时语音识别启动失败:', error);
+        throw error;
+      }
+    },
+
+    // 获取阿里云语音识别配置
+    async getAliyunSpeechConfig() {
+      try {
+        let token = uni.getStorageSync('token');
+        if (!token) {
+          console.log('🔐 用户未登录，尝试自动登录...');
+          await this.autoLogin();
+          token = uni.getStorageSync('token');
+          if (!token) {
+            throw new Error('用户未登录，无法进行语音识别');
+          }
+        }
+
+        const tokenResponse = await uni.request({
+          url: apiUrl('/aliyun-speech/token'),
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (tokenResponse.data.success) {
+          const data = tokenResponse.data.data || {};
+          const speechToken = data.token;
+          const appKey = data.appKey;
+          const region = data.region || data.regionId || 'cn-shanghai';
+          const websocketUrl = data.websocketUrl || `wss://nls-gateway-${region}.aliyuncs.com/ws/v1`;
+          const sampleRate = data.sampleRate || this.pcmSampleRate || 16000;
+
+          this.currentToken = speechToken;
+          this.currentApiKey = appKey;
+          this.aliyunAppKey = appKey;
+          this.aliyunRegion = region;
+          this.aliyunWsUrl = websocketUrl;
+          this.pcmSampleRate = sampleRate;
+
+          console.log('✅ 获取阿里云语音识别配置成功:', {
+            region,
+            websocketUrl,
+            sampleRate
+          });
+
+          return {
+            provider: 'aliyun',
+            token: speechToken,
+            appKey,
+            websocketUrl,
+            region,
+            sampleRate
+          };
+        } else {
+          throw new Error('获取语音识别Token失败: ' + tokenResponse.data.message);
+        }
+      } catch (error) {
+        console.error('❌ 获取阿里云语音识别配置失败:', error);
+        throw error;
+      }
     },
 
     // 开始百度Web API录音 - 通过后端
@@ -660,8 +760,8 @@ export default {
 
     // 开始百度移动端录音 - 使用原生Android SDK
     async startBaiduMobileRecording() {
-      console.log('🎯 移动端环境使用Web录音方案进行识别');
-      await this.startBaiduWebRecording();
+      console.log('🎯 移动端环境使用Web录音方案进行识别 (阿里云)');
+      await this.startAliyunWebRecording();
     },
 
     // 检查是否为Capacitor环境
@@ -799,8 +899,8 @@ export default {
 
     // 开始百度录音
     async startBaiduRecording() {
-      console.log('🎤 使用Web录音替代原生插件');
-      await this.startBaiduWebRecording();
+      console.log('🎤 使用Web录音替代原生插件 (阿里云)');
+      await this.startAliyunWebRecording();
     },
 
     // 设置百度监听器
@@ -1033,6 +1133,13 @@ export default {
     async startWebRecording(config) {
       try {
         console.log('🌐 开始Web录音...');
+
+        const provider = config?.provider || this.speechProvider || 'aliyun';
+        this.speechProvider = provider;
+        if (config?.sampleRate) {
+          this.pcmSampleRate = config.sampleRate;
+        }
+        this.currentSpeechConfig = config;
         
         // 请求麦克风权限，添加更详细的错误处理
         const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -1077,10 +1184,14 @@ export default {
         
         this.mediaRecorder.onstart = () => {
           console.log('🎤 MediaRecorder 已开始录音');
-          this.startBaiduWebSocketRecognition(config);
-          
-          // 确保WebSocket连接保持活跃
-          this.keepWebSocketAlive();
+          this.currentSpeechConfig = config;
+
+          if (this.speechProvider === 'aliyun') {
+            this.startAliyunWebSocketRecognition(config);
+          } else {
+            this.startBaiduWebSocketRecognition(config);
+            this.keepWebSocketAlive();
+          }
         };
         
         this.mediaRecorder.onpause = () => {
@@ -1371,6 +1482,109 @@ export default {
       console.log('✅ Web Speech API开始识别');
     },
 
+    // 阿里云WebSocket流式识别
+    async startAliyunWebSocketRecognition(config = {}) {
+      try {
+        const {
+          token,
+          appKey,
+          websocketUrl,
+          sampleRate = this.pcmSampleRate || 16000,
+          region
+        } = config;
+
+        if (!token || !appKey || !websocketUrl) {
+          throw new Error('阿里云语音识别配置不完整');
+        }
+
+        console.log('🎤 开始阿里云WebSocket实时识别...');
+        console.log('🔑 Token前缀:', token.substring(0, 12) + '...');
+        console.log('🆔 AppKey:', appKey);
+        console.log('🌏 Region:', region || '默认');
+
+        this.currentToken = token;
+        this.currentApiKey = appKey;
+        this.aliyunAppKey = appKey;
+        this.aliyunRegion = region || this.aliyunRegion;
+        this.pcmSampleRate = sampleRate;
+        this.currentSpeechConfig = { ...config, provider: 'aliyun', sampleRate };
+
+        this.audioQueue = [];
+        this.audioProcessingPromise = Promise.resolve();
+        this.allowAudioStreaming = true;
+
+        let wsUrl = websocketUrl;
+        if (wsUrl.includes('?')) {
+          wsUrl = `${wsUrl}&token=${encodeURIComponent(token)}`;
+        } else {
+          wsUrl = `${wsUrl}?token=${encodeURIComponent(token)}`;
+        }
+        console.log('🌐 WebSocket URL:', wsUrl);
+
+        if (this.websocket) {
+          try {
+            this.websocket.close();
+          } catch (closeError) {
+            console.warn('⚠️ 关闭旧的WebSocket失败:', closeError);
+          }
+        }
+
+        this.websocket = new WebSocket(wsUrl);
+        this.websocket.binaryType = 'arraybuffer';
+
+        const taskId = this.generateMessageId();
+        this.aliyunTaskId = taskId;
+
+        this.websocket.onopen = () => {
+          console.log('✅ 阿里云WebSocket连接已建立');
+          const startMessage = {
+            header: {
+              message_id: this.generateMessageId(),
+              task_id: taskId,
+              namespace: 'SpeechTranscriber',
+              name: 'StartTranscription',
+              appkey: appKey
+            },
+            payload: {
+              format: 'pcm',
+              sample_rate: Number(sampleRate) || 16000,
+              enable_intermediate_result: true,
+              enable_punctuation_prediction: true,
+              enable_inverse_text_normalization: true,
+              disfluency: true,
+              max_sentence_silence: 800
+            }
+          };
+
+          try {
+            this.websocket.send(JSON.stringify(startMessage));
+            console.log('📤 已发送阿里云StartTranscription指令');
+          } catch (sendError) {
+            console.error('❌ 发送Start指令失败:', sendError);
+          }
+        };
+
+        this.websocket.onmessage = (event) => {
+          this.handleAliyunWebSocketMessage(event);
+        };
+
+        this.websocket.onclose = (event) => {
+          console.log('🔌 阿里云WebSocket连接已关闭:', event.code, event.reason);
+          this.allowAudioStreaming = false;
+        };
+
+        this.websocket.onerror = (error) => {
+          console.error('❌ 阿里云WebSocket连接错误:', error);
+          this.allowAudioStreaming = false;
+        };
+
+      } catch (error) {
+        console.error('❌ 启动阿里云WebSocket识别失败:', error);
+        this.allowAudioStreaming = false;
+        throw error;
+      }
+    },
+
     // 百度WebSocket流式识别
     async startBaiduWebSocketRecognition(config = {}) {
       try {
@@ -1492,6 +1706,20 @@ export default {
 
     // 保持WebSocket连接活跃
     keepWebSocketAlive() {
+      if (this.websocketKeepAliveTimer) {
+        clearInterval(this.websocketKeepAliveTimer);
+        this.websocketKeepAliveTimer = null;
+      }
+
+      if (this.speechProvider !== 'baidu') {
+        this.websocketKeepAliveTimer = setInterval(() => {
+          if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            console.log('💓 WebSocket连接正常');
+          }
+        }, 5000);
+        return;
+      }
+
       // 每5秒检查一次WebSocket连接状态
       this.websocketKeepAliveTimer = setInterval(() => {
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
@@ -1527,8 +1755,23 @@ export default {
       }
 
       try {
-        this.websocket.send(JSON.stringify({ type: 'FINISH' }));
-        console.log('🛑 已发送百度FINISH帧');
+        if (this.speechProvider === 'aliyun') {
+          const stopMessage = {
+            header: {
+              message_id: this.generateMessageId(),
+              task_id: this.aliyunTaskId || this.generateMessageId(),
+              namespace: 'SpeechTranscriber',
+              name: 'StopTranscription',
+              appkey: this.aliyunAppKey || this.currentApiKey
+            },
+            payload: {}
+          };
+          this.websocket.send(JSON.stringify(stopMessage));
+          console.log('🛑 已发送阿里云StopTranscription指令');
+        } else {
+          this.websocket.send(JSON.stringify({ type: 'FINISH' }));
+          console.log('🛑 已发送百度FINISH帧');
+        }
       } catch (error) {
         console.error('❌ 发送FINISH帧失败:', error);
       }
@@ -1563,8 +1806,69 @@ export default {
       })();
     },
 
+    handleAliyunWebSocketMessage(event) {
+      try {
+        if (!event || typeof event.data !== 'string') {
+          return;
+        }
+
+        const message = JSON.parse(event.data);
+        const header = message?.header || {};
+        const payload = message?.payload || {};
+        const name = header.name;
+
+        if (header.task_id) {
+          this.aliyunTaskId = header.task_id;
+        }
+
+        switch (name) {
+          case 'TranscriptionStarted':
+            console.log('🚀 阿里云识别已启动');
+            break;
+          case 'SentenceBegin':
+            console.log('📝 阿里云检测到句子开始:', payload?.index);
+            break;
+          case 'TranscriptionResultChanged': {
+            const text = payload?.result || payload?.text;
+            if (text) {
+              console.log('🎯 阿里云中间结果:', text);
+              this.updateContentText(text);
+            }
+            break;
+          }
+          case 'SentenceEnd': {
+            const text = payload?.result || payload?.text;
+            if (text) {
+              console.log('✅ 阿里云最终结果:', text);
+              this.updateContentText(text);
+            }
+            break;
+          }
+          case 'TranscriptionCompleted':
+            console.log('🏁 阿里云识别完成');
+            break;
+          case 'TaskFailed': {
+            const statusText = header?.status_text || header?.status_message || '识别失败';
+            console.error('❌ 阿里云识别失败:', statusText);
+            break;
+          }
+          default:
+            if (name) {
+              console.log('ℹ️ 阿里云未处理事件:', name, payload);
+            }
+        }
+      } catch (error) {
+        console.error('❌ 解析阿里云WebSocket消息失败:', error);
+      }
+    },
+
     // 处理WebSocket消息
     handleWebSocketMessage(event) {
+      if (this.speechProvider === 'aliyun') {
+        this.handleAliyunWebSocketMessage(event);
+        return;
+      }
+
       try {
         const message = JSON.parse(event.data);
         console.log('📨 收到WebSocket消息:', message);

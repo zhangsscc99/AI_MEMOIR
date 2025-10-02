@@ -170,6 +170,22 @@ export default {
       mediaRecorder: null,
       mediaStream: null,
       audioChunks: [],
+      speechProvider: 'aliyun',
+      aliyunAppKey: null,
+      aliyunToken: null,
+      aliyunWsUrl: null,
+      aliyunTaskId: null,
+      websocket: null,
+      pcmSampleRate: 16000,
+      audioContext: null,
+      audioProcessor: null,
+      audioSourceNode: null,
+      decodeAudioContext: null,
+      useAudioProcessorStreaming: false,
+      allowAudioStreaming: false,
+      audioProcessingPromise: Promise.resolve(),
+      currentSpeechConfig: null,
+      lastPartialText: '',
       // 实时语音识别相关
       realtimeRecognitionTimer: null,
       speechRecognition: null,
@@ -420,6 +436,7 @@ export default {
       }
 
       console.log('🎤 开始录音...');
+      this.speechProvider = 'aliyun';
       
       // 检测浏览器环境并使用Web录音
       if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -517,17 +534,26 @@ export default {
     async startWebRecording() {
       try {
         console.log('🌐 开始Web录音...');
-        
+
+        const config = await this.getAliyunSpeechConfig();
+        this.currentSpeechConfig = config;
+        if (config?.sampleRate) {
+          this.pcmSampleRate = config.sampleRate;
+        }
+
         // 请求麦克风权限
         const stream = await navigator.mediaDevices.getUserMedia({ 
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
-            sampleRate: 16000
+            sampleRate: this.pcmSampleRate,
+            channelCount: 1
           } 
         });
         this.mediaStream = stream;
-        
+
+        await this.setupAliyunAudioProcessing(stream);
+
         // 检查浏览器支持的mime类型
         let mimeType = 'audio/webm;codecs=opus';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -547,6 +573,9 @@ export default {
         this.mediaRecorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
             this.audioChunks.push(event.data);
+            if (!this.useAudioProcessorStreaming) {
+              this.processRealtimeAudioChunk(event.data);
+            }
           }
         };
         
@@ -555,7 +584,7 @@ export default {
           if (this.audioChunks.length > 0) {
             const audioBlob = new Blob(this.audioChunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
             console.log('音频Blob大小:', audioBlob.size, 'bytes');
-            this.processWebAudio(audioBlob);
+            this.handleRecordedBlob(audioBlob);
           } else {
             console.error('❌ 没有录音数据');
             uni.showToast({
@@ -572,15 +601,14 @@ export default {
             icon: 'error'
           });
         };
-        
+
+        await this.startAliyunWebSocketRecognition(config);
+
         // 开始录音
-        this.mediaRecorder.start(2000); // 每2秒收集一次数据
+        this.mediaRecorder.start(200); // 每200ms收集一次数据
         console.log('✅ Web录音开始成功, 状态:', this.mediaRecorder.state);
-        
-        // 开始实时语音识别
-        this.startRealtimeRecognition();
-        
-        // 设置录音状态
+
+        this.allowAudioStreaming = true;
         this.isRecording = true;
         this.startRecordingTimer();
         
@@ -601,11 +629,527 @@ export default {
       }
     },
 
+    async autoLogin() {
+      try {
+        const loginResponse = await uni.request({
+          url: apiUrl('/auth/login'),
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: {
+            identifier: 'demo',
+            password: 'demo123'
+          }
+        });
+
+        if (loginResponse.data?.success) {
+          const { token, user } = loginResponse.data.data;
+          uni.setStorageSync('token', token);
+          uni.setStorageSync('user', user);
+          return true;
+        }
+      } catch (error) {
+        console.error('❌ 自动登录失败:', error);
+      }
+      return false;
+    },
+
+    async getAliyunSpeechConfig() {
+      try {
+        let token = uni.getStorageSync('token');
+        if (!token) {
+          console.log('🔐 用户未登录，尝试自动登录...');
+          const loginSuccess = await this.autoLogin();
+          if (loginSuccess) {
+            token = uni.getStorageSync('token');
+          }
+          if (!token) {
+            throw new Error('用户未登录，无法进行语音识别');
+          }
+        }
+
+        const tokenResponse = await uni.request({
+          url: apiUrl('/aliyun-speech/token'),
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (tokenResponse.data?.success) {
+          const data = tokenResponse.data.data || {};
+          const region = data.region || data.regionId || 'cn-shanghai';
+          const sampleRate = data.sampleRate || this.pcmSampleRate || 16000;
+
+          this.aliyunToken = data.token;
+          this.aliyunAppKey = data.appKey;
+          this.aliyunWsUrl = data.websocketUrl || `wss://nls-gateway-${region}.aliyuncs.com/ws/v1`;
+          this.pcmSampleRate = sampleRate;
+
+          return {
+            provider: 'aliyun',
+            token: data.token,
+            appKey: data.appKey,
+            websocketUrl: this.aliyunWsUrl,
+            region,
+            sampleRate
+          };
+        }
+
+        throw new Error(tokenResponse.data?.message || '获取语音识别Token失败');
+
+      } catch (error) {
+        console.error('❌ 获取阿里云语音识别配置失败:', error);
+        throw error;
+      }
+    },
+
+    async startAliyunWebSocketRecognition(config = {}) {
+      try {
+        const {
+          token,
+          appKey,
+          websocketUrl,
+          sampleRate = this.pcmSampleRate || 16000,
+          region
+        } = config;
+
+        if (!token || !appKey || !websocketUrl) {
+          throw new Error('阿里云语音识别配置不完整');
+        }
+
+        this.currentSpeechConfig = { ...config, provider: 'aliyun', sampleRate };
+        this.aliyunToken = token;
+        this.aliyunAppKey = appKey;
+        this.aliyunWsUrl = websocketUrl;
+        this.pcmSampleRate = sampleRate;
+
+        let wsUrl = websocketUrl;
+        if (wsUrl.includes('?')) {
+          wsUrl = `${wsUrl}&token=${encodeURIComponent(token)}`;
+        } else {
+          wsUrl = `${wsUrl}?token=${encodeURIComponent(token)}`;
+        }
+
+        if (this.websocket) {
+          try {
+            this.websocket.close();
+          } catch (error) {
+            console.warn('⚠️ 关闭旧的WebSocket失败:', error);
+          }
+        }
+
+        this.websocket = new WebSocket(wsUrl);
+        this.websocket.binaryType = 'arraybuffer';
+        this.aliyunTaskId = this.generateMessageId();
+
+        this.websocket.onopen = () => {
+          const startMessage = {
+            header: {
+              message_id: this.generateMessageId(),
+              task_id: this.aliyunTaskId,
+              namespace: 'SpeechTranscriber',
+              name: 'StartTranscription',
+              appkey: appKey
+            },
+            payload: {
+              format: 'pcm',
+              sample_rate: Number(sampleRate) || 16000,
+              enable_intermediate_result: true,
+              enable_punctuation_prediction: true,
+              enable_inverse_text_normalization: true,
+              disfluency: true,
+              max_sentence_silence: 800
+            }
+          };
+
+          try {
+            this.websocket.send(JSON.stringify(startMessage));
+            console.log('📤 已发送阿里云StartTranscription指令');
+          } catch (error) {
+            console.error('❌ 发送Start指令失败:', error);
+          }
+        };
+
+        this.websocket.onmessage = (event) => {
+          this.handleAliyunWebSocketMessage(event);
+        };
+
+        this.websocket.onclose = (event) => {
+          console.log('🔌 阿里云WebSocket关闭:', event.code, event.reason);
+          this.allowAudioStreaming = false;
+        };
+
+        this.websocket.onerror = (error) => {
+          console.error('❌ 阿里云WebSocket错误:', error);
+          this.allowAudioStreaming = false;
+        };
+
+      } catch (error) {
+        console.error('❌ 启动阿里云WebSocket识别失败:', error);
+        throw error;
+      }
+    },
+
+    handleAliyunWebSocketMessage(event) {
+      try {
+        if (!event || typeof event.data !== 'string') {
+          return;
+        }
+
+        const message = JSON.parse(event.data);
+        const header = message?.header || {};
+        const payload = message?.payload || {};
+        const name = header.name;
+
+        if (header.task_id) {
+          this.aliyunTaskId = header.task_id;
+        }
+
+        switch (name) {
+          case 'TranscriptionStarted':
+            console.log('🚀 阿里云识别已启动');
+            break;
+          case 'TranscriptionResultChanged': {
+            const text = payload?.result || payload?.text;
+            if (text) {
+              this.applyRecognitionResult(text, false);
+            }
+            break;
+          }
+          case 'SentenceEnd': {
+            const text = payload?.result || payload?.text;
+            if (text) {
+              this.applyRecognitionResult(text, true);
+            }
+            break;
+          }
+          case 'TranscriptionCompleted':
+            console.log('🏁 阿里云识别完成');
+            this.lastPartialText = '';
+            break;
+          case 'TaskFailed': {
+            const statusText = header?.status_text || header?.status_message || '识别失败';
+            console.error('❌ 阿里云识别失败:', statusText);
+            break;
+          }
+          default:
+            if (name) {
+              console.log('ℹ️ 阿里云事件:', name, payload);
+            }
+        }
+      } catch (error) {
+        console.error('❌ 解析阿里云WebSocket消息失败:', error);
+      }
+    },
+
+    applyRecognitionResult(text, isFinal = false) {
+      if (!text || !text.trim()) {
+        return;
+      }
+
+      const trimmed = text.trim();
+      let baseText = this.diaryContent || '';
+
+      if (this.lastPartialText) {
+        const partial = this.lastPartialText.trim();
+        if (partial && baseText.endsWith(partial)) {
+          baseText = baseText.slice(0, -partial.length).trimEnd();
+        }
+      }
+
+      const combined = baseText ? `${baseText} ${trimmed}`.replace(/\s+/g, ' ').trim() : trimmed;
+
+      if (isFinal) {
+        this.lastPartialText = '';
+      } else {
+        this.lastPartialText = trimmed;
+      }
+
+      this.diaryContent = combined;
+    },
+
+    sendAliyunStopRequest() {
+      if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      try {
+        const stopMessage = {
+          header: {
+            message_id: this.generateMessageId(),
+            task_id: this.aliyunTaskId || this.generateMessageId(),
+            namespace: 'SpeechTranscriber',
+            name: 'StopTranscription',
+            appkey: this.aliyunAppKey
+          },
+          payload: {}
+        };
+        this.websocket.send(JSON.stringify(stopMessage));
+        console.log('🛑 已发送阿里云StopTranscription指令');
+      } catch (error) {
+        console.error('❌ 发送停止指令失败:', error);
+      }
+    },
+
+    async setupAliyunAudioProcessing(stream) {
+      try {
+        const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!NativeAudioContext) {
+          console.warn('⚠️ AudioContext不可用，降级到MediaRecorder处理');
+          this.useAudioProcessorStreaming = false;
+          return;
+        }
+
+        if (!this.audioContext || this.audioContext.state === 'closed') {
+          this.audioContext = new NativeAudioContext({
+            sampleRate: this.pcmSampleRate
+          });
+        }
+
+        if (this.audioContext.state === 'suspended' && typeof this.audioContext.resume === 'function') {
+          await this.audioContext.resume();
+        }
+
+        if (this.audioSourceNode) {
+          try {
+            this.audioSourceNode.disconnect();
+          } catch (error) {
+            console.warn('⚠️ 断开旧音频源失败:', error);
+          }
+        }
+
+        if (this.audioProcessor) {
+          try {
+            this.audioProcessor.disconnect();
+          } catch (error) {
+            console.warn('⚠️ 断开旧音频处理器失败:', error);
+          }
+        }
+
+        const sourceNode = this.audioContext.createMediaStreamSource(stream);
+        const processorNode = this.audioContext.createScriptProcessor(4096, 1, 1);
+        const contextRate = this.audioContext.sampleRate;
+        const targetRate = this.pcmSampleRate;
+
+        processorNode.onaudioprocess = (event) => {
+          if (!this.allowAudioStreaming || !this.isRecording) {
+            return;
+          }
+
+          const channelData = event.inputBuffer?.getChannelData(0);
+          if (!channelData || !channelData.length) {
+            return;
+          }
+
+          const sourceRate = event.inputBuffer.sampleRate || contextRate;
+          let processed = channelData;
+          if (sourceRate !== targetRate) {
+            processed = this.downsampleBuffer(channelData, sourceRate, targetRate);
+          }
+
+          if (!processed || !processed.length) {
+            return;
+          }
+
+          const pcmBuffer = this.float32ToPCM(processed);
+          if (pcmBuffer && pcmBuffer.byteLength && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+            try {
+              this.websocket.send(pcmBuffer);
+            } catch (error) {
+              console.error('❌ 发送音频数据失败:', error);
+            }
+          }
+        };
+
+        sourceNode.connect(processorNode);
+        processorNode.connect(this.audioContext.destination);
+
+        this.audioSourceNode = sourceNode;
+        this.audioProcessor = processorNode;
+        this.useAudioProcessorStreaming = true;
+
+      } catch (error) {
+        console.error('❌ 初始化音频处理器失败:', error);
+        this.useAudioProcessorStreaming = false;
+      }
+    },
+
+    async processRealtimeAudioChunk(blob) {
+      try {
+        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+          return;
+        }
+
+        const pcmBuffer = await this.convertWebMToPCM(blob);
+        if (pcmBuffer && pcmBuffer.byteLength) {
+          this.websocket.send(pcmBuffer);
+        }
+      } catch (error) {
+        console.error('❌ 处理实时音频数据失败:', error);
+      }
+    },
+
+    async convertWebMToPCM(blob) {
+      try {
+        const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!NativeAudioContext) {
+          throw new Error('AudioContext 不可用');
+        }
+
+        if (!this.decodeAudioContext || this.decodeAudioContext.state === 'closed') {
+          this.decodeAudioContext = new NativeAudioContext();
+        }
+
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioBuffer = await new Promise((resolve, reject) => {
+          this.decodeAudioContext.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
+        });
+
+        const channelData = audioBuffer.getChannelData(0);
+        const resampled = this.downsampleBuffer(channelData, audioBuffer.sampleRate, this.pcmSampleRate);
+        return this.float32ToPCM(resampled);
+
+      } catch (error) {
+        console.error('❌ WebM到PCM转换失败:', error);
+        return null;
+      }
+    },
+
+    downsampleBuffer(channelData, sourceSampleRate, targetSampleRate) {
+      if (!channelData || sourceSampleRate === targetSampleRate) {
+        return channelData;
+      }
+
+      const sampleRateRatio = sourceSampleRate / targetSampleRate;
+      const newLength = Math.round(channelData.length / sampleRateRatio);
+      const result = new Float32Array(newLength);
+
+      for (let i = 0; i < newLength; i++) {
+        const sourceIndex = Math.floor(i * sampleRateRatio);
+        result[i] = channelData[sourceIndex];
+      }
+
+      return result;
+    },
+
+    float32ToPCM(channelData) {
+      if (!channelData) {
+        return new ArrayBuffer(0);
+      }
+
+      const buffer = new ArrayBuffer(channelData.length * 2);
+      const view = new DataView(buffer);
+
+      for (let i = 0; i < channelData.length; i++) {
+        const sample = Math.max(-1, Math.min(1, channelData[i]));
+        view.setInt16(i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      }
+
+      return buffer;
+    },
+
+    generateMessageId() {
+      const hexDigits = '0123456789abcdef';
+      let messageId = '';
+      for (let i = 0; i < 32; i++) {
+        messageId += hexDigits[Math.floor(Math.random() * 16)];
+      }
+      return messageId;
+    },
+
+    async handleRecordedBlob(audioBlob) {
+      try {
+        const objectUrl = URL.createObjectURL(audioBlob);
+
+        let uploadedFile = null;
+        try {
+          uploadedFile = await this.uploadWebAudio(audioBlob);
+        } catch (uploadError) {
+          console.warn('⚠️ 音频文件上传失败，使用本地URL:', uploadError);
+        }
+
+        this.recordings.push({
+          filePath: uploadedFile?.fileUrl || uploadedFile?.filename || objectUrl,
+          duration: this.recordingTime,
+          createTime: Date.now()
+        });
+
+        this.recordingTime = 0;
+
+        uni.showToast({
+          title: '录制完成',
+          icon: 'success'
+        });
+
+      } catch (error) {
+        console.error('❌ 处理录音文件失败:', error);
+      }
+    },
+
+    async uploadWebAudio(audioBlob) {
+      try {
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          throw new Error('用户未登录');
+        }
+
+        let extension = '.webm';
+        const mimeType = audioBlob.type || 'audio/webm';
+
+        if (mimeType.includes('webm')) {
+          extension = '.webm';
+        } else if (mimeType.includes('mp4')) {
+          extension = '.mp4';
+        } else if (mimeType.includes('wav')) {
+          extension = '.wav';
+        } else if (mimeType.includes('ogg')) {
+          extension = '.ogg';
+        }
+
+        const timestamp = Date.now();
+        const fileName = `diary_recording_${timestamp}${extension}`;
+        const audioFile = new File([audioBlob], fileName, { type: mimeType });
+
+        const formData = new FormData();
+        formData.append('audio', audioFile);
+
+        const response = await fetch(apiUrl('/speech/upload'), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`上传失败: ${response.status} ${errorText}`);
+        }
+
+        const result = await response.json();
+        if (result.success && result.data?.file) {
+          return result.data.file;
+        }
+
+        throw new Error(result.message || '上传失败');
+
+      } catch (error) {
+        console.error('❌ 上传录音文件失败:', error);
+        throw error;
+      }
+    },
+
     // Web录音停止
     stopWebRecording() {
       try {
         console.log('🌐 停止Web录音...');
         console.log('MediaRecorder状态:', this.mediaRecorder?.state);
+
+        this.allowAudioStreaming = false;
+        this.sendAliyunStopRequest();
         
         if (this.mediaRecorder) {
           if (this.mediaRecorder.state === 'recording') {
@@ -623,6 +1167,43 @@ export default {
           this.mediaStream.getTracks().forEach(track => {
             track.stop();
           });
+          this.mediaStream = null;
+        }
+
+        if (this.audioProcessor) {
+          try {
+            this.audioProcessor.disconnect();
+          } catch (error) {
+            console.warn('⚠️ 断开音频处理器失败:', error);
+          }
+          this.audioProcessor = null;
+        }
+
+        if (this.audioSourceNode) {
+          try {
+            this.audioSourceNode.disconnect();
+          } catch (error) {
+            console.warn('⚠️ 断开音频源失败:', error);
+          }
+          this.audioSourceNode = null;
+        }
+
+        if (this.audioContext) {
+          try {
+            this.audioContext.close();
+          } catch (error) {
+            console.warn('⚠️ 关闭音频上下文失败:', error);
+          }
+          this.audioContext = null;
+        }
+
+        if (this.websocket) {
+          try {
+            this.websocket.close();
+          } catch (error) {
+            console.warn('⚠️ 关闭WebSocket失败:', error);
+          }
+          this.websocket = null;
         }
         
         // 停止实时识别
@@ -630,13 +1211,24 @@ export default {
           clearInterval(this.realtimeRecognitionTimer);
           this.realtimeRecognitionTimer = null;
         }
-        
+
         // 停止Web Speech API识别
         if (this.speechRecognition) {
           this.speechRecognition.stop();
           this.speechRecognition = null;
         }
-        
+
+        if (this.decodeAudioContext) {
+          try {
+            this.decodeAudioContext.close();
+          } catch (error) {
+            console.warn('⚠️ 关闭解码音频上下文失败:', error);
+          }
+          this.decodeAudioContext = null;
+        }
+
+        this.audioChunks = [];
+
         // 设置录音状态
         this.isRecording = false;
         this.stopRecordingTimer();
@@ -647,114 +1239,6 @@ export default {
           title: '停止录音失败',
           icon: 'error'
         });
-      }
-    },
-
-    // 处理Web录音数据
-    async processWebAudio(audioBlob) {
-      try {
-        console.log('🎵 处理Web录音数据...', audioBlob.size, 'bytes');
-        
-        // 先上传录音文件
-        const uploadedFile = await this.uploadWebAudio(audioBlob);
-        
-        // 重置录音时间
-        this.recordingTime = 0;
-        
-        uni.showToast({
-          title: '录制完成',
-          icon: 'success'
-        });
-        
-      } catch (error) {
-        console.error('❌ 处理Web录音失败:', error);
-        uni.showToast({
-          title: '处理录音失败',
-          icon: 'error'
-        });
-      }
-    },
-
-    // 上传Web录音文件
-    async uploadWebAudio(audioBlob) {
-      try {
-        console.log('📤 上传Web录音文件...');
-        
-        const token = uni.getStorageSync('token');
-        if (!token) {
-          throw new Error('用户未登录');
-        }
-        
-        // 根据Blob类型确定文件扩展名
-        let extension = '.webm';
-        let mimeType = audioBlob.type || 'audio/webm';
-        
-        if (mimeType.includes('webm')) {
-          extension = '.webm';
-        } else if (mimeType.includes('mp4')) {
-          extension = '.mp4';
-        } else if (mimeType.includes('wav')) {
-          extension = '.wav';
-        } else if (mimeType.includes('ogg')) {
-          extension = '.ogg';
-        }
-        
-        // 创建带正确扩展名和MIME类型的File对象
-        const timestamp = Date.now();
-        const fileName = `diary_recording_${timestamp}${extension}`;
-        
-        const audioFile = new File([audioBlob], fileName, { 
-          type: mimeType
-        });
-        
-        // 创建FormData
-        const formData = new FormData();
-        formData.append('audio', audioFile);
-        
-        // 使用原生fetch上传文件
-        const response = await fetch(apiUrl('/speech/upload'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`上传失败: ${response.status} ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          console.log('✅ 录音文件上传成功:', result.data.file);
-          return result.data.file;
-        } else {
-          throw new Error(result.message || '上传失败');
-        }
-        
-      } catch (error) {
-        console.error('❌ 上传录音文件失败:', error);
-        throw error;
-      }
-    },
-
-    // 实时语音识别
-    async startRealtimeRecognition() {
-      try {
-        console.log('🎤 开始实时语音识别...');
-        
-        // 检查浏览器是否支持Web Speech API
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          console.log('🌐 使用Web Speech API进行实时识别');
-          this.startWebSpeechRecognition();
-        } else {
-          console.log('📡 使用百度语音识别');
-          await this.startBaiduRealtimeRecognition();
-        }
-      } catch (error) {
-        console.error('❌ 实时语音识别启动失败:', error);
       }
     },
 
@@ -803,89 +1287,6 @@ export default {
       
       this.speechRecognition.start();
       console.log('✅ Web Speech API开始识别');
-    },
-
-    // 百度实时识别
-    async startBaiduRealtimeRecognition() {
-      // 获取用户Token
-      const token = uni.getStorageSync('token');
-      if (!token) {
-        console.error('❌ 用户未登录，无法进行实时识别');
-        return;
-      }
-
-      try {
-        // 获取语音识别Token
-        const tokenResponse = await uni.request({
-          url: apiUrl('/speech/token'),
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
-          throw new Error('获取语音识别Token失败');
-        }
-
-        const speechToken = tokenResponse.data.data.token;
-        console.log('✅ 获取语音识别Token成功');
-        
-        // 设置实时识别定时器
-        this.realtimeRecognitionTimer = setInterval(() => {
-          this.performRealtimeRecognition(speechToken);
-        }, 3000); // 每3秒进行一次识别
-      } catch (error) {
-        console.error('❌ 百度实时识别启动失败:', error);
-      }
-    },
-
-    // 执行实时语音识别
-    async performRealtimeRecognition(speechToken) {
-      if (!this.isRecording || this.audioChunks.length === 0) {
-        return;
-      }
-
-      try {
-        // 获取最新的音频数据
-        const latestChunk = this.audioChunks[this.audioChunks.length - 1];
-        if (!latestChunk || latestChunk.size === 0) {
-          return;
-        }
-
-        console.log('🎯 执行实时识别，音频大小:', latestChunk.size);
-
-        // 创建FormData
-        const formData = new FormData();
-        const audioFile = new File([latestChunk], 'audio.webm', { type: 'audio/webm' });
-        formData.append('audio', audioFile);
-
-        // 调用实时识别API
-        const response = await fetch(apiUrl('/speech/transcribe'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${uni.getStorageSync('token')}`
-          },
-          body: formData
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data && result.data.transcript) {
-            const transcribedText = result.data.transcript;
-            console.log('✅ 实时识别结果:', transcribedText);
-            
-            // 将识别结果添加到内容区域
-            if (this.diaryContent.trim()) {
-              this.diaryContent += ' ' + transcribedText;
-            } else {
-              this.diaryContent = transcribedText;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ 实时识别失败:', error);
-      }
     },
 
     // AI补全文本
@@ -966,63 +1367,6 @@ export default {
         title: '已取消AI补全',
         icon: 'none'
       });
-    },
-
-    // 语音识别
-    async transcribeRecording(recording) {
-      try {
-        console.log('🎯 开始语音识别:', recording.filePath);
-        
-        const token = uni.getStorageSync('token');
-        if (!token) {
-          throw new Error('用户未登录');
-        }
-        
-        // 调用语音识别API
-        const response = await uni.request({
-          url: apiUrl('/speech/transcribe'),
-          method: 'POST',
-          header: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          data: {
-            filename: recording.filePath
-          }
-        });
-        
-        if (response.statusCode === 200 && response.data.success) {
-          const transcript = response.data.data.transcript;
-          console.log('✅ 语音识别成功:', transcript);
-          
-          // 更新录音的转录文本
-          recording.transcription = transcript;
-          
-          // 如果有识别结果，自动添加到内容区域
-          if (transcript && transcript.trim()) {
-            if (this.diaryContent.trim()) {
-              this.diaryContent += '\n\n' + transcript;
-            } else {
-              this.diaryContent = transcript;
-            }
-            
-            uni.showToast({
-              title: '语音转文字成功',
-              icon: 'success'
-            });
-          }
-          
-        } else {
-          throw new Error(response.data?.message || '语音识别失败');
-        }
-        
-      } catch (error) {
-        console.error('❌ 语音识别失败:', error);
-        uni.showToast({
-          title: '语音转文字失败',
-          icon: 'error'
-        });
-      }
     },
 
     // 上传图片到服务器
