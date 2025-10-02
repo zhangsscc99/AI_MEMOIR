@@ -67,7 +67,8 @@ const extractCharacterNameFromMemories = (memories = []) => {
     /名字[:：]?\s*(叫|是)?\s*([\u4e00-\u9fa5a-zA-Z·•\s]{1,12})/,
     /我叫([\u4e00-\u9fa5a-zA-Z·•]{1,12})/,
     /我的名字叫([\u4e00-\u9fa5a-zA-Z·•]{1,12})/,
-    /大家都叫我([\u4e00-\u9fa5a-zA-Z·•]{1,12})/
+    /大家都叫我([\u4e00-\u9fa5a-zA-Z·•]{1,12})/,
+    /我是([\u4e00-\u9fa5a-zA-Z·•]{1,12})/
   ];
 
   const sanitizeName = (name) => {

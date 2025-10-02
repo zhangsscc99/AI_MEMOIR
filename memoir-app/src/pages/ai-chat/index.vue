@@ -321,6 +321,17 @@ export default {
             this.characterInfo.name = characterName;
             this.refreshCharacterPersona();
             uni.setStorageSync('customCharacterName', characterName);
+
+            // 更新本地缓存的用户信息
+            const userInfo = uni.getStorageSync('user');
+            if (userInfo) {
+              userInfo.nickname = characterName;
+              uni.setStorageSync('user', userInfo);
+            }
+
+            if (response.data.data.updatedProfile) {
+              console.log('🔄 用户昵称已同步更新为:', characterName);
+            }
           }
         } else {
           console.log('⚠️ 角色姓名识别失败:', response.data?.message);
@@ -602,6 +613,11 @@ export default {
     loadCustomCharacterName() {
       const customName = uni.getStorageSync('customCharacterName');
       if (customName) {
+        const trimmed = customName.trim();
+        if (!trimmed || trimmed.toLowerCase() === 'demo' || trimmed === '小忆') {
+          uni.removeStorageSync('customCharacterName');
+          return;
+        }
         this.characterInfo.name = customName;
         console.log('📝 加载自定义角色名称:', customName);
         this.refreshCharacterPersona();
