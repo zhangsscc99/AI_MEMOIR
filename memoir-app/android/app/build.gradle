@@ -21,6 +21,17 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            // 设置APK文件名
+            applicationIdSuffix ""
+        }
+    }
+    
+    // 配置APK输出文件名
+    android.applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "memoir.apk"
+        }
     }
 }
 
