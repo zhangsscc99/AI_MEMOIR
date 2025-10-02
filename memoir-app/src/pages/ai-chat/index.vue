@@ -270,8 +270,8 @@ export default {
         additional += `，还有其他${remaining}段珍贵记忆`;
       }
 
-      const memorySummary = highlight ? `${highlight}${additional}` : '我保存着你记录的许多珍贵记忆';
-      return `我是${name}，根据你的回忆录打造的AI伙伴，${memorySummary}。随时可以和我聊聊这些故事，或继续记录新的篇章。`;
+      const memorySummary = highlight ? `${highlight}${additional}` : '我珍藏着你回忆录里的那些故事';
+      return `我是${name}，根据你的回忆录打造的AI伙伴，${memorySummary}。随时可以和我聊聊这些经历，或继续记录新的篇章。`;
     },
 
     refreshCharacterPersona() {
