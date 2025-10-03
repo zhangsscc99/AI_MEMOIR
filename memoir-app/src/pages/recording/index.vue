@@ -177,6 +177,7 @@ export default {
       aliyunRegion: null,
       aliyunWsUrl: null,
       aliyunTaskId: null,
+      lastPartialText: '',
       // AI补全相关
       isAiCompleting: false,
       showAiDiff: false,
@@ -271,6 +272,7 @@ export default {
     
     onTextInput(event) {
       this.contentText = event.detail.value || event.target.value || '';
+      this.lastPartialText = '';
     },
     
     loadChapterPrompts() {
@@ -610,6 +612,7 @@ export default {
       console.log('📝 录音状态已设置:', this.isRecording);
 
       this.allowAudioStreaming = true;
+      this.lastPartialText = '';
       this.audioQueue = [];
       this.audioProcessingPromise = Promise.resolve();
 
@@ -1832,7 +1835,7 @@ export default {
             const text = payload?.result || payload?.text;
             if (text) {
               console.log('🎯 阿里云中间结果:', text);
-              this.updateContentText(text);
+              this.updateContentText(text, false);
             }
             break;
           }
@@ -1840,12 +1843,13 @@ export default {
             const text = payload?.result || payload?.text;
             if (text) {
               console.log('✅ 阿里云最终结果:', text);
-              this.updateContentText(text);
+              this.updateContentText(text, true);
             }
             break;
           }
           case 'TranscriptionCompleted':
             console.log('🏁 阿里云识别完成');
+            this.lastPartialText = '';
             break;
           case 'TaskFailed': {
             const statusText = header?.status_text || header?.status_message || '识别失败';
@@ -1899,10 +1903,10 @@ export default {
 
         if (type === 'MID_TEXT') {
           console.log('🎯 百度中间识别结果:', text);
-          this.updateContentText(text);
+          this.updateContentText(text, false);
         } else if (type === 'FIN_TEXT') {
           console.log('✅ 百度最终识别结果:', text);
-          this.updateContentText(text);
+          this.updateContentText(text, true);
         } else {
           console.log('ℹ️ 收到未处理的消息类型:', type);
         }
@@ -1912,23 +1916,36 @@ export default {
     },
 
     // 更新文本内容
-    updateContentText(newText) {
+    updateContentText(newText, isFinal = false) {
       if (!newText || !newText.trim()) {
         console.log('⚠️ 空文本，跳过更新');
         return;
       }
-      
+
       const trimmedText = newText.trim();
-      if (this.contentText) {
-        this.contentText += ' ' + trimmedText;
-      } else {
-        this.contentText = trimmedText;
+      let baseText = this.contentText || '';
+
+      if (this.lastPartialText) {
+        const partialTrimmed = this.lastPartialText.trim();
+        if (partialTrimmed && baseText.endsWith(partialTrimmed)) {
+          baseText = baseText.slice(0, baseText.length - partialTrimmed.length).trimEnd();
+        }
       }
-      
+
+      let combinedText = baseText ? baseText.replace(/\s+$/u, '') : '';
+      if (combinedText) {
+        combinedText += combinedText.endsWith(' ') ? '' : ' ';
+        combinedText += trimmedText;
+      } else {
+        combinedText = trimmedText;
+      }
+
+      this.contentText = combinedText;
+      this.lastPartialText = isFinal ? '' : trimmedText;
+
       console.log('📝 文本已更新:', this.contentText);
-      console.log('📝 新增文本:', trimmedText);
-      
-      // 强制更新视图
+      console.log('📝 新增文本:', trimmedText, '最终结果:', isFinal);
+
       this.$nextTick(() => {
         this.$forceUpdate();
       });
@@ -2582,6 +2599,7 @@ export default {
       // 立即设置状态，防止重复点击
       this.isRecording = false;
       this.isProcessing = true;
+      this.lastPartialText = '';
       
       // 停止计时
       if (this.recordingTimer) {
