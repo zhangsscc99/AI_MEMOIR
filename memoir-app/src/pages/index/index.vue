@@ -1,7 +1,7 @@
 <template>
   <view class="container">
     <!-- 岁月镜像卡片 -->
-    <view class="memoir-card" @click="goToMemoir">
+    <view class="memoir-card">
       <view class="memoir-card-left">
         <image 
           :src="getOptimalImagePath('/src/images/memoirbook.png')" 
@@ -21,7 +21,10 @@
             <view class="progress-fill" :style="{width: progressPercent + '%'}"></view>
           </view>
         </view>
-        <button class="start-btn" @click="goToChapters">开始录制</button>
+        <view class="button-group">
+          <button class="start-btn" @click.stop="goToChapters">开始录制</button>
+          <button class="generate-book-btn" @click.stop="generateBook">生成书籍</button>
+        </view>
       </view>
     </view>
 
@@ -116,6 +119,7 @@ export default {
       progressPercent: 0,
       totalChapters: 10,
       completedChapters: [],
+      isGeneratingBook: false,
       allChapters: [
         {
           id: 'background',
@@ -378,6 +382,24 @@ export default {
       uni.switchTab({
         url: '/pages/memoir/index'
       });
+    },
+
+    generateBook() {
+      console.log('📚 点击生成书籍按钮');
+      // 跳转到PDF管理页面
+      uni.navigateTo({
+        url: '/pages/pdf-manager/index',
+        success: function() {
+          console.log('✅ 成功跳转到PDF管理页面');
+        },
+        fail: function(err) {
+          console.error('❌ 跳转失败:', err);
+          uni.showToast({
+            title: '页面跳转失败',
+            icon: 'error'
+          });
+        }
+      });
     }
   }
 }
@@ -558,6 +580,12 @@ export default {
   transition: width 0.3s ease;
 }
 
+.button-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .start-btn {
   background: rgba(255, 255, 255, 0.8);
   color: #333;
@@ -578,9 +606,34 @@ export default {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
+.generate-book-btn {
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 24px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  width: fit-content;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.generate-book-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
 /* 按钮响应式设计 */
 @media (max-width: 480px) {
-  .start-btn {
+  .button-group {
+    gap: 8px;
+  }
+  
+  .start-btn,
+  .generate-book-btn {
     padding: 10px 20px;
     font-size: 14px;
     border-radius: 20px;
@@ -588,7 +641,12 @@ export default {
 }
 
 @media (max-width: 360px) {
-  .start-btn {
+  .button-group {
+    gap: 6px;
+  }
+  
+  .start-btn,
+  .generate-book-btn {
     padding: 8px 16px;
     font-size: 13px;
     border-radius: 18px;

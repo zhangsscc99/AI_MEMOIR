@@ -14,6 +14,7 @@ const chapterRoutes = require('./routes/chapters');
 const speechRoutes = require('./routes/speech');
 const aiRoutes = require('./routes/ai');
 const aliyunDebugRoutes = require('./routes/aliyunDebug');
+const pdfRoutes = require('./routes/pdf');
 
 // 导入控制器
 const { uploadImage } = require('./controllers/uploadController');
@@ -82,6 +83,7 @@ app.use('/api/chapters', chapterRoutes);
 app.use('/api/speech', speechRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/aliyun-speech', aliyunDebugRoutes);
+app.use('/api/pdf', pdfRoutes);
 
 // 图片上传路由
 app.post('/api/upload/image', authenticateToken, uploadImage);
@@ -90,6 +92,8 @@ app.post('/api/upload/image', authenticateToken, uploadImage);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // WebP文件静态服务
 app.use('/uploads/images_webp', express.static(path.join(__dirname, '../uploads/images_webp')));
+// PDF文件静态服务
+app.use('/uploads/pdf', express.static(path.join(__dirname, '../uploads/pdf')));
 
 // 404 处理
 app.use((req, res) => {

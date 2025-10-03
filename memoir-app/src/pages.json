@@ -84,6 +84,13 @@
 				"navigationBarBackgroundColor": "#ffffff",
 				"navigationBarTextStyle": "black"
 			}
+		},
+		{
+			"path": "pages/pdf-manager/index",
+			"style": {
+				"navigationBarTitleText": "书籍管理",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {
