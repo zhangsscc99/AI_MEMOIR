@@ -52,7 +52,9 @@
             class="pdf-item"
           >
             <view class="pdf-info">
-              <view class="pdf-icon">📚</view>
+              <view class="pdf-icon">
+                <image src="/static/icons/book-filled.svg" class="book-icon" mode="aspectFit"></image>
+              </view>
               <view class="pdf-details">
                 <text class="pdf-name">回忆录 {{ formatDate(pdf.createdAt) }}</text>
                 <text class="pdf-meta">{{ formatFileSize(pdf.size) }} · {{ formatDateTime(pdf.createdAt) }}</text>
@@ -387,25 +389,27 @@ export default {
 }
 
 .generate-new-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 16px;
   padding: 16px 40px;
   font-size: 18px;
   font-weight: 600;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .generate-new-btn:hover {
+  background: rgba(255, 255, 255, 1);
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 .generate-new-btn.generating {
-  background: linear-gradient(135deg, #888 0%, #666 100%);
-  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.7);
+  opacity: 0.6;
 }
 
 .action-tip {
@@ -528,9 +532,21 @@ export default {
 }
 
 .pdf-icon {
-  font-size: 32px;
+  width: 40px;
+  height: 40px;
   margin-right: 16px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
+}
+
+.book-icon {
+  width: 24px;
+  height: 24px;
+  opacity: 0.8;
 }
 
 .pdf-details {
@@ -570,12 +586,14 @@ export default {
 }
 
 .download-btn {
-  background: #667eea;
+  background: #D4AF37;
   color: white;
+  opacity: 0.85;
 }
 
 .download-btn:hover {
-  background: #5568d3;
+  background: #C4A030;
+  opacity: 1;
 }
 
 .preview-btn {
