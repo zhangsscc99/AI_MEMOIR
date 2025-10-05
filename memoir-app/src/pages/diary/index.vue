@@ -122,7 +122,7 @@ export default {
           const userChapters = responseData.chapters || [];
           
           // 过滤出diary章节并转换为随记格式
-          const diaryChapters = userChapters.filter(chapter => 
+          const diaryChapters = userChapters.filter(chapter =>
             chapter.chapterId && chapter.chapterId.startsWith('diary_')
           );
           
@@ -163,6 +163,7 @@ export default {
       return [
         {
           id: 'sample_diary_1',
+          chapterId: 'sample_diary_1',
           title: '春节舞狮子',
           content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
           image: getOptimalImagePath('/src/images/lion.png'),
@@ -200,8 +201,9 @@ export default {
       uni.setStorageSync('currentDiary', diary);
       
       // 跳转到编辑页面，以查看模式打开
+      const chapterIdentifier = diary.chapterId || diary.id;
       uni.navigateTo({
-        url: `/pages/diary/edit?chapterId=${diary.chapterId}&title=${encodeURIComponent(diary.title)}&mode=view`
+        url: `/pages/diary/edit?chapterId=${chapterIdentifier}&title=${encodeURIComponent(diary.title)}&mode=view`
       });
     },
 
@@ -239,8 +241,9 @@ export default {
       }
       uni.setStorageSync('currentDiary', diary);
       
+      const chapterIdentifier = diary.chapterId || diary.id;
       uni.navigateTo({
-        url: `/pages/diary/edit?chapterId=${diary.chapterId}&title=${encodeURIComponent(diary.title)}&mode=edit`
+        url: `/pages/diary/edit?chapterId=${chapterIdentifier}&title=${encodeURIComponent(diary.title)}&mode=edit`
       });
     },
 

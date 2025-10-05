@@ -1538,8 +1538,9 @@ export default {
 
         if (response.statusCode === 200 && response.data.success) {
           // 同时保存到本地存储（用于离线查看和章节列表显示）
-          const localChapterData = {
+        const localChapterData = {
             id: customChapterId,
+            chapterId: customChapterId,
             title: this.diaryTitle.trim(),
             description: '自定义随记章节',
             backgroundImage: this.selectedImage || '/src/images/story1.png',
