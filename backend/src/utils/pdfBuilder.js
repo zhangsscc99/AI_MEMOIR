@@ -10,6 +10,7 @@ const COVER_IMAGE_CANDIDATES = [
 ];
 
 const FONT_CANDIDATES = [
+  path.join(__dirname, '../../assets/fonts/LXGWWenKai-Regular.ttf'),
   '/System/Library/Fonts/PingFang.ttc',
   '/System/Library/Fonts/STHeiti Light.ttc',
   '/Library/Fonts/Songti.ttc',
@@ -59,30 +60,39 @@ function resolveCoverImage() {
 }
 
 function registerPreferredFont(doc) {
+  doc.__memoirChineseFontRegistered = false;
+
   for (const fontPath of FONT_CANDIDATES) {
-    if (fs.existsSync(fontPath)) {
-      try {
-        doc.registerFont('MemoirChinese', fontPath);
-        return true;
-      } catch (error) {
-        console.warn('⚠️ 注册字体失败:', fontPath, error.message);
-      }
+    if (!fs.existsSync(fontPath)) {
+      continue;
+    }
+
+    try {
+      doc.registerFont('MemoirChinese', fontPath);
+      doc.__memoirChineseFontRegistered = true;
+      console.log('✅ 已加载中文字体:', fontPath);
+      return true;
+    } catch (error) {
+      console.warn('⚠️ 注册字体失败:', fontPath, error.message);
     }
   }
+
   console.warn('⚠️ 未找到可用的中文字体，使用默认字体');
   return false;
 }
 
 function useChineseFont(doc) {
+  if (!doc.__memoirChineseFontRegistered) {
+    return false;
+  }
+
   try {
-    if (doc._fontFamilies && doc._fontFamilies.MemoirChinese) {
-      doc.font('MemoirChinese');
-      return true;
-    }
+    doc.font('MemoirChinese');
+    return true;
   } catch (error) {
     console.warn('⚠️ 切换中文字体失败:', error.message);
+    return false;
   }
-  return false;
 }
 
 function ensurePdfDirectory() {
