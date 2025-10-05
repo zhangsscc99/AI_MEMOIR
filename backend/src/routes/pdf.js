@@ -4,6 +4,7 @@ const router = express.Router();
 // 导入控制器
 const {
   generateMemoir,
+  getPdfJobStatus,
   getPdfList
 } = require('../controllers/pdfController');
 
@@ -24,5 +25,11 @@ router.post('/generate', authenticateToken, generateMemoir);
  */
 router.get('/list', authenticateToken, getPdfList);
 
-module.exports = router;
+/**
+ * @route   GET /api/pdf/status/:jobId
+ * @desc    查询PDF生成任务状态
+ * @access  Private
+ */
+router.get('/status/:jobId', authenticateToken, getPdfJobStatus);
 
+module.exports = router;

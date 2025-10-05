@@ -56,3 +56,4 @@ echo "📋 安装说明:"
 echo "1. 将memoir.ipa文件发送给其他人"
 echo "2. 使用iTunes或第三方工具安装"
 echo "3. 或通过企业分发链接安装"
+

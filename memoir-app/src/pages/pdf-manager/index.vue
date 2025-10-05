@@ -21,6 +21,9 @@
           <text v-if="!isGenerating">+ 生成新书籍</text>
           <text v-else>生成中...</text>
         </button>
+        <view v-if="isGenerating && jobStatusText" class="generation-status">
+          <text class="status-text">{{ jobStatusText }}</text>
+        </view>
         <view class="action-tip">点击生成一份新的回忆录书籍PDF</view>
       </view>
 
@@ -84,22 +87,49 @@ export default {
     return {
       pdfList: [],
       isLoading: false,
-      isGenerating: false
+      isGenerating: false,
+      jobProgress: 0,
+      jobStatusMessage: '',
+      jobPollingTimer: null,
+      activeJobId: null,
+      jobPromiseReject: null
+    }
+  },
+  computed: {
+    jobStatusText() {
+      if (!this.isGenerating) {
+        return '';
+      }
+
+      const progress = Number.isFinite(this.jobProgress) && this.jobProgress > 0
+        ? `${Math.min(100, Math.round(this.jobProgress))}%`
+        : '';
+
+      if (this.jobStatusMessage && progress) {
+        return `${this.jobStatusMessage} · ${progress}`;
+      }
+
+      if (this.jobStatusMessage) {
+        return this.jobStatusMessage;
+      }
+
+      return progress ? `生成中 ${progress}` : '生成任务进行中，请稍候...';
     }
   },
   onLoad() {
     this.loadPdfList();
   },
   onShow() {
-    // 每次显示页面时重新加载PDF列表
     this.loadPdfList();
+  },
+  onUnload() {
+    this.clearJobPolling(true);
   },
   methods: {
     goBack() {
       uni.navigateBack();
     },
 
-    // 加载PDF列表
     async loadPdfList() {
       try {
         this.isLoading = true;
@@ -138,7 +168,6 @@ export default {
       }
     },
 
-    // 生成新书籍
     async generateNewBook() {
       if (this.isGenerating) {
         return;
@@ -154,14 +183,11 @@ export default {
       }
 
       this.isGenerating = true;
+      this.jobProgress = 0;
+      this.jobStatusMessage = '正在提交生成任务...';
 
       try {
         console.log('📚 开始生成新书籍...');
-
-        uni.showLoading({
-          title: '正在生成书籍...'
-        });
-
         const response = await uni.request({
           url: apiUrl('/pdf/generate'),
           method: 'POST',
@@ -171,48 +197,169 @@ export default {
           }
         });
 
-        uni.hideLoading();
+        if ((response.statusCode === 202 || response.statusCode === 200) && response.data.success) {
+          const data = response.data.data || {};
+          const jobId = data.jobId;
 
-        if (response.statusCode === 200 && response.data.success) {
-          console.log('✅ 书籍生成成功');
+          if (!jobId) {
+            throw new Error('任务创建失败，缺少任务ID');
+          }
 
-          uni.showToast({
-            title: '书籍生成成功',
-            icon: 'success',
-            duration: 2000
+          this.jobProgress = data.progress || 0;
+          this.jobStatusMessage = data.message || '任务已创建，正在排队...';
+          this.activeJobId = jobId;
+
+          const pollingPromise = this.startJobPolling(jobId, token);
+
+          pollingPromise.then(async (job) => {
+            this.isGenerating = false;
+            this.jobProgress = job.progress || 100;
+            this.jobStatusMessage = '书籍生成完成';
+            this.activeJobId = null;
+            this.clearJobPolling();
+
+            uni.showToast({
+              title: '书籍生成完成',
+              icon: 'success',
+              duration: 2000
+            });
+
+            await this.loadPdfList();
+            this.jobStatusMessage = '';
+          }).catch((error) => {
+            this.isGenerating = false;
+            this.jobProgress = 0;
+            this.jobStatusMessage = '';
+            this.activeJobId = null;
+            this.clearJobPolling();
+
+            uni.showToast({
+              title: error.message || '生成失败',
+              icon: 'error',
+              duration: 3000
+            });
           });
-
-          // 重新加载列表
-          await this.loadPdfList();
-
         } else {
           throw new Error(response.data?.message || '书籍生成失败');
         }
 
       } catch (error) {
         console.error('❌ 书籍生成失败:', error);
-        uni.hideLoading();
+        this.isGenerating = false;
+        this.jobProgress = 0;
+        this.jobStatusMessage = '';
+        this.activeJobId = null;
+        this.clearJobPolling();
         uni.showToast({
           title: '生成失败: ' + (error.message || '未知错误'),
           icon: 'error',
           duration: 3000
         });
-      } finally {
-        this.isGenerating = false;
       }
     },
 
-    // 下载PDF
+    startJobPolling(jobId, token) {
+      this.clearJobPolling();
+
+      return new Promise((resolve, reject) => {
+        if (!token) {
+          reject(new Error('登录状态已失效'));
+          return;
+        }
+
+        this.jobPromiseReject = reject;
+
+        const poll = async () => {
+          try {
+            const statusRes = await uni.request({
+              url: apiUrl(`/pdf/status/${jobId}`),
+              method: 'GET',
+              header: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (statusRes.statusCode === 200 && statusRes.data.success) {
+              const job = statusRes.data.data.job || {};
+              this.jobProgress = job.progress || 0;
+              this.jobStatusMessage = job.message || '生成任务执行中...';
+
+              if (job.status === 'completed') {
+                this.clearJobPolling();
+                this.jobPromiseReject = null;
+                resolve(job);
+                return;
+              }
+
+              if (job.status === 'failed') {
+                this.clearJobPolling();
+                this.jobPromiseReject = null;
+                reject(new Error(job.error || '生成失败'));
+                return;
+              }
+
+              this.jobPollingTimer = setTimeout(poll, 2000);
+            } else if (statusRes.statusCode === 404) {
+              this.clearJobPolling();
+              this.jobPromiseReject = null;
+              reject(new Error('未找到生成任务'));
+            } else {
+              throw new Error(statusRes.data?.message || '任务状态查询失败');
+            }
+          } catch (error) {
+            console.error('❌ 查询任务状态失败:', error);
+            this.jobStatusMessage = '状态查询失败，正在重试...';
+            this.jobPollingTimer = setTimeout(poll, 3000);
+          }
+        };
+
+        poll();
+      });
+    },
+
+    clearJobPolling(cancel = false) {
+      if (this.jobPollingTimer) {
+        clearTimeout(this.jobPollingTimer);
+        this.jobPollingTimer = null;
+      }
+
+      if (cancel && this.jobPromiseReject) {
+        this.jobPromiseReject(new Error('生成任务已取消'));
+      }
+
+      this.jobPromiseReject = null;
+    },
+
+    resolveFileUrl(relativePath) {
+      if (!relativePath) {
+        return '';
+      }
+
+      const base = apiUrl('');
+      const normalizedRelative = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+
+      if (!base) {
+        return normalizedRelative;
+      }
+
+      if (base.endsWith('/api')) {
+        return `${base.slice(0, -4)}${normalizedRelative}`;
+      }
+
+      return `${base}${normalizedRelative}`;
+    },
+
     downloadPdf(pdf) {
-      const baseUrl = apiUrl('');
-      const fullPdfUrl = baseUrl + pdf.url;
+      const fullPdfUrl = this.resolveFileUrl(pdf.url);
+      const fileName = pdf.fileName || 'memoir.pdf';
 
       console.log('📥 下载PDF:', fullPdfUrl);
 
       // #ifdef H5
       const link = document.createElement('a');
       link.href = fullPdfUrl;
-      link.download = pdf.fileName || 'memoir.pdf';
+      link.download = fileName;
       link.click();
 
       uni.showToast({
@@ -256,10 +403,8 @@ export default {
       // #endif
     },
 
-    // 预览PDF
     previewPdf(pdf) {
-      const baseUrl = apiUrl('');
-      const fullPdfUrl = baseUrl + pdf.url;
+      const fullPdfUrl = this.resolveFileUrl(pdf.url);
 
       console.log('👁 预览PDF:', fullPdfUrl);
 
@@ -299,7 +444,6 @@ export default {
       // #endif
     },
 
-    // 格式化日期（简短版本）
     formatDate(dateStr) {
       const date = new Date(dateStr);
       const month = date.getMonth() + 1;
@@ -307,7 +451,6 @@ export default {
       return `${month}月${day}日`;
     },
 
-    // 格式化日期时间（完整版本）
     formatDateTime(dateStr) {
       const date = new Date(dateStr);
       const year = date.getFullYear();
@@ -318,7 +461,6 @@ export default {
       return `${year}年${month}月${day}日 ${hours}:${minutes}`;
     },
 
-    // 格式化文件大小
     formatFileSize(bytes) {
       if (!bytes) return '未知';
       if (bytes < 1024) return bytes + ' B';
@@ -410,6 +552,16 @@ export default {
 .generate-new-btn.generating {
   background: rgba(255, 255, 255, 0.7);
   opacity: 0.6;
+}
+
+.generation-status {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+.status-text {
+  display: inline-block;
 }
 
 .action-tip {
@@ -623,4 +775,3 @@ export default {
   }
 }
 </style>
-
