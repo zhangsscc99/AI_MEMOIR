@@ -130,7 +130,7 @@ server {
         index index.html;
         try_files \$uri \$uri/ /index.html;
     }
-    
+
     # 后端API代理
     location /api/ {
         proxy_pass http://localhost:3001/api/;
@@ -149,6 +149,19 @@ server {
         root /opt/AI_MEMOIR/frontend;
         expires 1y;
         add_header Cache-Control \"public, immutable\";
+    }
+
+    # 上传文件代理（PDF等）
+    location /uploads/ {
+        proxy_pass http://localhost:3001/uploads/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
     }
 }
 EOF
