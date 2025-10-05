@@ -3,10 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 const COVER_IMAGE_CANDIDATES = [
+  path.join(__dirname, '../../assets/images/memoirbook.png'),
   path.join(__dirname, '../../../memoir-app/ios/App/public/images/memoirbook.png'),
   path.join(__dirname, '../../../memoir-app/ios/App/App/public/images/memoirbook.png'),
-  path.join(__dirname, '../../../memoir-app/src/images/memoirbook.png'),
-  path.join(__dirname, '../../assets/images/memoirbook.png')
+  path.join(__dirname, '../../../memoir-app/src/images/memoirbook.png')
 ];
 
 const FONT_CANDIDATES = [

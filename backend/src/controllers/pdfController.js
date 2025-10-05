@@ -91,10 +91,13 @@ const getPdfList = async (req, res) => {
       .map(file => {
         const filePath = path.join(pdfDir, file);
         const stats = fs.statSync(filePath);
+        const createdAtDate = stats.birthtime && !Number.isNaN(stats.birthtime.getTime()) && stats.birthtime.getTime() > 0
+          ? stats.birthtime
+          : stats.mtime;
         return {
           fileName: file,
           url: `/uploads/pdf/${file}`,
-          createdAt: stats.birthtime.toISOString(),
+          createdAt: createdAtDate.toISOString(),
           size: stats.size
         };
       })

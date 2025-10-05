@@ -23,7 +23,7 @@
         </view>
         <view class="button-group">
           <button class="start-btn" @click.stop="goToChapters">开始录制</button>
-          <button class="generate-book-btn" @click.stop="generateBook">生成书籍</button>
+          <button class="generate-book-btn" @click.stop="openPdfManager">书籍管理</button>
         </view>
       </view>
     </view>
@@ -119,7 +119,6 @@ export default {
       progressPercent: 0,
       totalChapters: 10,
       completedChapters: [],
-      isGeneratingBook: false,
       allChapters: [
         {
           id: 'background',
@@ -384,8 +383,8 @@ export default {
       });
     },
 
-    generateBook() {
-      console.log('📚 点击生成书籍按钮');
+    openPdfManager() {
+      console.log('📚 点击书籍管理按钮');
       // 跳转到PDF管理页面
       uni.navigateTo({
         url: '/pages/pdf-manager/index',

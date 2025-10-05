@@ -71,20 +71,6 @@
               <text class="record-text">{{ recordButtonText }}</text>
               </view>
 
-              <!-- PDF生成按钮 -->
-              <view class="pdf-btn-container">
-                <view
-                  class="pdf-btn"
-                  :class="{ 'generating': isGeneratingPdf }"
-                  @click="generatePdf"
-                >
-                  <view class="pdf-icon">
-                    <image src="/static/icons/book.svg" class="book-icon" mode="aspectFit"></image>
-                  </view>
-                </view>
-                <text class="pdf-text">{{ pdfButtonText }}</text>
-              </view>
-
               <!-- AI补全按钮 -->
               <view class="ai-complete-btn-container">
                 <view 
@@ -168,8 +154,6 @@ export default {
       audioChunks: [],
       // 音频数据队列（用于重连时发送）
       audioQueue: [],
-      // PDF生成相关
-      isGeneratingPdf: false,
       audioProcessingPromise: Promise.resolve(),
       pcmSampleRate: 16000,
       useAudioProcessorStreaming: false,
@@ -206,10 +190,6 @@ export default {
       if (this.isProcessing) return '处理中...';
       if (this.isRecording) return '结束录制';
       return '点击录制';
-    },
-    pdfButtonText() {
-      if (this.isGeneratingPdf) return '生成中...';
-      return '生成PDF';
     },
     currentDate() {
       const now = new Date();
@@ -3361,128 +3341,6 @@ export default {
         title: '已拒绝AI补全',
         icon: 'none'
       });
-    },
-
-    // 生成PDF
-    async generatePdf() {
-      if (this.isGeneratingPdf) {
-        return;
-      }
-
-      // 检查是否登录
-      const token = uni.getStorageSync('token');
-      if (!token) {
-        uni.showToast({
-          title: '请先登录',
-          icon: 'error'
-        });
-        return;
-      }
-
-      this.isGeneratingPdf = true;
-
-      try {
-        console.log('📚 开始生成PDF...');
-
-        uni.showLoading({
-          title: '生成PDF中...'
-        });
-
-        // 调用PDF生成API
-        const response = await uni.request({
-          url: apiUrl('/pdf/generate'),
-          method: 'POST',
-          header: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        uni.hideLoading();
-
-        if (response.statusCode === 200 && response.data.success) {
-          console.log('✅ PDF生成成功');
-
-          uni.showToast({
-            title: 'PDF生成成功',
-            icon: 'success',
-            duration: 2000
-          });
-
-          // 处理PDF的下载或预览
-          const pdfUrl = response.data.data.pdfUrl;
-          const fileName = response.data.data.fileName;
-          
-          if (pdfUrl) {
-            // 构建完整的PDF URL
-            const baseUrl = apiUrl('');
-            const fullPdfUrl = baseUrl + pdfUrl;
-            
-            console.log('📄 PDF URL:', fullPdfUrl);
-            
-            // 在H5/Web环境中，直接下载PDF
-            // #ifdef H5
-            const link = document.createElement('a');
-            link.href = fullPdfUrl;
-            link.download = fileName || 'memoir.pdf';
-            link.click();
-            // #endif
-            
-            // 在App环境中，可以使用uni.downloadFile
-            // #ifndef H5
-            uni.downloadFile({
-              url: fullPdfUrl,
-              success: (downloadResult) => {
-                if (downloadResult.statusCode === 200) {
-                  // 保存文件到本地
-                  const savedFilePath = downloadResult.tempFilePath;
-                  uni.saveFile({
-                    tempFilePath: savedFilePath,
-                    success: (saveResult) => {
-                      console.log('✅ PDF保存成功:', saveResult.savedFilePath);
-                      uni.showToast({
-                        title: 'PDF已保存',
-                        icon: 'success'
-                      });
-                      
-                      // 可以打开文件
-                      uni.openDocument({
-                        filePath: saveResult.savedFilePath,
-                        showMenu: true
-                      });
-                    },
-                    fail: (err) => {
-                      console.error('❌ PDF保存失败:', err);
-                    }
-                  });
-                }
-              },
-              fail: (err) => {
-                console.error('❌ PDF下载失败:', err);
-                uni.showToast({
-                  title: 'PDF下载失败',
-                  icon: 'error'
-                });
-              }
-            });
-            // #endif
-          }
-
-        } else {
-          throw new Error(response.data?.message || 'PDF生成失败');
-        }
-
-      } catch (error) {
-        console.error('❌ PDF生成失败:', error);
-        uni.hideLoading();
-        uni.showToast({
-          title: 'PDF生成失败: ' + (error.message || '未知错误'),
-          icon: 'error',
-          duration: 3000
-        });
-      } finally {
-        this.isGeneratingPdf = false;
-      }
     }
   }
 }
@@ -3676,59 +3534,6 @@ export default {
   gap: 8px;
 }
 
-.pdf-btn-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.pdf-btn {
-  width: 60px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #e0e0e0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  touch-action: manipulation;
-  user-select: none;
-}
-
-.pdf-btn:hover {
-  background: rgba(255, 255, 255, 1);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-  border-color: #007AFF;
-}
-
-.pdf-btn.generating {
-  background: rgba(0, 122, 255, 0.1);
-  border-color: #007AFF;
-  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.2);
-}
-
-.pdf-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.book-icon {
-  width: 24px;
-  height: 24px;
-  color: #333;
-}
-
-.pdf-btn.generating .book-icon {
-  color: #007AFF;
-}
-
 .record-btn {
   width: 60px;
   height: 60px;
@@ -3794,12 +3599,6 @@ export default {
 }
 
 .record-text {
-  font-size: 14px;
-  color: #666;
-  text-align: center;
-}
-
-.pdf-text {
   font-size: 14px;
   color: #666;
   text-align: center;
