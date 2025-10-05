@@ -261,6 +261,12 @@ export default {
       return `我是${name}，根据你的回忆录打造的AI伙伴。我珍藏着${summary}，随时可以和你聊聊这些经历，或继续记录新的篇章。`;
     },
 
+    getCharacterStorageKey(baseKey) {
+      const userInfo = uni.getStorageSync('user');
+      const userId = userInfo && userInfo.id;
+      return userId ? `${baseKey}_${userId}` : baseKey;
+    },
+
     refreshCharacterPersona() {
       const token = uni.getStorageSync('token');
       const hasLogin = !!token;
@@ -286,7 +292,7 @@ export default {
           return;
         }
 
-        const manualName = uni.getStorageSync('manualCharacterName');
+        const manualName = uni.getStorageSync(this.getCharacterStorageKey('manualCharacterName'));
         if (manualName) {
           // 用户手动设置了昵称，不自动覆盖
           return;
@@ -303,12 +309,12 @@ export default {
 
         if (response.statusCode === 200 && response.data.success) {
           const { characterName } = response.data.data;
-          const autoName = uni.getStorageSync('autoCharacterName');
+          const autoName = uni.getStorageSync(this.getCharacterStorageKey('autoCharacterName'));
           if (characterName && characterName !== autoName) {
             console.log('🎭 自动识别角色姓名:', characterName);
             this.characterInfo.name = characterName;
             this.refreshCharacterPersona();
-            uni.setStorageSync('autoCharacterName', characterName);
+            uni.setStorageSync(this.getCharacterStorageKey('autoCharacterName'), characterName);
 
             // 更新本地缓存的用户信息
             const userInfo = uni.getStorageSync('user');
@@ -569,8 +575,8 @@ export default {
               uni.setStorageSync('user', userInfo);
               
               // 记录手动设置的角色名称，清除自动缓存
-              uni.setStorageSync('manualCharacterName', newName);
-              uni.removeStorageSync('autoCharacterName');
+              uni.setStorageSync(this.getCharacterStorageKey('manualCharacterName'), newName);
+              uni.removeStorageSync(this.getCharacterStorageKey('autoCharacterName'));
               
               console.log('✅ 角色名称已更新到数据库:', newName);
               
@@ -605,7 +611,20 @@ export default {
         uni.removeStorageSync('customCharacterName');
       }
 
-      const manualName = uni.getStorageSync('manualCharacterName');
+      const legacyManual = uni.getStorageSync('manualCharacterName');
+      if (legacyManual) {
+        uni.removeStorageSync('manualCharacterName');
+      }
+
+      const legacyAuto = uni.getStorageSync('autoCharacterName');
+      if (legacyAuto) {
+        uni.removeStorageSync('autoCharacterName');
+      }
+
+      const manualKey = this.getCharacterStorageKey('manualCharacterName');
+      const autoKey = this.getCharacterStorageKey('autoCharacterName');
+
+      const manualName = uni.getStorageSync(manualKey);
       if (manualName) {
         const trimmed = manualName.trim();
         if (trimmed && trimmed.toLowerCase() !== 'demo' && trimmed !== '小忆') {
@@ -614,11 +633,11 @@ export default {
           this.refreshCharacterPersona();
           return;
         } else {
-          uni.removeStorageSync('manualCharacterName');
+          uni.removeStorageSync(manualKey);
         }
       }
 
-      const autoName = uni.getStorageSync('autoCharacterName');
+      const autoName = uni.getStorageSync(autoKey);
       if (autoName) {
         this.characterInfo.name = autoName;
         console.log('📝 使用自动识别的角色名称:', autoName);
