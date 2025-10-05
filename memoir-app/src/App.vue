@@ -1,14 +1,55 @@
 <script>
+let backButtonPressCount = 0;
+let backButtonResetTimer = null;
+
 export default {
-  onLaunch: function () {
-    console.log('App Launch')
+  onLaunch() {
+    console.log('App Launch');
   },
-  onShow: function () {
-    console.log('App Show')
+  onShow() {
+    console.log('App Show');
   },
-  onHide: function () {
-    console.log('App Hide')
+  onHide() {
+    console.log('App Hide');
   },
+  onBackPress(event) {
+    if (event.from !== 'backbutton') {
+      return false;
+    }
+
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
+      uni.navigateBack();
+      return true;
+    }
+
+    // #ifdef APP-PLUS
+    if (backButtonPressCount > 0) {
+      plus.runtime.quit();
+      return true;
+    }
+
+    backButtonPressCount = 1;
+    uni.showToast({
+      title: '再按一次退出应用',
+      icon: 'none',
+      duration: 1500
+    });
+
+    if (backButtonResetTimer) {
+      clearTimeout(backButtonResetTimer);
+    }
+
+    backButtonResetTimer = setTimeout(() => {
+      backButtonPressCount = 0;
+      backButtonResetTimer = null;
+    }, 1500);
+
+    return true;
+    // #endif
+
+    return false;
+  }
 }
 </script>
 
