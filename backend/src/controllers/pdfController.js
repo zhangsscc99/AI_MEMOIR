@@ -117,8 +117,63 @@ const getPdfList = async (req, res) => {
   }
 };
 
+/**
+ * @desc 删除指定的 PDF 文件
+ * @route DELETE /api/pdf/file/:fileName
+ * @access Private
+ */
+const deletePdf = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fileName } = req.params;
+
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少文件名参数'
+      });
+    }
+
+    const decodedFileName = decodeURIComponent(fileName);
+    const expectedPrefix = `memoir_${userId}_`;
+
+    if (!decodedFileName.startsWith(expectedPrefix) || !decodedFileName.endsWith('.pdf')) {
+      return res.status(404).json({
+        success: false,
+        message: '未找到对应的PDF文件'
+      });
+    }
+
+    const pdfDir = path.join(__dirname, '../../uploads/pdf');
+    const targetPath = path.join(pdfDir, decodedFileName);
+
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'PDF文件不存在或已删除'
+      });
+    }
+
+    fs.unlinkSync(targetPath);
+
+    return res.status(200).json({
+      success: true,
+      message: 'PDF已删除'
+    });
+
+  } catch (error) {
+    console.error('❌ 删除PDF失败:', error);
+    return res.status(500).json({
+      success: false,
+      message: '删除PDF失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   generateMemoir,
   getPdfJobStatus,
-  getPdfList
+  getPdfList,
+  deletePdf
 };

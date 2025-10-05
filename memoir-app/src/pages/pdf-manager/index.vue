@@ -70,6 +70,14 @@
               <button class="action-btn preview-btn" @click="previewPdf(pdf)">
                 预览
               </button>
+              <button 
+                class="action-btn delete-btn"
+                :disabled="deletingFileName === pdf.fileName"
+                @click="deletePdf(pdf)"
+              >
+                <text v-if="deletingFileName === pdf.fileName">删除中...</text>
+                <text v-else>删除</text>
+              </button>
             </view>
           </view>
         </view>
@@ -92,7 +100,8 @@ export default {
       jobStatusMessage: '',
       jobPollingTimer: null,
       activeJobId: null,
-      jobPromiseReject: null
+      jobPromiseReject: null,
+      deletingFileName: null
     }
   },
   computed: {
@@ -444,6 +453,76 @@ export default {
       // #endif
     },
 
+    deletePdf(pdf) {
+      if (!pdf || !pdf.fileName) {
+        return;
+      }
+
+      if (this.deletingFileName && this.deletingFileName !== pdf.fileName) {
+        uni.showToast({
+          title: '请稍候...',
+          icon: 'none'
+        });
+        return;
+      }
+
+      const token = uni.getStorageSync('token');
+      if (!token) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'error'
+        });
+        return;
+      }
+
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这份回忆录吗？删除后将无法恢复。',
+        confirmText: '删除',
+        confirmColor: '#000000',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            this.executePdfDelete(pdf, token);
+          }
+        }
+      });
+    },
+
+    async executePdfDelete(pdf, token) {
+      this.deletingFileName = pdf.fileName;
+
+      try {
+        const response = await uni.request({
+          url: apiUrl(`/pdf/file/${encodeURIComponent(pdf.fileName)}`),
+          method: 'DELETE',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.statusCode === 200 && response.data.success) {
+          uni.showToast({
+            title: '已删除',
+            icon: 'success'
+          });
+
+          await this.loadPdfList();
+        } else {
+          throw new Error(response.data?.message || '删除失败');
+        }
+      } catch (error) {
+        console.error('❌ 删除PDF失败:', error);
+        uni.showToast({
+          title: error.message || '删除失败',
+          icon: 'error'
+        });
+      } finally {
+        this.deletingFileName = null;
+      }
+    },
+
     formatDate(dateStr) {
       const date = new Date(dateStr);
       const month = date.getMonth() + 1;
@@ -735,6 +814,12 @@ export default {
   font-weight: 500;
   transition: all 0.3s ease;
   border: none;
+  cursor: pointer;
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .download-btn {
@@ -755,6 +840,21 @@ export default {
 
 .preview-btn:hover {
   background: rgba(0, 0, 0, 0.1);
+}
+
+.delete-btn {
+  background: #000000;
+  color: #ffffff;
+}
+
+.delete-btn:hover {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+.delete-btn:disabled {
+  background: #000000;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* 响应式设计 */

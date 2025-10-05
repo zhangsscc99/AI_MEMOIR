@@ -5,7 +5,8 @@ const router = express.Router();
 const {
   generateMemoir,
   getPdfJobStatus,
-  getPdfList
+  getPdfList,
+  deletePdf
 } = require('../controllers/pdfController');
 
 // 导入中间件
@@ -24,6 +25,13 @@ router.post('/generate', authenticateToken, generateMemoir);
  * @access  Private
  */
 router.get('/list', authenticateToken, getPdfList);
+
+/**
+ * @route   DELETE /api/pdf/file/:fileName
+ * @desc    删除指定的PDF
+ * @access  Private
+ */
+router.delete('/file/:fileName', authenticateToken, deletePdf);
 
 /**
  * @route   GET /api/pdf/status/:jobId
