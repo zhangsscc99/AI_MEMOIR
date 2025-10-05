@@ -265,9 +265,14 @@ export default {
       }
     },
 
-    goBack() {
-      this.saveChapter(); // 自动保存
-      uni.navigateBack();
+    async goBack() {
+      try {
+        await this.saveChapter({ autoNavigate: false, silent: true });
+      } catch (error) {
+        console.log('返回时自动保存失败:', error);
+      } finally {
+        uni.navigateBack();
+      }
     },
     
     onTextInput(event) {
@@ -405,22 +410,28 @@ export default {
       }
     },
     
-    async saveChapter() {
+    async saveChapter(options = {}) {
+      const { autoNavigate = true, silent = false } = options;
+
       try {
         // 检查用户是否登录
         const token = uni.getStorageSync('token');
         if (!token) {
-          uni.showToast({
-            title: '请先登录',
-            icon: 'error'
-          });
+          if (!silent) {
+            uni.showToast({
+              title: '请先登录',
+              icon: 'error'
+            });
+          }
           return;
         }
 
         // 显示加载状态
-        uni.showLoading({
-          title: '保存中...'
-        });
+        if (!silent) {
+          uni.showLoading({
+            title: '保存中...'
+          });
+        }
 
         // 准备要保存的数据
         const saveData = {
@@ -441,7 +452,9 @@ export default {
           data: saveData
         });
 
-        uni.hideLoading();
+        if (!silent) {
+          uni.hideLoading();
+        }
 
         // 检查认证错误
         if (handleAuthError(response)) {
@@ -473,20 +486,25 @@ export default {
             uni.setStorageSync(`chapter_status_${userId}`, JSON.stringify(statusMap));
           }
 
-          uni.showToast({
-            title: '保存成功',
-            icon: 'success'
-          });
-          
-          // 保存成功后延迟跳转回去
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
+          if (!silent) {
+            uni.showToast({
+              title: '保存成功',
+              icon: 'success'
+            });
+          }
+
+          if (autoNavigate) {
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          }
         } else {
           throw new Error(response.data?.message || '保存失败');
         }
       } catch (error) {
-        uni.hideLoading();
+        if (!silent) {
+          uni.hideLoading();
+        }
         console.error('保存章节失败:', error);
         
         // 如果是网络错误，尝试本地保存
@@ -507,27 +525,35 @@ export default {
             
               uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
             
-            uni.showToast({
-              title: '已离线保存',
-              icon: 'success'
-            });
-            
-            // 离线保存成功后延迟跳转回去
-            setTimeout(() => {
-              uni.navigateBack();
-            }, 1500);
+            if (!silent) {
+              uni.showToast({
+                title: '已离线保存',
+                icon: 'success'
+              });
+            }
+
+            if (autoNavigate) {
+              setTimeout(() => {
+                uni.navigateBack();
+              }, 1500);
+            }
             }
           } catch (localError) {
+            if (!silent) {
+              uni.showToast({
+                title: '保存失败',
+                icon: 'error'
+              });
+            }
+          }
+        } else {
+          if (!silent) {
             uni.showToast({
-              title: '保存失败',
+              title: error.message || '保存失败',
               icon: 'error'
             });
           }
-        } else {
-          uni.showToast({
-            title: error.message || '保存失败',
-            icon: 'error'
-          });
+          throw error;
         }
       }
     },
