@@ -333,22 +333,72 @@ export default {
       this.prompts = promptsMap[this.chapterId] || [];
     },
     
-    loadSavedContent() {
+    async loadSavedContent() {
       try {
         // 获取当前用户ID
         const userInfo = uni.getStorageSync('user');
         const userId = userInfo?.id;
-        
+
         if (!userId) {
           return;
         }
-        
-        // 加载用户特定的章节内容
+
+        let hasContent = false;
+
+        // 优先读取本地缓存
         const savedContent = uni.getStorageSync(`chapter_${this.chapterId}_${userId}`);
         if (savedContent) {
           const content = JSON.parse(savedContent);
           this.contentText = content.text || '';
           this.recordings = content.recordings || [];
+          hasContent = !!(this.contentText && this.contentText.trim().length > 0);
+        }
+
+        if (hasContent) {
+          return;
+        }
+
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          return;
+        }
+
+        const response = await uni.request({
+          url: apiUrl(`/chapters/${this.chapterId}`),
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (handleAuthError(response)) {
+          return;
+        }
+
+        if (response.statusCode === 200 && response.data.success) {
+          const payload = response.data?.data || {};
+          const chapter = payload.chapter || payload;
+
+          this.contentText = chapter.content || '';
+          this.recordings = Array.isArray(chapter.recordings) ? chapter.recordings : [];
+
+          const cachePayload = {
+            text: this.contentText,
+            recordings: this.recordings,
+            lastModified: chapter.updatedAt || new Date().toISOString(),
+            completed: this.contentText.length > 0 || this.recordings.length > 0
+          };
+
+          uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(cachePayload));
+
+          const savedStatus = uni.getStorageSync(`chapter_status_${userId}`) || '{}';
+          const statusMap = JSON.parse(savedStatus);
+          statusMap[this.chapterId] = {
+            completed: cachePayload.completed,
+            lastModified: cachePayload.lastModified
+          };
+          uni.setStorageSync(`chapter_status_${userId}`, JSON.stringify(statusMap));
         }
       } catch (error) {
         console.log('加载保存内容失败:', error);

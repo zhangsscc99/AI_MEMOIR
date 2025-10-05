@@ -300,9 +300,10 @@ export default {
         console.log('📊 随记详情响应:', response);
         
         if (response.statusCode === 200 && response.data.success) {
-          const chapterData = response.data.data;
+          const payload = response.data?.data || {};
+          const chapterData = payload.chapter || payload;
           console.log('📖 加载的随记数据:', chapterData);
-          
+
           // 填充表单数据
           this.diaryTitle = chapterData.title || '随记';
           this.diaryContent = chapterData.content || '';
