@@ -117,46 +117,46 @@ function formatParagraphs(content) {
     .filter(paragraph => paragraph.length > 0);
 }
 
-function renderCoverPage(doc, userDisplayName) {
+function renderCoverPage(doc) {
   const coverImagePath = resolveCoverImage();
-  if (coverImagePath) {
-    const pageWidth = doc.page.width;
-    const imageWidth = 220;
-    const imageHeight = 290;
-    const x = (pageWidth - imageWidth) / 2;
-    const y = 120;
+  const pageWidth = doc.page.width;
+  const pageHeight = doc.page.height;
+  const originalMargins = { ...doc.page.margins };
 
+  doc.page.margins = { top: 0, bottom: 0, left: 0, right: 0 };
+
+  if (coverImagePath) {
     try {
-      doc.image(coverImagePath, x, y, {
-        width: imageWidth,
-        height: imageHeight
-      });
+      const image = doc.openImage ? doc.openImage(coverImagePath) : null;
+
+      if (image) {
+        const scale = Math.max(pageWidth / image.width, pageHeight / image.height);
+        const drawWidth = image.width * scale;
+        const drawHeight = image.height * scale;
+        const x = (pageWidth - drawWidth) / 2;
+        const y = (pageHeight - drawHeight) / 2;
+
+        doc.image(image, x, y, {
+          width: drawWidth,
+          height: drawHeight
+        });
+      } else {
+        doc.image(coverImagePath, 0, 0, {
+          width: pageWidth,
+          height: pageHeight
+        });
+      }
     } catch (error) {
       console.warn('⚠️ 加载封面图片失败:', coverImagePath, error.message);
+      doc.rect(0, 0, pageWidth, pageHeight).fill('#ffffff');
     }
   } else {
-    console.warn('⚠️ 封面图片不存在，跳过添加封面图');
+    console.warn('⚠️ 封面图片不存在，使用默认背景');
+    doc.rect(0, 0, pageWidth, pageHeight).fill('#ffffff');
   }
 
-  useChineseFont(doc);
-  doc.fontSize(36);
-  doc.text('回忆录', 0, 440, { align: 'center' });
-
-  if (userDisplayName) {
-    useChineseFont(doc);
-    doc.fontSize(18);
-    doc.text(userDisplayName, { align: 'center' });
-  }
-
-  useChineseFont(doc);
-  doc.fontSize(16);
-  doc.text('记录您的人生故事', 0, 500, { align: 'center' });
-
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
-  useChineseFont(doc);
-  doc.fontSize(12);
-  doc.text(dateStr, 0, 720, { align: 'center' });
+  doc.page.margins = originalMargins;
+  doc.fillColor('#000000');
 }
 
 function renderTableOfContents(doc) {
@@ -259,7 +259,7 @@ async function generateMemoirPdf({ user, chapters }) {
     doc.info.Subject = '个人回忆录';
     doc.info.Keywords = '回忆录, Memoir, 岁月镜像';
 
-    renderCoverPage(doc, resolveUserDisplayName(user));
+    renderCoverPage(doc);
     renderTableOfContents(doc);
 
     chapters.forEach((chapter, index) => {
