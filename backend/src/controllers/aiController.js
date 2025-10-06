@@ -107,7 +107,7 @@ const extractCharacterNameFromMemories = (memories = []) => {
   return null;
 };
 
-const truncateText = (text = '', maxLength = 160) => {
+const truncateText = (text = '', maxLength = 120) => {
   const normalized = (text || '').replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxLength) {
     return normalized;
@@ -640,13 +640,12 @@ const analyzeChapterImage = async (req, res) => {
       ? `当前章节《${focusChapter.title}》的已有内容：${truncateText(focusChapter.content || '', 200)}`
       : '请根据整本回忆录的语气与风格续写。';
 
-    const systemPrompt = `你是一位中文回忆录写作助手，需要根据上传的图片内容，结合用户已有的回忆录故事，为当前章节补充新的段落。写作要求：
-1. 文字必须保持温暖、真诚、第一人称叙事风格。
-2. 内容需贴合回忆录已有的时代背景与人物设定，不要引入违和的情节。
-3. 生成的文字用自然中文，长度控制在2-4句（约80~150字），避免列表式描述。
-4. 不要重复已有内容，可在故事上做合理延展。`;
+    const systemPrompt = `你是一位中文回忆录写作助手。你首先必须细致观察用户提供的图片，准确描述其中出现的人物、物品、情绪、环境等核心元素；随后再结合用户回忆录的语境，用第一人称、温暖真诚的口吻写成一段与图片高度契合的续写文字。写作要求：
+1. 图片信息优先，如果图片内容与回忆录摘要不一致，请以图片为准并温和衔接背景。
+2. 只写2~4句（约80~140字），语句连贯自然，避免列举式或重复已有句子。
+3. 不要凭空创造未在图片或摘要中暗示的人物/物件/地点，保持时代背景一致。`;
 
-    const contextText = `以下是该用户回忆录的章节摘要：\n${summaryText}\n\n${focusHint}\n\n请观察用户上传的图片，提炼与以上故事脉络相关的细节，用一段连贯的文字补充到章节末尾。`;
+    const contextText = `以下是该用户回忆录的章节摘要（仅作辅助，不必逐条复述）：\n${summaryText}\n\n当前章节提示：${focusHint}\n\n请先描述图片中最显眼的细节，再衔接到故事。输出时仅返回最终文本，不要包含说明或列举。`;
 
     const completion = await client.chat.completions.create({
       model: process.env.DASHSCOPE_VL_MODEL || process.env.DASHSCOPE_MODEL || 'qwen3-vl-plus',

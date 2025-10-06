@@ -4101,28 +4101,34 @@ export default {
   flex: 1;
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.06);
+  background: #ffffff;
   color: #2c3e50;
   font-size: 14px;
-  border: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   text-align: center;
+  transition: all 0.2s ease;
+}
+
+.image-action-btn:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .image-action-btn.remove {
-  background: rgba(231, 76, 60, 0.12);
-  color: #c0392b;
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
 }
 
 .analyze-btn {
   width: 100%;
   padding: 12px 16px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
+  background: #ffffff;
+  color: #2c3e50;
   font-size: 15px;
   font-weight: 600;
-  border: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .analyze-btn:active {
