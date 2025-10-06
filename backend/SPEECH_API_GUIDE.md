@@ -18,11 +18,23 @@ ALIYUN_AK_SECRET=你的AccessKey_Secret
 
 ### 使用命令行设置环境变量
 
+**⚠️ 安全提醒**: 
+- 请勿在任何文档中明文写入真实的 API 密钥
+- 使用 `.env.example` 模板文件，将实际密钥配置在 `.env` 中
+- 确保 `.env` 文件已添加到 `.gitignore`
+
 ```bash
 # 导航到后端目录
 cd /Users/Zhuanz1/Desktop/memoir/backend
 
-# 设置阿里云AccessKey ID
+# 方法1: 复制模板文件并手动编辑
+cp .env.example .env
+# 然后在编辑器中修改 .env 文件，填入真实的密钥
+
+# 方法2: 使用命令行设置（示例）
+echo "ALIYUN_AK_ID=你的真实AccessKey_ID" >> .env
+echo "ALIYUN_AK_SECRET=你的真实AccessKey_Secret" >> .env
+```
 
 ## API 接口
 
