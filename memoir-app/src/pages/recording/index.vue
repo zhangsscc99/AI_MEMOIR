@@ -100,8 +100,8 @@
             <view class="diff-header">
               <text class="diff-title">AI补全结果</text>
               <text class="diff-subtitle">请选择是否接受AI的修改</text>
-        </view>
-            
+            </view>
+
             <view class="diff-content">
               <!-- AI补全内容（绿色背景） -->
               <view class="diff-ai">
@@ -109,7 +109,7 @@
                 <view class="diff-text ai-text">{{ aiCompletedText }}</view>
               </view>
             </view>
-            
+
             <!-- 选择按钮 -->
             <view class="diff-actions">
               <view class="diff-btn reject-btn" @click="rejectAiCompletion">
@@ -120,9 +120,38 @@
               </view>
             </view>
           </view>
+
+        <view class="image-analysis-section">
+          <view class="image-section-header">章节图片</view>
+
+          <view v-if="!selectedImage" class="image-upload" @click="chooseImage">
+            <view class="upload-icon">
+              <image src="/static/icons/camera.svg" class="upload-camera" mode="aspectFit"></image>
+            </view>
+            <text class="upload-text">添加图片，丰富本章记忆</text>
+          </view>
+
+          <view v-else class="image-preview">
+            <image :src="imagePreviewUrl" class="preview-image" mode="aspectFill"></image>
+            <view class="image-actions">
+              <button class="image-action-btn" @click.stop="chooseImage">更换图片</button>
+              <button class="image-action-btn remove" @click.stop="removeImage">移除图片</button>
+            </view>
+          </view>
+
+          <button
+            class="analyze-btn"
+            :class="{ loading: isAnalyzingImage, disabled: !selectedImage }"
+            :disabled="!selectedImage || isAnalyzingImage"
+            @click="analyzeChapterImage"
+          >
+            {{ isAnalyzingImage ? '解析中…' : '解析图片' }}
+          </button>
+          <text class="analyze-tip">解析结果将追加到正文末尾，保持故事语气一致。</text>
         </view>
       </view>
     </view>
+  </view>
   </view>
 </template>
 
@@ -182,7 +211,11 @@ export default {
       isAiCompleting: false,
       showAiDiff: false,
       originalText: '',
-      aiCompletedText: ''
+      aiCompletedText: '',
+      // 图片解析相关
+      selectedImage: '',
+      uploadedImageUrl: '',
+      isAnalyzingImage: false
     }
   },
   computed: {
@@ -194,6 +227,25 @@ export default {
     currentDate() {
       const now = new Date();
       return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+    },
+    imagePreviewUrl() {
+      if (!this.selectedImage) {
+        return '';
+      }
+
+      const lower = this.selectedImage.toLowerCase();
+      if (
+        lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('data:') ||
+        lower.startsWith('blob:') ||
+        lower.startsWith('file://') ||
+        lower.startsWith('wxfile://')
+      ) {
+        return this.selectedImage;
+      }
+
+      return this.resolveFileUrl(this.selectedImage);
     }
   },
   onLoad(options) {
@@ -263,6 +315,33 @@ export default {
         // 尝试加载已保存的内容
         this.loadSavedContent();
       }
+    },
+
+    chooseImage() {
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['original', 'compressed'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          const path = (res.tempFiles && res.tempFiles[0] && res.tempFiles[0].path) || (res.tempFilePaths && res.tempFilePaths[0]);
+          if (path) {
+            this.selectedImage = path;
+            this.uploadedImageUrl = '';
+          }
+        },
+        fail: (err) => {
+          console.error('选择图片失败:', err);
+          uni.showToast({
+            title: '选择图片失败',
+            icon: 'error'
+          });
+        }
+      });
+    },
+
+    removeImage() {
+      this.selectedImage = '';
+      this.uploadedImageUrl = '';
     },
 
     async goBack() {
@@ -337,7 +416,7 @@ export default {
       
       this.prompts = promptsMap[this.chapterId] || [];
     },
-    
+
     async loadSavedContent() {
       try {
         // 获取当前用户ID
@@ -356,10 +435,14 @@ export default {
           const content = JSON.parse(savedContent);
           this.contentText = content.text || '';
           this.recordings = content.recordings || [];
-          hasContent = !!(this.contentText && this.contentText.trim().length > 0);
+          if (content.image) {
+            this.selectedImage = content.image;
+            this.uploadedImageUrl = content.image;
+          }
+          hasContent = !!((this.contentText && this.contentText.trim().length > 0) || content.image);
         }
 
-        if (hasContent) {
+        if (hasContent && this.selectedImage) {
           return;
         }
 
@@ -387,12 +470,15 @@ export default {
 
           this.contentText = chapter.content || '';
           this.recordings = Array.isArray(chapter.recordings) ? chapter.recordings : [];
+          this.selectedImage = chapter.backgroundImage || '';
+          this.uploadedImageUrl = chapter.backgroundImage || '';
 
           const cachePayload = {
             text: this.contentText,
             recordings: this.recordings,
             lastModified: chapter.updatedAt || new Date().toISOString(),
-            completed: this.contentText.length > 0 || this.recordings.length > 0
+            completed: this.contentText.length > 0 || this.recordings.length > 0,
+            image: this.uploadedImageUrl
           };
 
           uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(cachePayload));
@@ -409,7 +495,75 @@ export default {
         console.log('加载保存内容失败:', error);
       }
     },
-    
+
+    uploadImageToServer(filePath) {
+      return new Promise((resolve, reject) => {
+        const token = uni.getStorageSync('token');
+        if (!token) {
+          reject(new Error('请先登录'));
+          return;
+        }
+
+        uni.uploadFile({
+          url: apiUrl('/upload/image'),
+          filePath,
+          name: 'image',
+          header: {
+            'Authorization': `Bearer ${token}`
+          },
+          success: (res) => {
+            let data = {};
+            try {
+              data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+            } catch (parseError) {
+              reject(new Error('解析上传结果失败'));
+              return;
+            }
+
+            if (res.statusCode === 401) {
+              handleAuthError({ statusCode: res.statusCode, data });
+              reject(new Error('登录已过期'));
+              return;
+            }
+
+            if (res.statusCode !== 200 || !data.success) {
+              reject(new Error(data.message || '图片上传失败'));
+              return;
+            }
+
+            resolve(data.data?.url || data.url);
+          },
+          fail: (err) => {
+            reject(err);
+          }
+        });
+      });
+    },
+
+    async ensureImageUploaded() {
+      if (!this.selectedImage) {
+        this.uploadedImageUrl = '';
+        return null;
+      }
+
+      const lower = this.selectedImage.toLowerCase();
+      const isRemote = lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('/uploads/');
+
+      if (isRemote) {
+        this.uploadedImageUrl = this.selectedImage;
+        return this.selectedImage;
+      }
+
+      if (this.uploadedImageUrl) {
+        return this.uploadedImageUrl;
+      }
+
+      const uploadedUrl = await this.uploadImageToServer(this.selectedImage);
+      this.uploadedImageUrl = uploadedUrl;
+      this.selectedImage = uploadedUrl;
+      return uploadedUrl;
+    },
+
     async saveChapter(options = {}) {
       const { autoNavigate = true, silent = false } = options;
 
@@ -433,12 +587,26 @@ export default {
           });
         }
 
-        // 准备要保存的数据
+        let backgroundImage = null;
+        try {
+          backgroundImage = await this.ensureImageUploaded();
+        } catch (uploadError) {
+          if (!silent) {
+            uni.hideLoading();
+            uni.showToast({
+              title: uploadError.message || '图片上传失败',
+              icon: 'error'
+            });
+          }
+          throw uploadError;
+        }
+
         const saveData = {
           chapterId: this.chapterId,
           title: this.chapterTitle,
           content: this.contentText,
-          recordings: this.recordings
+          recordings: this.recordings,
+          backgroundImage: backgroundImage || null
         };
 
         // 调用后端API保存章节
@@ -467,22 +635,22 @@ export default {
           const userId = userInfo?.id;
           
           if (userId) {
-            // 同时更新用户特定的本地存储（用于离线查看）
-          const content = {
-            text: this.contentText,
-            recordings: this.recordings,
-            lastModified: new Date().toISOString(),
-            completed: this.contentText.length > 0 || this.recordings.length > 0
-          };
-          
-            uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
-          
+            const cacheContent = {
+              text: this.contentText,
+              recordings: this.recordings,
+              image: backgroundImage || '',
+              lastModified: new Date().toISOString(),
+              completed: this.contentText.length > 0 || this.recordings.length > 0
+            };
+
+            uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(cacheContent));
+
             const savedStatus = uni.getStorageSync(`chapter_status_${userId}`) || '{}';
-          const statusMap = JSON.parse(savedStatus);
-          statusMap[this.chapterId] = {
-            completed: content.completed,
-            lastModified: content.lastModified
-          };
+            const statusMap = JSON.parse(savedStatus);
+            statusMap[this.chapterId] = {
+              completed: cacheContent.completed,
+              lastModified: cacheContent.lastModified
+            };
             uni.setStorageSync(`chapter_status_${userId}`, JSON.stringify(statusMap));
           }
 
@@ -498,6 +666,8 @@ export default {
               uni.navigateBack();
             }, 1500);
           }
+
+          return true;
         } else {
           throw new Error(response.data?.message || '保存失败');
         }
@@ -515,16 +685,17 @@ export default {
             const userId = userInfo?.id;
             
             if (userId) {
-            const content = {
-              text: this.contentText,
-              recordings: this.recordings,
-              lastModified: new Date().toISOString(),
-              completed: this.contentText.length > 0 || this.recordings.length > 0,
-              needSync: true // 标记需要同步到服务器
-            };
-            
-              uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(content));
-            
+              const cacheContent = {
+                text: this.contentText,
+                recordings: this.recordings,
+                image: backgroundImage || this.uploadedImageUrl || '',
+                lastModified: new Date().toISOString(),
+                completed: this.contentText.length > 0 || this.recordings.length > 0,
+                needSync: true
+              };
+
+              uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(cacheContent));
+
             if (!silent) {
               uni.showToast({
                 title: '已离线保存',
@@ -537,6 +708,8 @@ export default {
                 uni.navigateBack();
               }, 1500);
             }
+
+            return true;
             }
           } catch (localError) {
             if (!silent) {
@@ -546,6 +719,8 @@ export default {
               });
             }
           }
+
+          return true;
         } else {
           if (!silent) {
             uni.showToast({
@@ -555,6 +730,85 @@ export default {
           }
           throw error;
         }
+      }
+    },
+
+    async analyzeChapterImage() {
+      if (!this.selectedImage) {
+        uni.showToast({
+          title: '请先添加图片',
+          icon: 'none'
+        });
+        return;
+      }
+
+      const token = uni.getStorageSync('token');
+      if (!token) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'error'
+        });
+        return;
+      }
+
+      try {
+        this.isAnalyzingImage = true;
+        const imageUrl = await this.ensureImageUploaded();
+
+        if (!imageUrl) {
+          uni.showToast({
+            title: '请先上传图片',
+            icon: 'none'
+          });
+          return;
+        }
+
+        const response = await uni.request({
+          url: apiUrl('/ai/vision/analyze'),
+          method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            imageUrl,
+            chapterId: this.chapterId
+          }
+        });
+
+        if (handleAuthError(response)) {
+          return;
+        }
+
+        if (response.statusCode === 200 && response.data.success) {
+          const addition = (response.data.data?.text || '').trim();
+          if (addition) {
+            const sanitizedExisting = this.contentText ? this.contentText.replace(/\s*$/, '') : '';
+            this.contentText = sanitizedExisting
+              ? `${sanitizedExisting}\n\n${addition}`
+              : addition;
+            await this.saveChapter({ autoNavigate: false, silent: true });
+            uni.showToast({
+              title: '解析完成',
+              icon: 'success'
+            });
+          } else {
+            uni.showToast({
+              title: '未解析到有效内容',
+              icon: 'none'
+            });
+          }
+        } else {
+          throw new Error(response.data?.message || '解析失败');
+        }
+      } catch (error) {
+        console.error('解析图片失败:', error);
+        uni.showToast({
+          title: error.message || '解析失败',
+          icon: 'error'
+        });
+      } finally {
+        this.isAnalyzingImage = false;
       }
     },
 
@@ -3766,6 +4020,127 @@ export default {
   padding: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border: 1px solid #e0e0e0;
+}
+
+.image-analysis-section {
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.image-section-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.image-upload {
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 28px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.image-upload:hover {
+  border-color: rgba(0, 122, 255, 0.6);
+  background: rgba(0, 122, 255, 0.05);
+}
+
+.upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  background: rgba(0, 122, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-camera {
+  width: 28px;
+  height: 28px;
+  opacity: 0.75;
+}
+
+.upload-text {
+  font-size: 14px;
+  color: #666;
+}
+
+.image-preview {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f7fb;
+}
+
+.preview-image {
+  width: 100%;
+  height: 200px;
+}
+
+.image-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.image-action-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  color: #2c3e50;
+  font-size: 14px;
+  border: none;
+  text-align: center;
+}
+
+.image-action-btn.remove {
+  background: rgba(231, 76, 60, 0.12);
+  color: #c0392b;
+}
+
+.analyze-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.analyze-btn:active {
+  transform: scale(0.98);
+}
+
+.analyze-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.analyze-btn.loading {
+  opacity: 0.8;
+}
+
+.analyze-tip {
+  font-size: 12px;
+  color: #8e8e8e;
 }
 
 .diff-header {

@@ -36,10 +36,13 @@ const saveChapter = async (req, res) => {
 
     if (chapter) {
       // 更新现有章节
-      chapter.title = title || chapter.title;
-      chapter.content = content || '';
-      chapter.recordings = recordings || [];
-      chapter.background_image = backgroundImage || chapter.background_image;
+    chapter.title = title || chapter.title;
+    chapter.content = content || '';
+    chapter.recordings = recordings || [];
+
+    if (backgroundImage !== undefined) {
+      chapter.background_image = backgroundImage;
+    }
       await chapter.updateStatus();
     } else {
       // 创建新章节

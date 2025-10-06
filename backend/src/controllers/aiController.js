@@ -44,12 +44,13 @@ const getUserMemoirContent = async (userId) => {
       order: [['created_at', 'DESC']]
     });
 
-    return chapters.map(chapter => ({
-      title: chapter.title,
-      content: chapter.content,
-      type: chapter.chapter_id && chapter.chapter_id.startsWith('diary_') ? '随记' : '章节',
-      createdAt: chapter.created_at
-    }));
+  return chapters.map(chapter => ({
+    chapterId: chapter.chapter_id,
+    title: chapter.title,
+    content: chapter.content,
+    type: chapter.chapter_id && chapter.chapter_id.startsWith('diary_') ? '随记' : '章节',
+    createdAt: chapter.created_at
+  }));
   } catch (error) {
     console.error('获取用户回忆录内容失败:', error);
     return [];
@@ -104,6 +105,26 @@ const extractCharacterNameFromMemories = (memories = []) => {
   }
 
   return null;
+};
+
+const truncateText = (text = '', maxLength = 160) => {
+  const normalized = (text || '').replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength)}…`;
+};
+
+const buildMemoirSummary = (memories = []) => {
+  if (!memories.length) {
+    return '暂无回忆录内容。';
+  }
+
+  return memories.map((memory, index) => {
+    const title = memory.title || `章节${index + 1}`;
+    const summary = truncateText(memory.content || '', 140) || '（尚未填写内容）';
+    return `${index + 1}.《${title}》：${summary}`;
+  }).join('\n');
 };
 
 // 构建智能角色提示词
@@ -589,6 +610,92 @@ const generateCharacterName = async (req, res) => {
 };
 
 /**
+ * @desc 图像理解并基于回忆录生成文本
+ * @route POST /api/ai/vision/analyze
+ * @access Private
+ */
+const analyzeChapterImage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { imageUrl, chapterId } = req.body || {};
+
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的图片地址'
+      });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const normalizedImageUrl = imageUrl.startsWith('http')
+      ? imageUrl
+      : imageUrl.startsWith('/')
+        ? `${baseUrl}${imageUrl}`
+        : `${baseUrl}/${imageUrl}`;
+
+    const memories = await getUserMemoirContent(userId);
+    const summaryText = buildMemoirSummary(memories);
+    const focusChapter = chapterId ? memories.find(item => item.chapterId === chapterId) : null;
+    const focusHint = focusChapter
+      ? `当前章节《${focusChapter.title}》的已有内容：${truncateText(focusChapter.content || '', 200)}`
+      : '请根据整本回忆录的语气与风格续写。';
+
+    const systemPrompt = `你是一位中文回忆录写作助手，需要根据上传的图片内容，结合用户已有的回忆录故事，为当前章节补充新的段落。写作要求：
+1. 文字必须保持温暖、真诚、第一人称叙事风格。
+2. 内容需贴合回忆录已有的时代背景与人物设定，不要引入违和的情节。
+3. 生成的文字用自然中文，长度控制在2-4句（约80~150字），避免列表式描述。
+4. 不要重复已有内容，可在故事上做合理延展。`;
+
+    const contextText = `以下是该用户回忆录的章节摘要：\n${summaryText}\n\n${focusHint}\n\n请观察用户上传的图片，提炼与以上故事脉络相关的细节，用一段连贯的文字补充到章节末尾。`;
+
+    const completion = await client.chat.completions.create({
+      model: process.env.DASHSCOPE_VL_MODEL || process.env.DASHSCOPE_MODEL || 'qwen3-vl-plus',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: contextText },
+            { type: 'image_url', image_url: { url: normalizedImageUrl } }
+          ]
+        }
+      ],
+      stream: false,
+      extra_body: {
+        enable_thinking: false
+      }
+    });
+
+    const aiResponse = completion.choices?.[0]?.message?.content || '';
+
+    if (!aiResponse.trim()) {
+      return res.status(200).json({
+        success: true,
+        message: '解析完成，但未生成有效文字',
+        data: {
+          text: ''
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '图片解析成功',
+      data: {
+        text: aiResponse.trim()
+      }
+    });
+  } catch (error) {
+    console.error('图像解析失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '图片解析失败，请稍后重试',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * @desc 刷新用户角色缓存
  * @route POST /api/ai/refresh
  * @access Private
@@ -726,5 +833,6 @@ module.exports = {
   prebuildCharacter,
   refreshCharacter,
   completeText,
-  generateCharacterName
+  generateCharacterName,
+  analyzeChapterImage
 };

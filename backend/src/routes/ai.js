@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // 导入控制器
-const { 
+const {
   chatWithAI,
   guestChatWithAI,
   getConversationHistory, 
@@ -11,7 +11,8 @@ const {
   prebuildCharacter,
   refreshCharacter,
   completeText,
-  generateCharacterName
+  generateCharacterName,
+  analyzeChapterImage
 } = require('../controllers/aiController');
 
 // 导入中间件
@@ -72,6 +73,13 @@ router.post('/character-name', authenticateToken, generateCharacterName);
  * @access  Private
  */
 router.post('/refresh', authenticateToken, refreshCharacter);
+
+/**
+ * @route   POST /api/ai/vision/analyze
+ * @desc    上传图片并生成章节补充内容
+ * @access  Private
+ */
+router.post('/vision/analyze', authenticateToken, analyzeChapterImage);
 
 /**
  * @route   POST /api/ai/complete-text

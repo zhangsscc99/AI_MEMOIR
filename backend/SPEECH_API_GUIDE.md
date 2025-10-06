@@ -23,11 +23,6 @@ ALIYUN_AK_SECRET=你的AccessKey_Secret
 cd /Users/Zhuanz1/Desktop/memoir/backend
 
 # 设置阿里云AccessKey ID
-echo "ALIYUN_AK_ID=LTAI5tJ8qo1jXZGcg5XgSmXT" >> .env
-
-# 设置阿里云AccessKey Secret
-echo "ALIYUN_AK_SECRET=cFS1zCVT0mZXezXxwC4MTNh9yufOBd" >> .env
-```
 
 ## API 接口
 
