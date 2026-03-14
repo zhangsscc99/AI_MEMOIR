@@ -22,6 +22,7 @@
 
   <!-- 可滚动内容区 -->
   <scroll-view class="content" scroll-y>
+  <view class="content-inner">
 
     <!-- 标题输入 -->
     <input
@@ -60,6 +61,7 @@
     />
 
     <view class="content-spacer"></view>
+  </view>
   </scroll-view>
 
   <!-- 底部操作栏 -->
