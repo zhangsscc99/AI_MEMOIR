@@ -1,0 +1,59 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/memoir/memoir",
+    "pages/ai-chat/ai-chat",
+    "pages/diary/diary",
+    "pages/profile/profile",
+    "pages/chapter-edit/chapter-edit",
+    "pages/diary-edit/diary-edit"
+  ],
+  "tabBar": {
+    "custom": true,
+    "color": "#999999",
+    "selectedColor": "#FF6B47",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab/home.png",
+        "selectedIconPath": "images/tab/home_active.png"
+      },
+      {
+        "pagePath": "pages/memoir/memoir",
+        "text": "回忆录",
+        "iconPath": "images/tab/book.png",
+        "selectedIconPath": "images/tab/book_active.png"
+      },
+      {
+        "pagePath": "pages/ai-chat/ai-chat",
+        "text": "AI聊天",
+        "iconPath": "images/tab/chat.png",
+        "selectedIconPath": "images/tab/chat_active.png"
+      },
+      {
+        "pagePath": "pages/diary/diary",
+        "text": "随记",
+        "iconPath": "images/tab/pencil.png",
+        "selectedIconPath": "images/tab/pencil_active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab/person.png",
+        "selectedIconPath": "images/tab/person_active.png"
+      }
+    ]
+  },
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "岁月镜像",
+    "navigationBarTextStyle": "black"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

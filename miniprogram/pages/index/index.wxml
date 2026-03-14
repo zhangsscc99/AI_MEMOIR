@@ -1,0 +1,73 @@
+<!-- pages/index/index.wxml -->
+<view class="page">
+
+  <!-- 回忆录主卡片 -->
+  <view class="memoir-card">
+    <view class="memoir-book">
+      <image class="book-cover-img" src="/images/memoirbook.png" mode="aspectFill" />
+    </view>
+    <view class="memoir-info">
+      <text class="memoir-title">回忆录</text>
+      <text class="memoir-desc">记录您的人生故事</text>
+      <view class="memoir-progress">
+        <text class="progress-num">{{totalAnswered}}/36</text>
+        <text class="progress-label"> 已录制</text>
+      </view>
+      <view class="progress-bar">
+        <view class="progress-fill" style="width:{{totalAnswered / 36 * 100}}%"></view>
+      </view>
+      <view class="memoir-btns">
+        <button class="memoir-btn" bindtap="goStartRecord">
+          <text>开始</text>
+          <text>录制</text>
+        </button>
+        <button class="memoir-btn" bindtap="goBookManage">
+          <text>书籍</text>
+          <text>管理</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 随记横幅 -->
+  <view class="diary-banner" bindtap="goDiary">
+    <image class="diary-banner-bg" src="/images/winter.png" mode="aspectFill" />
+    <view class="diary-banner-overlay"></view>
+    <view class="diary-banner-content">
+      <text class="diary-banner-title">随记</text>
+      <text class="diary-banner-desc">记录照片里的故事，随手写下生活点滴</text>
+      <text class="diary-banner-desc">轻松导入回忆录</text>
+    </view>
+  </view>
+
+  <!-- 章节预览 -->
+  <view class="chapters-section">
+    <view class="section-header">
+      <text class="section-title">章节预览</text>
+    </view>
+
+    <scroll-view class="chapters-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="chapters-row">
+        <view
+          wx:for="{{chapterList}}"
+          wx:key="id"
+          class="chapter-card"
+          bindtap="goChapter"
+          data-id="{{item.id}}"
+          data-title="{{item.title}}"
+        >
+          <image class="chapter-bg-img" src="/images/{{item.image}}" mode="aspectFill" />
+          <view class="chapter-card-overlay"></view>
+          <view class="chapter-card-content">
+            <text class="chapter-num">{{item.num}}</text>
+            <text class="chapter-name">{{item.title}}</text>
+            <text class="chapter-desc-text">{{item.desc}}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <text class="scroll-hint">左右滑动浏览章节</text>
+  </view>
+
+</view>

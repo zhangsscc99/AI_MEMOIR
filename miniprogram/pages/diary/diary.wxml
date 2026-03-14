@@ -1,0 +1,58 @@
+<!-- pages/diary/diary.wxml -->
+<view class="page" bindtap="hideMenu">
+
+  <!-- 页头 -->
+  <view class="page-header">
+    <text class="page-big-title">随记</text>
+    <text class="page-subtitle">记录照片里的故事，随手写下生活点滴。</text>
+    <text class="page-subtitle">轻松导入回忆录</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <view class="loading-spinner"></view>
+  </view>
+
+  <!-- 列表 -->
+  <view wx:else class="diary-list">
+    <view
+      wx:for="{{diaries}}"
+      wx:key="_id"
+      class="diary-item"
+      bindtap="openDiary"
+      data-id="{{item._id}}"
+      data-sample="{{item.isSample}}"
+    >
+      <image class="diary-thumb" src="{{item.firstImage}}" mode="aspectFill" />
+
+      <view class="diary-content">
+        <text class="diary-title">{{item.title}}</text>
+        <text class="diary-date">{{item.dateStr}}</text>
+      </view>
+
+      <view class="menu-trigger" catchtap="toggleMenu" data-id="{{item._id}}" wx:if="{{!item.isSample}}">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+      <view class="menu-trigger" wx:else>
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+
+      <!-- 操作菜单 -->
+      <view class="action-menu" wx:if="{{activeMenu === item._id}}">
+        <view class="action-item" catchtap="editDiary" data-id="{{item._id}}">编辑</view>
+        <view class="action-divider"></view>
+        <view class="action-item action-delete" catchtap="deleteDiary" data-id="{{item._id}}">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 悬浮新建按钮 -->
+  <view class="fab" bindtap="goNewDiary">
+    <text class="fab-text">+ 新随记</text>
+  </view>
+
+</view>

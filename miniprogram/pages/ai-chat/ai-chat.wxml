@@ -1,0 +1,77 @@
+<!-- pages/ai-chat/ai-chat.wxml -->
+<view class="chat-page">
+
+  <!-- 角色卡片（原版顶部） -->
+  <view class="character-card">
+    <view class="character-avatar">
+      <image class="avatar-image" src="/images/default-avatar.png" mode="aspectFill" />
+    </view>
+    <view class="character-info">
+      <view wx:if="{{!editingName}}" class="name-row">
+        <text class="character-name">{{characterName}}</text>
+        <view class="edit-btn" bindtap="startEditName">✏️</view>
+      </view>
+      <view wx:else class="name-edit-row">
+        <input class="name-input" value="{{editNameInput}}" bindinput="onEditNameInput" bindconfirm="saveEditName" focus />
+        <view class="save-name-btn" bindtap="saveEditName">确定</view>
+      </view>
+      <text class="character-desc">{{characterDesc}}</text>
+    </view>
+  </view>
+
+  <!-- 消息列表 -->
+  <scroll-view
+    class="messages-scroll"
+    scroll-y
+    scroll-into-view="{{scrollToView}}"
+    scroll-with-animation
+    enhanced
+  >
+    <view class="messages-list">
+      <view
+        wx:for="{{messages}}"
+        wx:key="id"
+        id="{{item.id}}"
+        class="msg-row {{item.role === 'user' ? 'user-row' : 'ai-row'}}"
+      >
+        <view class="msg-bubble {{item.role === 'user' ? 'user-bubble' : 'ai-bubble'}}">
+          <text class="msg-text" user-select>{{item.content}}</text>
+        </view>
+        <text class="msg-time">{{item.time}}</text>
+      </view>
+
+      <!-- AI 输入中 -->
+      <view class="msg-row ai-row" wx:if="{{loading}}">
+        <view class="msg-bubble ai-bubble typing-bubble">
+          <view class="typing-dots">
+            <view class="dot"></view>
+            <view class="dot"></view>
+            <view class="dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部输入栏 -->
+  <view class="input-bar">
+    <input
+      class="msg-input"
+      placeholder="与小忆聊天..."
+      placeholder-class="input-ph"
+      value="{{inputText}}"
+      bindinput="onInput"
+      bindconfirm="sendMessage"
+      confirm-type="send"
+      cursor-spacing="16"
+      adjust-position
+    />
+    <view
+      class="send-btn {{(!inputText.trim() || loading) ? 'send-disabled' : 'send-active'}}"
+      bindtap="sendMessage"
+    >
+      <text class="send-text">发送</text>
+    </view>
+  </view>
+
+</view>

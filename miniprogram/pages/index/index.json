@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "岁月镜像",
+  "navigationBarBackgroundColor": "#FFFFFF",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#f8f8f8"
+}
