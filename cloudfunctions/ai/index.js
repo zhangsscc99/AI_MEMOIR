@@ -162,6 +162,8 @@ exports.main = async (event, context) => {
       return clearHistory(openid)
     case 'getCharacterName':
       return getCharacterName(openid)
+    case 'getCharacterInfo':
+      return getCharacterInfo(openid)
     default:
       return { success: false, error: '未知操作: ' + action }
   }
@@ -394,5 +396,47 @@ async function getCharacterName(openid) {
     return { success: true, data: { name: trimmed || null } }
   } catch (err) {
     return { success: true, data: { name: null } }
+  }
+}
+
+// 从回忆录内容中提取角色名 + 生成角色简介
+async function getCharacterInfo(openid) {
+  if (!openid) return { success: false, error: '用户未登录' }
+
+  const memories = await getUserMemoirContent(openid)
+  if (memories.length === 0) {
+    return { success: true, data: { name: '小忆', desc: '我是小忆，你的AI回忆录助手。还没有回忆录内容，快去记录你的故事吧！' } }
+  }
+
+  try {
+    const sampleContent = memories
+      .slice(0, 5)
+      .map(m => `【${m.type}】${m.title}：${m.content.substring(0, 200)}`)
+      .join('\n\n')
+      .substring(0, 1200)
+
+    const messages = [
+      {
+        role: 'system',
+        content: `根据以下回忆录内容，请用JSON格式输出两个字段：
+1. "name"：主人公的姓名或称谓（如"张秀英"、"爷爷"、"外婆"），不超过8个字，无法确定时用"小忆"
+2. "desc"：以第一人称写一段自我介绍，基于回忆录的真实内容，体现主人公的经历和性格，50字以内，不要套话
+
+只输出JSON，不要其他内容。示例：{"name":"张秀英","desc":"我是张秀英，生于1950年代的农村，经历了许多岁月变迁，最爱和家人一起过节。"}`
+      },
+      { role: 'user', content: sampleContent }
+    ]
+
+    const raw = await callDashScope(messages, null, 200)
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      const name = (parsed.name || '小忆').trim().replace(/["""''《》【】]/g, '')
+      const desc = (parsed.desc || '').trim()
+      return { success: true, data: { name, desc } }
+    }
+    return { success: true, data: { name: '小忆', desc: '' } }
+  } catch (err) {
+    return { success: true, data: { name: '小忆', desc: '' } }
   }
 }

@@ -2,8 +2,7 @@
 const app = getApp()
 
 const DEFAULT_NAME = '小忆'
-const STORAGE_KEY_NAME = 'aiCharName'
-const STORAGE_KEY_CUSTOM = 'aiCharNameCustom'
+const DEFAULT_DESC = '我是小忆，你的AI回忆录助手。'
 
 Page({
   data: {
@@ -12,7 +11,7 @@ Page({
     loading: false,
     userInfo: null,
     characterName: DEFAULT_NAME,
-    characterDesc: '我是小忆，你的AI回忆录助手。我可以帮你梳理已经记录的章节、整理随记内容，还能陪你聊天，继续探索新的故事。',
+    characterDesc: DEFAULT_DESC,
     editingName: false,
     editNameInput: '',
     scrollToView: '',
@@ -23,19 +22,8 @@ Page({
     var userInfo = app.getUserInfo()
     this.setData({ userInfo: userInfo })
 
-    // 加载持久化的角色名
-    var savedName = wx.getStorageSync(STORAGE_KEY_NAME)
-    if (savedName) {
-      this.setData({ characterName: savedName })
-    }
-
     if (userInfo) {
-      // 恢复历史对话
       await this.loadHistory()
-      // 若无手动设置的名字，尝试从回忆录自动提取
-      if (!wx.getStorageSync(STORAGE_KEY_CUSTOM)) {
-        this.fetchCharacterName()
-      }
     } else {
       if (!this.data.historyLoaded) {
         this.addMessage('assistant', '你好！我是小忆，你的AI回忆录助手。登录后我会基于你的回忆录内容与你深度交流。')
@@ -46,6 +34,11 @@ Page({
   onShow: function() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 2 })
+    }
+    // 每次导航到此页面都刷新角色信息
+    var userInfo = this.data.userInfo || app.getUserInfo()
+    if (userInfo) {
+      this.refreshCharacterInfo()
     }
   },
 
@@ -59,10 +52,8 @@ Page({
       var history = result.result?.data?.history || []
 
       if (history.length === 0) {
-        // 无历史记录，显示欢迎语
         this.addMessage('assistant', '你好！我是' + this.data.characterName + '。我拥有你回忆录中记录的所有记忆，有什么想聊的吗？')
       } else {
-        // 恢复历史消息（最近20条）
         var messages = history.map(function(h, i) {
           return {
             id: 'msg_' + i,
@@ -81,17 +72,21 @@ Page({
     }
   },
 
-  // 从回忆录自动提取角色名（不影响 UI 加载速度，静默执行）
-  fetchCharacterName: async function() {
+  // 每次进入页面刷新角色名 + 角色简介（基于最新回忆录内容）
+  refreshCharacterInfo: async function() {
     try {
       var result = await wx.cloud.callFunction({
         name: 'ai',
-        data: { action: 'getCharacterName' }
+        data: { action: 'getCharacterInfo' }
       })
-      var name = result.result?.data?.name
-      if (name && name !== DEFAULT_NAME && name.length <= 8) {
-        wx.setStorageSync(STORAGE_KEY_NAME, name)
-        this.setData({ characterName: name })
+      var data = result.result?.data
+      if (data) {
+        var updates = {}
+        if (data.name) updates.characterName = data.name
+        if (data.desc) updates.characterDesc = data.desc
+        if (Object.keys(updates).length > 0) {
+          this.setData(updates)
+        }
       }
     } catch (e) {}
   },
@@ -159,9 +154,6 @@ Page({
 
   saveEditName: function() {
     var name = this.data.editNameInput.trim() || DEFAULT_NAME
-    // 持久化到 storage，并标记为手动设置
-    wx.setStorageSync(STORAGE_KEY_NAME, name)
-    wx.setStorageSync(STORAGE_KEY_CUSTOM, true)
     this.setData({ characterName: name, editingName: false })
   },
 
