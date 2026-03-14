@@ -19,23 +19,18 @@ Page({
     this.setData({ loading: true })
     try {
       const db = wx.cloud.database()
-      const openid = app.getUserInfo()?._id
-      let diaries = []
-
-      if (openid) {
-        const res = await db.collection('diaries')
-          .where({ openid })
-          .orderBy('diary_date', 'desc')
-          .limit(50)
-          .get()
-        diaries = res.data.map(d => ({
-          _id: d._id,
-          title: d.title || '无标题',
-          firstImage: (d.images || [])[0] || '/images/lion.png',
-          dateStr: formatDateStr(d.diary_date),
-          content: d.content || ''
-        }))
-      }
+      // 微信云 DB 自动按 _openid 过滤，直接查即可，无需手动 where(openid)
+      const res = await db.collection('diaries')
+        .orderBy('diary_date', 'desc')
+        .limit(50)
+        .get()
+      const diaries = res.data.map(d => ({
+        _id: d._id,
+        title: d.title || '无标题',
+        firstImage: (d.images || [])[0] || null,
+        dateStr: formatDateStr(d.diary_date),
+        content: d.content || ''
+      }))
 
       // 始终在末尾追加示例条目
       diaries.push({

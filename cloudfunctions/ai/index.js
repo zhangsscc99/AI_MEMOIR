@@ -51,7 +51,7 @@ async function getUserMemoirContent(openid) {
         .limit(20)
         .get(),
       db.collection('diaries')
-        .where({ openid })
+        .where({ _openid: openid })
         .orderBy('updated_at', 'desc')
         .limit(10)
         .get()
