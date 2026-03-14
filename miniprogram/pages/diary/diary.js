@@ -72,7 +72,7 @@ Page({
   openDiary(e) {
     const { id, sample } = e.currentTarget.dataset
     if (sample) {
-      wx.showToast({ title: '这是示例随记', icon: 'none' })
+      wx.navigateTo({ url: `/pages/diary-edit/diary-edit?id=sample_1&sample=1` })
       return
     }
     wx.navigateTo({ url: `/pages/diary-edit/diary-edit?id=${id}` })

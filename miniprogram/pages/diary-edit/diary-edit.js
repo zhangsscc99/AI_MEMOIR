@@ -12,7 +12,7 @@ const MOODS = [
 
 Page({
   data: {
-    id: null,           // 编辑时有id
+    id: null,
     title: '',
     content: '',
     mood: 'calm',
@@ -23,7 +23,7 @@ Page({
     selectedMoodIdx: 1,
     saving: false,
     aiPolishing: false,
-    // 录音
+    isSample: false,
     isRecording: false,
     recordingDuration: 0
   },
@@ -31,10 +31,27 @@ Page({
   onLoad(options) {
     if (options.id) {
       this.setData({ id: options.id })
-      this.loadDiary(options.id)
+      if (options.id === 'sample_1') {
+        this.loadSampleDiary()
+      } else {
+        this.loadDiary(options.id)
+      }
     }
     this.recorderManager = wx.getRecorderManager()
     this.setupRecorder()
+  },
+
+  // 加载示例随记（只读展示）
+  loadSampleDiary() {
+    this.setData({
+      title: '春节舞狮子',
+      content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
+      images: ['/images/lion.png'],
+      mood: 'happy',
+      selectedMoodIdx: 0,
+      isSample: true
+    })
+    wx.setNavigationBarTitle({ title: '示例随记' })
   },
 
   onUnload() {
@@ -272,6 +289,10 @@ Page({
 
   // 保存随记
   async saveDiary() {
+    if (this.data.isSample) {
+      wx.showToast({ title: '这是示例随记，无法保存', icon: 'none' })
+      return
+    }
     if (this.data.saving) return
     if (!this.data.title && !this.data.content) {
       wx.showToast({ title: '请填写标题或内容', icon: 'none' })

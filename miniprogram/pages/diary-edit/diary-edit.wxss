@@ -6,6 +6,17 @@
   padding-bottom: 80rpx;
 }
 
+/* 示例横幅 */
+.sample-banner {
+  background: #FFF8E1;
+  border-bottom: 1rpx solid #FFE082;
+  padding: 16rpx 28rpx;
+}
+.sample-banner-text {
+  font-size: 24rpx;
+  color: #8D6E00;
+}
+
 /* 工具栏 */
 .toolbar {
   display: flex;

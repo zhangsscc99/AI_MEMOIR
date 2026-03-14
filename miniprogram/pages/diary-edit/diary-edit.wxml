@@ -1,5 +1,11 @@
 <!-- pages/diary-edit/diary-edit.wxml - 随记编辑 -->
 <view class="container">
+
+  <!-- 示例提示横幅 -->
+  <view wx:if="{{isSample}}" class="sample-banner">
+    <text class="sample-banner-text">📖 这是示例随记，仅供参考</text>
+  </view>
+
   <!-- 工具栏 -->
   <view class="toolbar">
     <view class="toolbar-group">
