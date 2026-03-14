@@ -52,7 +52,12 @@ Page({
     this.setupRecorder()
   },
 
-  goBack() {
+  async goBack() {
+    if (this.data.isRecording) this.recorderManager.stop()
+    // 有内容则自动保存后再返回
+    if (!this.data.isSample && (this.data.title || this.data.content)) {
+      await this.autoSave()
+    }
     wx.navigateBack()
   },
 
@@ -71,6 +76,38 @@ Page({
 
   onUnload() {
     if (this.data.isRecording) this.recorderManager.stop()
+  },
+
+  // 静默自动保存（返回时调用，无 toast/loading）
+  async autoSave() {
+    if (this.data.saving) return
+    this.setData({ saving: true })
+    try {
+      const db = wx.cloud.database()
+      const openid = app.getUserInfo()?._id
+      const diaryData = {
+        openid,
+        title: this.data.title || '无标题',
+        content: this.data.content,
+        mood: this.data.mood,
+        tags: this.data.tags,
+        images: this.data.images,
+        diary_date: new Date().toISOString(),
+        updated_at: db.serverDate()
+      }
+      if (this.data.id) {
+        await db.collection('diaries').doc(this.data.id).update({ data: diaryData })
+      } else {
+        const res = await db.collection('diaries').add({
+          data: { ...diaryData, created_at: db.serverDate() }
+        })
+        this.setData({ id: res._id })
+      }
+    } catch (err) {
+      console.error('自动保存失败:', err)
+    } finally {
+      this.setData({ saving: false })
+    }
   },
 
   // 加载已有随记
