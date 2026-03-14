@@ -1,6 +1,24 @@
 // pages/chapter-edit/chapter-edit.js - 章节编辑页
 const app = getApp()
 
+const PROMPTS_MAP = {
+  background:    ['您出生在哪里？那是一个什么样的地方？', '您的父母是做什么工作的？', '家里有哪些亲人？他们各自有什么特点？'],
+  childhood:     ['您最难忘的童年记忆是什么？', '小时候最喜欢玩什么游戏？', '有没有特别要好的童年伙伴？'],
+  education:     ['您的求学经历是怎样的？', '有没有对您影响深刻的老师？', '学生时代最难忘的经历是什么？'],
+  career:        ['您的第一份工作是什么？', '职业生涯中最大的成就是什么？', '工作中遇到过什么挑战？'],
+  love:          ['您是如何遇到另一半的？', '印象最深刻的约会经历是什么？', '婚礼是什么样的？'],
+  family:        ['成为父母后的感受如何？', '孩子给您带来了什么变化？', '家庭生活中最温馨的时刻是什么？'],
+  travel:        ['您去过哪些地方旅行？', '最难忘的旅行经历是什么？', '旅行中遇到过什么有趣的人或事？'],
+  relationships: ['您生命中最重要的朋友是谁？', '有没有改变您人生轨迹的重要遇见？', '您如何维系长久的友谊？'],
+  laterlife:     ['退休后的生活是什么样的？', '晚年最大的快乐来源是什么？', '对于衰老您有什么感受？'],
+  wisdom:        ['人生中最重要的感悟是什么？', '如果重新来过，您会做出不同的选择吗？', '您希望给年轻人什么建议？']
+}
+
+function getDateStr() {
+  const d = new Date()
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+}
+
 Page({
   data: {
     chapterId: '',
@@ -11,27 +29,33 @@ Page({
     status: 'draft',
     loading: false,
     saving: false,
-    // 录音相关
     isRecording: false,
     recordingDuration: 0,
     recordingTimer: null,
-    // AI相关
     aiPolishing: false,
-    // 图片上传
-    uploadingImage: false
+    uploadingImage: false,
+    prompts: [],
+    dateStr: '',
+    statusBarHeight: 0
   },
 
   onLoad(options) {
     const { chapterId, title } = options
+    const sysInfo = wx.getSystemInfoSync()
     this.setData({
       chapterId,
-      chapterTitle: decodeURIComponent(title || '章节')
+      chapterTitle: decodeURIComponent(title || '章节'),
+      prompts: PROMPTS_MAP[chapterId] || [],
+      dateStr: getDateStr(),
+      statusBarHeight: sysInfo.statusBarHeight
     })
-    // 初始化录音管理器
     this.recorderManager = wx.getRecorderManager()
     this.setupRecorder()
-    // 加载已有内容
     this.loadChapter()
+  },
+
+  goBack() {
+    wx.navigateBack()
   },
 
   onUnload() {

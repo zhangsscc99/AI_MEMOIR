@@ -1,5 +1,3 @@
 {
-  "navigationBarTitleText": "写随记",
-  "navigationBarBackgroundColor": "#FFFFFF",
-  "navigationBarTextStyle": "black"
+  "navigationStyle": "custom"
 }

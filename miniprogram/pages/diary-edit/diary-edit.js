@@ -25,10 +25,21 @@ Page({
     aiPolishing: false,
     isSample: false,
     isRecording: false,
-    recordingDuration: 0
+    recordingDuration: 0,
+    pageTitle: '新随记',
+    statusBarHeight: 0
   },
 
   onLoad(options) {
+    const sysInfo = wx.getSystemInfoSync()
+    let pageTitle = '新随记'
+    if (options.id === 'sample_1') {
+      pageTitle = '示例随记'
+    } else if (options.id) {
+      pageTitle = '编辑随记'
+    }
+    this.setData({ statusBarHeight: sysInfo.statusBarHeight, pageTitle })
+
     if (options.id) {
       this.setData({ id: options.id })
       if (options.id === 'sample_1') {
@@ -39,6 +50,10 @@ Page({
     }
     this.recorderManager = wx.getRecorderManager()
     this.setupRecorder()
+  },
+
+  goBack() {
+    wx.navigateBack()
   },
 
   // 加载示例随记（只读展示）

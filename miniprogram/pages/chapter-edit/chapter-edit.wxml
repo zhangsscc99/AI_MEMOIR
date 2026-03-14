@@ -1,99 +1,71 @@
-<!-- pages/chapter-edit/chapter-edit.wxml - 章节编辑页 -->
-<view class="container">
-  <!-- 背景图片区 -->
-  <view class="bg-image-area" bindtap="chooseImage">
-    <image
-      wx:if="{{backgroundImage}}"
-      class="bg-image"
-      src="{{backgroundImage}}"
-      mode="aspectFill"
-    />
-    <view wx:else class="bg-image-placeholder">
-      <text class="placeholder-icon">🖼️</text>
-      <text class="placeholder-text">点击添加封面图片</text>
-    </view>
-    <view class="bg-image-overlay"></view>
-    <text class="chapter-title-text">{{chapterTitle}}</text>
-  </view>
+<!-- pages/chapter-edit/chapter-edit.wxml -->
+<view class="page">
 
-  <!-- 工具栏 -->
-  <view class="toolbar">
-    <view class="toolbar-left">
-      <view class="toolbar-btn {{isRecording ? 'recording' : ''}}" bindtap="toggleRecording">
-        <text class="toolbar-icon">{{isRecording ? '⏹' : '🎙️'}}</text>
-        <text class="toolbar-label">{{isRecording ? formatDuration(recordingDuration) : '录音'}}</text>
-      </view>
-      <view class="toolbar-btn" bindtap="chooseImage">
-        <text class="toolbar-icon">📷</text>
-        <text class="toolbar-label">图片</text>
-      </view>
+  <!-- 状态栏占位 -->
+  <view class="status-bar" style="height: {{statusBarHeight}}px;"></view>
+
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-back" bindtap="goBack">
+      <text class="nav-back-icon">←</text>
     </view>
-    <view class="toolbar-right">
-      <view
-        class="toolbar-btn ai-btn {{aiPolishing ? 'loading' : ''}}"
-        bindtap="aiPolish"
-      >
-        <text class="toolbar-icon">✨</text>
-        <text class="toolbar-label">AI润色</text>
-      </view>
-      <view class="toolbar-btn save-btn {{saving ? 'loading' : ''}}" bindtap="saveChapter">
-        <text class="toolbar-icon">💾</text>
-        <text class="toolbar-label">{{saving ? '保存中' : '保存'}}</text>
-      </view>
+    <text class="nav-title">{{chapterTitle}}</text>
+    <view class="nav-save-btn {{saving ? 'saving' : ''}}" bindtap="saveChapter">
+      <text class="nav-save-text">{{saving ? '保存中' : '保存'}}</text>
     </view>
   </view>
 
-  <!-- 录音列表 -->
-  <view class="recordings-section" wx:if="{{recordings.length > 0}}">
-    <view class="section-header">
-      <text class="section-title">录音片段（{{recordings.length}}）</text>
-    </view>
-    <view class="recordings-list">
+  <!-- 可滚动内容区 -->
+  <scroll-view class="content" scroll-y>
+
+    <!-- 引导问题卡片 -->
+    <view class="prompts-card" wx:if="{{prompts.length > 0}}">
+      <text class="prompts-heading">引导问题</text>
       <view
-        wx:for="{{recordings}}"
+        wx:for="{{prompts}}"
         wx:key="index"
-        class="recording-item"
+        class="prompt-item"
       >
-        <view class="recording-left" bindtap="playRecording" data-fileid="{{item.fileID}}">
-          <view class="play-btn">▶</view>
-          <view class="recording-info">
-            <text class="recording-name">录音 {{index + 1}}</text>
-            <text class="recording-meta">{{item.duration > 0 ? formatDuration(item.duration / 1000) : '--'}}</text>
-          </view>
+        <view class="prompt-num-circle">
+          <text class="prompt-num-text">{{index + 1}}</text>
         </view>
-        <view class="recording-actions">
-          <text class="recording-transcribe" bindtap="transcribeRecording" data-fileid="{{item.fileID}}" data-index="{{index}}">转文字</text>
-          <text class="recording-delete" bindtap="deleteRecording" data-index="{{index}}">删除</text>
-        </view>
+        <text class="prompt-text">{{item}}</text>
       </view>
     </view>
-  </view>
 
-  <!-- 文字编辑区 -->
-  <view class="editor-section">
-    <view class="word-count">{{content.length}} 字</view>
-    <textarea
-      class="content-editor"
-      placeholder="开始记录您的故事..."
-      placeholder-class="editor-placeholder"
-      value="{{content}}"
-      bindinput="onContentInput"
-      auto-height
-      show-confirm-bar="{{false}}"
-      cursor-spacing="20"
-    />
-  </view>
-
-  <!-- 录音中浮层 -->
-  <view class="recording-overlay" wx:if="{{isRecording}}">
-    <view class="recording-wave">
-      <view class="wave-bar"></view>
-      <view class="wave-bar"></view>
-      <view class="wave-bar"></view>
-      <view class="wave-bar"></view>
-      <view class="wave-bar"></view>
+    <!-- 记录卡片 -->
+    <view class="record-card">
+      <text class="date-text">{{dateStr}}</text>
+      <view class="record-divider"></view>
+      <textarea
+        class="content-textarea"
+        placeholder="开始记录您的回忆..."
+        placeholder-class="textarea-ph"
+        value="{{content}}"
+        bindinput="onContentInput"
+        auto-height
+        show-confirm-bar="{{false}}"
+        cursor-spacing="160"
+      />
     </view>
-    <text class="recording-time">{{formatDuration(recordingDuration)}}</text>
-    <text class="recording-tip">正在录音，点击工具栏停止</text>
+
+    <view class="content-spacer"></view>
+  </scroll-view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="bottom-btn-wrap" bindtap="toggleRecording">
+      <view class="bottom-circle {{isRecording ? 'recording' : ''}}">
+        <text class="bottom-circle-icon">🎤</text>
+      </view>
+      <text class="bottom-label">{{isRecording ? '结束录制' : '点击录制'}}</text>
+    </view>
+    <view class="bottom-btn-wrap" bindtap="aiPolish">
+      <view class="bottom-circle {{aiPolishing ? 'loading' : ''}}">
+        <text class="bottom-circle-icon">💬</text>
+      </view>
+      <text class="bottom-label">AI补全</text>
+    </view>
   </view>
+
 </view>

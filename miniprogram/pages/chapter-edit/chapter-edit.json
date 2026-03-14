@@ -1,5 +1,3 @@
 {
-  "navigationBarTitleText": "编辑章节",
-  "navigationBarBackgroundColor": "#4A2C17",
-  "navigationBarTextStyle": "white"
+  "navigationStyle": "custom"
 }

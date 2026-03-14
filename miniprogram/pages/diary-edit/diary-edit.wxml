@@ -1,123 +1,81 @@
-<!-- pages/diary-edit/diary-edit.wxml - 随记编辑 -->
-<view class="container">
+<!-- pages/diary-edit/diary-edit.wxml -->
+<view class="page">
+
+  <!-- 状态栏占位 -->
+  <view class="status-bar" style="height: {{statusBarHeight}}px;"></view>
+
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-back" bindtap="goBack">
+      <text class="nav-back-icon">←</text>
+    </view>
+    <text class="nav-title">{{pageTitle}}</text>
+    <view class="nav-save-btn {{saving ? 'saving' : ''}}" bindtap="saveDiary">
+      <text class="nav-save-text">{{saving ? '保存中' : '保存'}}</text>
+    </view>
+  </view>
 
   <!-- 示例提示横幅 -->
   <view wx:if="{{isSample}}" class="sample-banner">
     <text class="sample-banner-text">📖 这是示例随记，仅供参考</text>
   </view>
 
-  <!-- 工具栏 -->
-  <view class="toolbar">
-    <view class="toolbar-group">
-      <view class="tool-btn {{isRecording ? 'active' : ''}}" bindtap="toggleRecording">
-        <text>{{isRecording ? '⏹ ' + formatDuration(recordingDuration) : '🎙️ 录音'}}</text>
-      </view>
-      <view class="tool-btn" bindtap="chooseImages">
-        <text>📷 图片</text>
-      </view>
-      <view class="tool-btn ai-btn {{aiPolishing ? 'loading' : ''}}" bindtap="aiPolish">
-        <text>✨ AI润色</text>
-      </view>
-    </view>
-    <view
-      class="save-btn {{saving ? 'loading' : ''}}"
-      bindtap="saveDiary"
-    >
-      <text>{{saving ? '保存中' : '保存'}}</text>
-    </view>
-  </view>
+  <!-- 可滚动内容区 -->
+  <scroll-view class="content" scroll-y>
 
-  <!-- 心情选择 -->
-  <view class="mood-section">
-    <text class="section-label">今天的心情</text>
-    <view class="mood-picker">
-      <view
-        wx:for="{{moods}}"
-        wx:key="value"
-        class="mood-item {{selectedMoodIdx === index ? 'selected' : ''}}"
-        bindtap="selectMood"
-        data-index="{{index}}"
-      >
-        <text class="mood-emoji">{{item.emoji}}</text>
-        <text class="mood-label">{{item.label}}</text>
-      </view>
-    </view>
-  </view>
-
-  <!-- 标题 -->
-  <view class="input-section">
+    <!-- 标题输入 -->
     <input
       class="title-input"
-      placeholder="标题（可选）"
-      placeholder-class="input-placeholder"
+      placeholder="随记标题"
+      placeholder-class="title-ph"
       value="{{title}}"
       bindinput="onTitleInput"
       maxlength="50"
     />
-  </view>
 
-  <!-- 内容 -->
-  <view class="content-section">
+    <!-- 图片区：无图时显示上传占位 -->
+    <view wx:if="{{images.length === 0}}" class="photo-upload" bindtap="chooseImages">
+      <text class="photo-upload-icon">📷</text>
+      <text class="photo-upload-text">上传图片 记录美好瞬间</text>
+    </view>
+
+    <!-- 图片区：已有图时显示预览 -->
+    <view wx:else class="photo-preview-wrap">
+      <image class="photo-preview" src="{{images[0]}}" mode="aspectFill" />
+      <view class="photo-change-btn" catchtap="chooseImages">
+        <text class="photo-change-text">更换</text>
+      </view>
+    </view>
+
+    <!-- 文字内容 -->
     <textarea
       class="content-textarea"
-      placeholder="记录此刻的所思所想..."
-      placeholder-class="textarea-placeholder"
+      placeholder="记录您现在想到的事情..."
+      placeholder-class="textarea-ph"
       value="{{content}}"
       bindinput="onContentInput"
       auto-height
       show-confirm-bar="{{false}}"
-      cursor-spacing="20"
+      cursor-spacing="160"
     />
-    <text class="word-count">{{content.length}} 字</text>
-  </view>
 
-  <!-- 图片区 -->
-  <view class="images-section" wx:if="{{images.length > 0}}">
-    <view class="images-grid">
-      <view
-        wx:for="{{images}}"
-        wx:key="index"
-        class="image-item"
-      >
-        <image class="thumb-image" src="{{item}}" mode="aspectFill" />
-        <view class="remove-image" catchtap="removeImage" data-index="{{index}}">×</view>
+    <view class="content-spacer"></view>
+  </scroll-view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="bottom-btn-wrap" bindtap="toggleRecording">
+      <view class="bottom-circle {{isRecording ? 'recording' : ''}}">
+        <text class="bottom-circle-icon">🎤</text>
       </view>
-      <view class="add-image-btn" bindtap="chooseImages" wx:if="{{images.length < 9}}">
-        <text>+</text>
+      <text class="bottom-label">{{isRecording ? '结束录制' : '点击录制'}}</text>
+    </view>
+    <view class="bottom-btn-wrap" bindtap="aiPolish">
+      <view class="bottom-circle {{aiPolishing ? 'loading' : ''}}">
+        <text class="bottom-circle-icon">💬</text>
       </view>
+      <text class="bottom-label">AI补全</text>
     </view>
   </view>
 
-  <!-- 标签区 -->
-  <view class="tags-section">
-    <text class="section-label">标签</text>
-    <view class="tags-wrap">
-      <view
-        wx:for="{{tags}}"
-        wx:key="index"
-        class="tag-item"
-      >
-        <text>#{{item}}</text>
-        <text class="tag-remove" catchtap="removeTag" data-index="{{index}}">×</text>
-      </view>
-    </view>
-    <view class="tag-input-wrap" wx:if="{{tags.length < 5}}">
-      <input
-        class="tag-input"
-        placeholder="添加标签..."
-        value="{{tagInput}}"
-        bindinput="onTagInput"
-        bindconfirm="addTag"
-        maxlength="10"
-      />
-      <view class="tag-add-btn" bindtap="addTag">添加</view>
-    </view>
-  </view>
-
-  <!-- 录音中浮层 -->
-  <view class="recording-overlay" wx:if="{{isRecording}}">
-    <text class="rec-icon">🔴</text>
-    <text class="rec-time">{{formatDuration(recordingDuration)}}</text>
-    <text class="rec-tip">点击上方停止录音</text>
-  </view>
 </view>
