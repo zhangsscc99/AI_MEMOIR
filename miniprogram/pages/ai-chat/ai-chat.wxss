@@ -3,8 +3,9 @@
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 100rpx);
   background: #f8f6f3;
+  box-sizing: border-box;
 }
 
 /* 角色卡片 */
