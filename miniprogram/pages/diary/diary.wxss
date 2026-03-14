@@ -144,7 +144,7 @@
 /* 悬浮按钮（原版样式：白色毛玻璃） */
 .fab {
   position: fixed;
-  bottom: 160rpx;
+  bottom: calc(100rpx + env(safe-area-inset-bottom) + 24rpx);
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255,255,255,0.88);

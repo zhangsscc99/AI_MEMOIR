@@ -171,5 +171,5 @@
   border-color: #007AFF;
 }
 
-.bottom-circle-icon { font-size: 44rpx; }
+.bottom-circle-icon { width: 44rpx; height: 44rpx; }
 .bottom-label { font-size: 24rpx; color: #333; font-weight: 500; }

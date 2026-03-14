@@ -41,22 +41,39 @@ async function callDashScope(messages, model, maxTokens = 1500) {
   return response.data.choices[0].message.content
 }
 
-// 获取用户回忆录内容（从云数据库读取章节）
+// 获取用户回忆录内容（章节 + 随记）
 async function getUserMemoirContent(openid) {
   try {
-    const res = await db.collection('chapters')
-      .where({ openid })
-      .orderBy('updated_at', 'desc')
-      .limit(20)
-      .get()
+    const [chaptersRes, diariesRes] = await Promise.all([
+      db.collection('chapters')
+        .where({ openid })
+        .orderBy('updated_at', 'desc')
+        .limit(20)
+        .get(),
+      db.collection('diaries')
+        .where({ openid })
+        .orderBy('updated_at', 'desc')
+        .limit(10)
+        .get()
+    ])
 
-    return res.data.map(c => ({
+    const chapters = chaptersRes.data.map(c => ({
       chapterId: c.chapter_id,
       title: c.title || '未命名',
       content: c.content || '',
-      type: (c.chapter_id || '').startsWith('diary_') ? '随记' : '章节',
+      type: '章节',
       createdAt: c.created_at
     })).filter(m => m.content.trim().length > 0)
+
+    const diaries = diariesRes.data.map(d => ({
+      chapterId: d._id,
+      title: d.title || '随记',
+      content: d.content || '',
+      type: '随记',
+      createdAt: d.diary_date
+    })).filter(m => m.content.trim().length > 0)
+
+    return [...chapters, ...diaries]
   } catch (err) {
     console.error('获取回忆录内容失败:', err)
     return []

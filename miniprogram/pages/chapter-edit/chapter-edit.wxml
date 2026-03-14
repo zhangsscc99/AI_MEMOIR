@@ -56,13 +56,13 @@
   <view class="bottom-bar">
     <view class="bottom-btn-wrap" bindtap="toggleRecording">
       <view class="bottom-circle {{isRecording ? 'recording' : ''}}">
-        <text class="bottom-circle-icon">🎤</text>
+        <image class="bottom-circle-icon" src="/images/icons/microphone.svg" mode="aspectFit" />
       </view>
       <text class="bottom-label">{{isRecording ? '结束录制' : '点击录制'}}</text>
     </view>
     <view class="bottom-btn-wrap" bindtap="aiPolish">
       <view class="bottom-circle {{aiPolishing ? 'loading' : ''}}">
-        <text class="bottom-circle-icon">💬</text>
+        <image class="bottom-circle-icon" src="/images/icons/chat.svg" mode="aspectFit" />
       </view>
       <text class="bottom-label">AI补全</text>
     </view>
