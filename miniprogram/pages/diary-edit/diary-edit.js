@@ -58,7 +58,16 @@ Page({
     if (!this.data.isSample && (this.data.title || this.data.content)) {
       await this.autoSave()
     }
-    wx.navigateBack()
+    // 拿到上一页实例，在导航成功后主动刷新列表
+    const pages = getCurrentPages()
+    const prevPage = pages[pages.length - 2]
+    wx.navigateBack({
+      success() {
+        if (prevPage && typeof prevPage.loadDiaries === 'function') {
+          prevPage.loadDiaries()
+        }
+      }
+    })
   },
 
   // 加载示例随记（只读展示）
