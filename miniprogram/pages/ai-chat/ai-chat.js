@@ -15,7 +15,8 @@ Page({
     editingName: false,
     editNameInput: '',
     scrollToView: '',
-    historyLoaded: false
+    historyLoaded: false,
+    historyLoading: false
   },
 
   onLoad: async function() {
@@ -23,6 +24,7 @@ Page({
     this.setData({ userInfo: userInfo })
 
     if (userInfo) {
+      await this.refreshCharacterInfo()
       await this.loadHistory()
     } else {
       if (!this.data.historyLoaded) {
@@ -38,12 +40,16 @@ Page({
     // 每次导航到此页面都刷新角色信息
     var userInfo = this.data.userInfo || app.getUserInfo()
     if (userInfo) {
+      if (!this.data.userInfo) this.setData({ userInfo: userInfo })
       this.refreshCharacterInfo()
+      if (!this.data.historyLoaded) this.loadHistory()
     }
   },
 
   // 从云端恢复历史对话
   loadHistory: async function() {
+    if (this.data.historyLoading) return
+    this.setData({ historyLoading: true })
     try {
       var result = await wx.cloud.callFunction({
         name: 'ai',
@@ -69,6 +75,8 @@ Page({
     } catch (e) {
       this.addMessage('assistant', '你好！我是' + this.data.characterName + '。有什么想聊的吗？')
       this.setData({ historyLoaded: true })
+    } finally {
+      this.setData({ historyLoading: false })
     }
   },
 
@@ -86,9 +94,21 @@ Page({
         if (data.desc) updates.characterDesc = data.desc
         if (Object.keys(updates).length > 0) {
           this.setData(updates)
+          // 无历史时的欢迎语，随角色名自动更新
+          if (updates.characterName && this.data.messages.length === 1) {
+            var first = this.data.messages[0]
+            if (first.role === 'assistant' && first.content.indexOf('我拥有你回忆录中记录的所有记忆') > -1) {
+              var msg = Object.assign({}, first, {
+                content: '你好！我是' + updates.characterName + '。我拥有你回忆录中记录的所有记忆，有什么想聊的吗？'
+              })
+              this.setData({ messages: [msg] })
+            }
+          }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('刷新角色信息失败:', e)
+    }
   },
 
   onInput: function(e) {

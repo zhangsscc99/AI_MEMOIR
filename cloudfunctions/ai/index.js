@@ -62,7 +62,8 @@ async function getUserMemoirContent(openid) {
       title: c.title || '未命名',
       content: c.content || '',
       type: '章节',
-      createdAt: c.created_at
+      createdAt: c.created_at,
+      updatedAt: c.updated_at || c.created_at
     })).filter(m => m.content.trim().length > 0)
 
     const diaries = diariesRes.data.map(d => ({
@@ -70,10 +71,28 @@ async function getUserMemoirContent(openid) {
       title: d.title || '随记',
       content: d.content || '',
       type: '随记',
-      createdAt: d.diary_date
+      createdAt: d.created_at || d.diary_date,
+      updatedAt: d.updated_at || d.diary_date || d.created_at
     })).filter(m => m.content.trim().length > 0)
 
-    return [...chapters, ...diaries]
+    const toTs = (value) => {
+      if (!value) return 0
+      if (value instanceof Date) return value.getTime()
+      if (typeof value === 'string' || typeof value === 'number') {
+        const t = new Date(value).getTime()
+        return Number.isNaN(t) ? 0 : t
+      }
+      // 兼容云数据库日期对象
+      if (value && typeof value === 'object' && typeof value.getTime === 'function') {
+        const t = value.getTime()
+        return Number.isNaN(t) ? 0 : t
+      }
+      return 0
+    }
+
+    return [...chapters, ...diaries].sort((a, b) => {
+      return toTs(b.updatedAt || b.createdAt) - toTs(a.updatedAt || a.createdAt)
+    })
   } catch (err) {
     console.error('获取回忆录内容失败:', err)
     return []
@@ -399,13 +418,27 @@ async function getCharacterName(openid) {
   }
 }
 
+function buildFallbackCharacterDesc(memories, name = '小忆') {
+  if (!memories || memories.length === 0) {
+    return '我是小忆，你的AI回忆录助手。还没有回忆录内容，快去记录你的故事吧！'
+  }
+
+  const latest = memories[0]
+  const clean = (latest.content || '').replace(/\s+/g, '').slice(0, 24)
+  const title = latest.title || '最近的记忆'
+  if (clean) {
+    return `我是${name}，最近又想起《${title}》：${clean}${clean.length >= 24 ? '…' : ''}`
+  }
+  return `我是${name}，我的故事都写在回忆录里，欢迎和我聊聊。`
+}
+
 // 从回忆录内容中提取角色名 + 生成角色简介
 async function getCharacterInfo(openid) {
   if (!openid) return { success: false, error: '用户未登录' }
 
   const memories = await getUserMemoirContent(openid)
   if (memories.length === 0) {
-    return { success: true, data: { name: '小忆', desc: '我是小忆，你的AI回忆录助手。还没有回忆录内容，快去记录你的故事吧！' } }
+    return { success: true, data: { name: '小忆', desc: buildFallbackCharacterDesc(memories, '小忆') } }
   }
 
   try {
@@ -432,11 +465,11 @@ async function getCharacterInfo(openid) {
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
       const name = (parsed.name || '小忆').trim().replace(/["""''《》【】]/g, '')
-      const desc = (parsed.desc || '').trim()
+      const desc = (parsed.desc || '').trim() || buildFallbackCharacterDesc(memories, name || '小忆')
       return { success: true, data: { name, desc } }
     }
-    return { success: true, data: { name: '小忆', desc: '' } }
+    return { success: true, data: { name: '小忆', desc: buildFallbackCharacterDesc(memories, '小忆') } }
   } catch (err) {
-    return { success: true, data: { name: '小忆', desc: '' } }
+    return { success: true, data: { name: '小忆', desc: buildFallbackCharacterDesc(memories, '小忆') } }
   }
 }
