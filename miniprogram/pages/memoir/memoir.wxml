@@ -21,29 +21,6 @@
   </view>
 
   <!-- CTA 按钮 -->
-  <button class="cta-btn" bindtap="toggleChapters">开启回忆之旅</button>
-
-  <!-- 章节列表（展开后显示） -->
-  <view wx:if="{{showChapters}}" class="chapter-list">
-    <view
-      wx:for="{{chapterList}}"
-      wx:key="id"
-      class="chapter-item"
-      bindtap="goChapter"
-      data-id="{{item.id}}"
-      data-title="{{item.title}}"
-    >
-      <image class="chapter-bg-img" src="/images/{{item.image}}" mode="aspectFill" />
-      <view class="chapter-overlay"></view>
-      <view class="chapter-body">
-        <view class="chapter-top">
-          <text class="chapter-num-text">{{item.num}}</text>
-          <view wx:if="{{item.hasContent}}" class="done-badge">✓</view>
-        </view>
-        <text class="chapter-title-text">{{item.title}}</text>
-        <text class="chapter-desc-text">{{item.desc}}</text>
-      </view>
-    </view>
-  </view>
+  <button class="cta-btn" bindtap="goChapters">开启回忆之旅</button>
 
 </view>

@@ -1,0 +1,59 @@
+<!-- pages/chapters/chapters.wxml -->
+<view class="page">
+
+  <!-- 状态栏占位 -->
+  <view class="status-bar" style="height: {{statusBarHeight}}px;"></view>
+
+  <!-- 导航栏 -->
+  <view class="nav-bar">
+    <view class="nav-back" bindtap="goBack">
+      <text class="nav-back-icon">←</text>
+    </view>
+    <text class="nav-title">人生章节</text>
+    <view style="width: 64rpx;"></view>
+  </view>
+
+  <!-- 进度统计卡片 -->
+  <view class="stats-card">
+    <view class="stat-item">
+      <text class="stat-num">{{completedCount}}</text>
+      <text class="stat-label">已完成</text>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat-item">
+      <text class="stat-num">10</text>
+      <text class="stat-label">总章节</text>
+    </view>
+  </view>
+
+  <!-- 章节列表 -->
+  <scroll-view class="chapter-scroll" scroll-y>
+    <view class="chapter-list">
+      <view
+        wx:for="{{chapterList}}"
+        wx:key="id"
+        class="chapter-item"
+        bindtap="goChapter"
+        data-id="{{item.id}}"
+        data-title="{{item.title}}"
+      >
+        <image class="chapter-bg-img" src="/images/{{item.image}}" mode="aspectFill" />
+        <view class="chapter-overlay"></view>
+        <view class="chapter-body">
+          <text class="chapter-num-text">{{item.num}}</text>
+          <text class="chapter-title-text">{{item.title}}</text>
+          <text class="chapter-desc-text">{{item.desc}}</text>
+        </view>
+        <view wx:if="{{item.hasContent}}" class="done-badge">
+          <text class="done-badge-text">✓</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部提示 -->
+    <view class="hint-wrap">
+      <text class="hint-text">上下滑动浏览章节，点击开始录制</text>
+    </view>
+  </scroll-view>
+
+</view>
