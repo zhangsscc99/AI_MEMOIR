@@ -143,6 +143,8 @@ exports.main = async (event, context) => {
       return getHistory(openid)
     case 'clearHistory':
       return clearHistory(openid)
+    case 'getCharacterName':
+      return getCharacterName(openid)
     default:
       return { success: false, error: '未知操作: ' + action }
   }
@@ -343,5 +345,37 @@ async function clearHistory(openid) {
     return { success: true, message: '对话历史已清空' }
   } catch (err) {
     return { success: false, error: err.message }
+  }
+}
+
+// 从回忆录内容中提取人物姓名/称谓
+async function getCharacterName(openid) {
+  if (!openid) return { success: false, error: '用户未登录' }
+
+  const memories = await getUserMemoirContent(openid)
+  if (memories.length === 0) {
+    return { success: true, data: { name: null } }
+  }
+
+  try {
+    const sampleContent = memories
+      .slice(0, 3)
+      .map(m => m.content)
+      .join('\n\n')
+      .substring(0, 600)
+
+    const messages = [
+      {
+        role: 'system',
+        content: '从以下回忆录内容中识别主人公的姓名或称谓（例如"张秀英"、"爷爷"、"外婆"等）。只输出名字本身，不超过8个字，不要加任何解释。如果无法确定，输出"小忆"。'
+      },
+      { role: 'user', content: sampleContent }
+    ]
+
+    const name = await callDashScope(messages, null, 30)
+    const trimmed = name.trim().replace(/["""''《》【】]/g, '')
+    return { success: true, data: { name: trimmed || null } }
+  } catch (err) {
+    return { success: true, data: { name: null } }
   }
 }
