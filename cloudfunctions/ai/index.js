@@ -37,7 +37,7 @@ async function callMiniMax(messages, maxTokens) {
   const result = await cloud.openapi.serviceMarket.invokeService({
     service: MINIMAX_SERVICE_ID,
     api: MINIMAX_API_NAME,
-    data: {
+    data: JSON.stringify({
       model: MODEL,
       tokens_to_generate: maxTokens || 1500,
       temperature: 0.9,
@@ -46,11 +46,11 @@ async function callMiniMax(messages, maxTokens) {
       reply_constraints: { sender_type: 'BOT', sender_name: BOT_NAME },
       messages: converted,
       bot_setting: [{ bot_name: BOT_NAME, content: systemPrompt }]
-    },
+    }),
     clientmsgid: `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
   })
 
-  const resp = result.data || result
+  const resp = typeof result.data === 'string' ? JSON.parse(result.data) : (result.data || result)
   if (resp.base_resp && resp.base_resp.status_code !== 0) {
     throw new Error(`MiniMax错误(${resp.base_resp.status_code}): ${resp.base_resp.status_msg}`)
   }
