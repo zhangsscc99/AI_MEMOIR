@@ -75,7 +75,7 @@ Page({
     this.setData({
       title: '春节舞狮子',
       content: '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。',
-      images: ['/images/lion.png'],
+      images: ['https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/lion.png'],
       mood: 'happy',
       selectedMoodIdx: 0,
       isSample: true

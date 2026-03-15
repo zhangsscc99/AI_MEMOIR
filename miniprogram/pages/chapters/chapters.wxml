@@ -37,7 +37,7 @@
         data-id="{{item.id}}"
         data-title="{{item.title}}"
       >
-        <image class="chapter-bg-img" src="/images/{{item.image}}" mode="aspectFill" />
+        <image class="chapter-bg-img" src="{{item.image}}" mode="aspectFill" />
         <view class="chapter-overlay"></view>
         <view class="chapter-body">
           <text class="chapter-num-text">{{item.num}}</text>

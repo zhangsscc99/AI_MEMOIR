@@ -25,7 +25,7 @@
 
   <block wx:else>
     <view class="welcome-card">
-      <image class="welcome-avatar" src="/images/zaomen.jpeg" mode="aspectFill" />
+      <image class="welcome-avatar" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/zaomen.jpeg" mode="aspectFill" />
       <text class="welcome-title">欢迎使用岁月镜像</text>
       <text class="welcome-sub">开始记录您的人生故事</text>
     </view>

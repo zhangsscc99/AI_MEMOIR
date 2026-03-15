@@ -36,7 +36,7 @@
 
     <!-- 图片区：无图时显示上传占位 -->
     <view wx:if="{{images.length === 0}}" class="photo-upload" bindtap="chooseImages">
-      <image class="photo-upload-icon" src="/images/icons/camera.svg" mode="aspectFit" />
+      <image class="photo-upload-icon" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/icons/camera.svg" mode="aspectFit" />
       <text class="photo-upload-text">上传图片 记录美好瞬间</text>
     </view>
 
@@ -68,13 +68,13 @@
   <view class="bottom-bar">
     <view class="bottom-btn-wrap" bindtap="toggleRecording">
       <view class="bottom-circle {{isRecording ? 'recording' : ''}}">
-        <image class="bottom-circle-icon" src="/images/icons/microphone.svg" mode="aspectFit" />
+        <image class="bottom-circle-icon" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/icons/microphone.svg" mode="aspectFit" />
       </view>
       <text class="bottom-label">{{isRecording ? '结束录制' : '点击录制'}}</text>
     </view>
     <view class="bottom-btn-wrap" bindtap="aiPolish">
       <view class="bottom-circle {{aiPolishing ? 'loading' : ''}}">
-        <image class="bottom-circle-icon" src="/images/icons/chat.svg" mode="aspectFit" />
+        <image class="bottom-circle-icon" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/icons/chat.svg" mode="aspectFit" />
       </view>
       <text class="bottom-label">AI补全</text>
     </view>
