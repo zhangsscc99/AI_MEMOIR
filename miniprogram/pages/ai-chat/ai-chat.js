@@ -168,6 +168,7 @@ Page({
 
       this.addMessage('assistant', aiResponse)
     } catch (err) {
+      console.error('[AI聊天] 错误详情:', err && (err.message || JSON.stringify(err)))
       this.addMessage('assistant', '抱歉，我现在无法回复，请稍后再试。')
     } finally {
       this.setData({ loading: false })

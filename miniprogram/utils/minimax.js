@@ -38,6 +38,7 @@ function callMiniMax(systemPrompt, messages, maxTokens) {
         bot_setting: [{ bot_name: BOT_NAME, content: systemPrompt || '你是一个有用的AI助手。' }]
       },
       success: function(res) {
+        console.log('[MiniMax] success raw:', JSON.stringify(res))
         var data = res.data || res
         if (data.base_resp && data.base_resp.status_code !== 0) {
           reject(new Error('MiniMax错误: ' + data.base_resp.status_msg))
@@ -46,7 +47,8 @@ function callMiniMax(systemPrompt, messages, maxTokens) {
         }
       },
       fail: function(err) {
-        reject(new Error(err.errMsg || 'MiniMax调用失败'))
+        console.error('[MiniMax] fail:', JSON.stringify(err))
+        reject(new Error(err.errMsg || JSON.stringify(err)))
       }
     })
   })
