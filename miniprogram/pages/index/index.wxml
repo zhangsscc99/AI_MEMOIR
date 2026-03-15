@@ -1,7 +1,5 @@
 <!-- pages/index/index.wxml -->
 <view class="page">
-
-  <!-- 回忆录主卡片 -->
   <view class="memoir-card">
     <view class="memoir-book">
       <image class="book-cover-img" src="/images/memoirbook.png" mode="aspectFill" />
@@ -21,15 +19,10 @@
           <text>开始</text>
           <text>录制</text>
         </button>
-        <button class="memoir-btn" bindtap="goBookManage">
-          <text>书籍</text>
-          <text>管理</text>
-        </button>
       </view>
     </view>
   </view>
 
-  <!-- 随记横幅 -->
   <view class="diary-banner" bindtap="goDiary">
     <image class="diary-banner-bg" src="/images/winter.png" mode="aspectFill" />
     <view class="diary-banner-overlay"></view>
@@ -40,7 +33,6 @@
     </view>
   </view>
 
-  <!-- 章节预览 -->
   <view class="chapters-section">
     <view class="section-header">
       <text class="section-title">章节预览</text>
@@ -69,5 +61,4 @@
 
     <text class="scroll-hint">左右滑动浏览章节</text>
   </view>
-
 </view>

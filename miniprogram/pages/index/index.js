@@ -79,10 +79,6 @@ Page({
     wx.switchTab({ url: '/pages/memoir/memoir' })
   },
 
-  goBookManage() {
-    wx.switchTab({ url: '/pages/memoir/memoir' })
-  },
-
   goNewDiary() {
     wx.navigateTo({ url: '/pages/diary-edit/diary-edit' })
   },
