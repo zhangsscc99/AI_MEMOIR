@@ -141,32 +141,16 @@ Page({
         if (userInfo) this.setData({ userInfo: userInfo })
       }
 
-      var aiResponse
+      var result
       if (!userInfo) {
-        // 游客：直接用固定系统提示词
-        var guestResult = await wx.cloud.callFunction({ name: 'ai', data: { action: 'getGuestPrompt' } })
-        var guestPrompt = (guestResult.result && guestResult.result.data && guestResult.result.data.systemPrompt) || ''
-        aiResponse = await callMiniMax(guestPrompt, [{ role: 'user', content: message }], 800)
+        result = await wx.cloud.callFunction({ name: 'ai', data: { action: 'guestChat', message: message } })
       } else {
-        // 已登录：获取回忆录上下文 + 历史
-        var ctxResult = await wx.cloud.callFunction({
-          name: 'ai',
-          data: { action: 'getContext', characterName: this.data.characterName }
-        })
-        var ctx = (ctxResult.result && ctxResult.result.data) || {}
-        var systemPrompt = ctx.systemPrompt || ''
-        var history = ctx.history || []
-
-        // 追加本次用户消息
-        var newHistory = history.concat([{ role: 'user', content: message }])
-        aiResponse = await callMiniMax(systemPrompt, newHistory, 1500)
-
-        // 保存完整历史
-        var updatedHistory = newHistory.concat([{ role: 'assistant', content: aiResponse }])
-        wx.cloud.callFunction({ name: 'ai', data: { action: 'saveHistory', history: updatedHistory } })
+        result = await wx.cloud.callFunction({ name: 'ai', data: { action: 'chat', message: message, characterName: this.data.characterName } })
       }
 
-      this.addMessage('assistant', aiResponse)
+      var res = result.result
+      if (!res.success) throw new Error(res.error)
+      this.addMessage('assistant', res.data.response)
     } catch (err) {
       console.error('[AI聊天] 错误详情:', err && (err.message || JSON.stringify(err)))
       this.addMessage('assistant', '抱歉，我现在无法回复，请稍后再试。')

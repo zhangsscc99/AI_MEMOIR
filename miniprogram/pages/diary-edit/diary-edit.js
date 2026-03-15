@@ -315,23 +315,16 @@ Page({
   // AI润色
   async aiPolish() {
     if (!this.data.content || this.data.aiPolishing) return
-
     this.setData({ aiPolishing: true })
     wx.showLoading({ title: 'AI润色中...' })
-
     try {
-      const systemPrompt = `你是一名严谨的文本润色助手。当前用户的内容来自语音识别，可能包含错字、乱码或不通顺的句子。请按照以下要求处理：
-1. 忠实原文：避免加入新的事实或情节，不要编造信息。
-2. 纠正错误：修复错别字、乱码、重复词、以及明显不合语法或语义的句子。
-3. 保持语气：在保持原有表达风格和情感的前提下，让句子通顺自然。
-4. 标点与分段：补全缺失的标点，适度断句；仅在必要时微调段落结构。
-5. 长度接近：最终文本长度应与原文相近，禁止大幅扩写或删减。
-
-输出经过校正后的完整文本，不要添加任何解释、点评或额外标记。`
-
-      const userMsg = `章节：${this.data.title || '随记'}\n内容：${this.data.content}`
-      const completedText = await callMiniMax(systemPrompt, [{ role: 'user', content: userMsg }], 2000)
-
+      const result = await wx.cloud.callFunction({
+        name: 'ai',
+        data: { action: 'completeText', text: this.data.content, chapterTitle: this.data.title || '随记' }
+      })
+      const { success, data, error } = result.result
+      if (!success) throw new Error(error || 'AI润色失败')
+      const completedText = data.completedText
       wx.showModal({
         title: 'AI润色结果',
         content: completedText,
