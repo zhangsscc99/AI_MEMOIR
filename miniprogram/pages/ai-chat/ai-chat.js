@@ -20,7 +20,7 @@ Page({
   },
 
   onLoad: async function() {
-    var userInfo = app.getUserInfo()
+    var userInfo = await app.ensureUserInfo()
     this.setData({ userInfo: userInfo })
 
     if (userInfo) {
@@ -33,12 +33,12 @@ Page({
     }
   },
 
-  onShow: function() {
+  onShow: async function() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 2 })
     }
     // 每次导航到此页面都刷新角色信息
-    var userInfo = this.data.userInfo || app.getUserInfo()
+    var userInfo = this.data.userInfo || app.getUserInfo() || await app.ensureUserInfo()
     if (userInfo) {
       if (!this.data.userInfo) this.setData({ userInfo: userInfo })
       this.refreshCharacterInfo()
@@ -124,7 +124,11 @@ Page({
     this.setData({ loading: true })
 
     try {
-      var userInfo = this.data.userInfo
+      var userInfo = this.data.userInfo || app.getUserInfo()
+      if (!userInfo) {
+        userInfo = await app.ensureUserInfo()
+        if (userInfo) this.setData({ userInfo: userInfo })
+      }
       var result
       if (!userInfo) {
         result = await wx.cloud.callFunction({
@@ -188,7 +192,12 @@ Page({
           wx.cloud.callFunction({ name: 'ai', data: { action: 'clearHistory' } })
         }
         self.setData({ messages: [], historyLoaded: false })
-        self.addMessage('assistant', '对话已清空，我们重新开始吧')
+        if (self.data.userInfo) {
+          self.refreshCharacterInfo()
+          self.loadHistory()
+        } else {
+          self.addMessage('assistant', '对话已清空，我们重新开始吧')
+        }
       }
     })
   }

@@ -32,9 +32,44 @@ App({
     wx.setStorageSync('userInfo', userInfo)
   },
 
+  // 静默登录，补齐本地 userInfo 缓存
+  async ensureUserInfo(forceRefresh = false) {
+    if (!wx.cloud) return null
+
+    const cached = this.getUserInfo()
+    if (!forceRefresh && cached && cached._id) {
+      return cached
+    }
+
+    if (this.loginPromise) {
+      return this.loginPromise
+    }
+
+    this.loginPromise = wx.cloud.callFunction({
+      name: 'login',
+      data: {}
+    }).then((res) => {
+      const result = res && res.result
+      const user = result && result.user
+      if (result && result.success && user && user._id) {
+        this.setUserInfo(user)
+        return user
+      }
+      return null
+    }).catch((err) => {
+      console.warn('Silent login failed:', err)
+      return null
+    }).finally(() => {
+      this.loginPromise = null
+    })
+
+    return this.loginPromise
+  },
+
   // 全局方法：清除用户信息（退出登录）
   clearUserInfo() {
     this.globalData.userInfo = null
+    this.loginPromise = null
     wx.removeStorageSync('userInfo')
   },
 
