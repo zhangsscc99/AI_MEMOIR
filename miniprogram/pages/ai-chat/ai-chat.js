@@ -86,34 +86,23 @@ Page({
     try {
       var result = await wx.cloud.callFunction({
         name: 'ai',
-        data: { action: 'getMemoirSummary' }
+        data: { action: 'getCharacterInfo' }
       })
       var data = result.result && result.result.data
-      if (!data || !data.hasMemoir) return
-
-      var messages = [{ role: 'user', content: data.summary }]
-      var systemPrompt = `根据以下回忆录内容，请用JSON格式输出两个字段：
-1. "name"：主人公的姓名或称谓（如"张秀英"、"爷爷"、"外婆"），不超过8个字，无法确定时用"小忆"
-2. "desc"：以第一人称写一段自我介绍，基于回忆录的真实内容，体现主人公的经历和性格，50字以内，不要套话
-
-只输出JSON，不要其他内容。示例：{"name":"张秀英","desc":"我是张秀英，生于1950年代的农村，经历了许多岁月变迁，最爱和家人一起过节。"}`
-
-      var raw = await callMiniMax(systemPrompt, messages, 200)
-      var match = raw.match(/\{[\s\S]*\}/)
-      if (!match) return
-      var parsed = JSON.parse(match[0])
-      var updates = {}
-      if (parsed.name) updates.characterName = parsed.name.trim().replace(/["""''《》【】]/g, '')
-      if (parsed.desc) updates.characterDesc = parsed.desc.trim()
-      if (Object.keys(updates).length > 0) {
-        this.setData(updates)
-        if (updates.characterName && this.data.messages.length === 1) {
-          var first = this.data.messages[0]
-          if (first.role === 'assistant' && first.content.indexOf('我拥有你回忆录中记录的所有记忆') > -1) {
-            var msg = Object.assign({}, first, {
-              content: '你好！我是' + updates.characterName + '。我拥有你回忆录中记录的所有记忆，有什么想聊的吗？'
-            })
-            this.setData({ messages: [msg] })
+      if (data) {
+        var updates = {}
+        if (data.name) updates.characterName = data.name
+        if (data.desc) updates.characterDesc = data.desc
+        if (Object.keys(updates).length > 0) {
+          this.setData(updates)
+          if (updates.characterName && this.data.messages.length === 1) {
+            var first = this.data.messages[0]
+            if (first.role === 'assistant' && first.content.indexOf('我拥有你回忆录中记录的所有记忆') > -1) {
+              var msg = Object.assign({}, first, {
+                content: '你好！我是' + updates.characterName + '。我拥有你回忆录中记录的所有记忆，有什么想聊的吗？'
+              })
+              this.setData({ messages: [msg] })
+            }
           }
         }
       }

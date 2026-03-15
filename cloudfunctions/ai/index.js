@@ -34,27 +34,57 @@ async function callMiniMax(messages, maxTokens) {
   const { systemPrompt, converted } = convertToMiniMax(messages)
   if (converted.length === 0) throw new Error('消息列表为空')
 
+  // 系统提示词截断，避免超长
+  const safePrompt = systemPrompt.substring(0, 800)
+  // 最多保留最近 6 条消息
+  const safeMessages = converted.slice(-6)
+
   const result = await cloud.openapi.serviceMarket.invokeService({
     service: MINIMAX_SERVICE_ID,
     api: MINIMAX_API_NAME,
-    data: JSON.stringify({
+    data: {
       model: MODEL,
-      tokens_to_generate: maxTokens || 1500,
+      tokens_to_generate: Math.min(maxTokens || 1024, 1024),
       temperature: 0.9,
       top_p: 0.95,
       stream: false,
       reply_constraints: { sender_type: 'BOT', sender_name: BOT_NAME },
-      messages: converted,
-      bot_setting: [{ bot_name: BOT_NAME, content: systemPrompt }]
-    }),
+      messages: safeMessages,
+      bot_setting: [{ bot_name: BOT_NAME, content: safePrompt }]
+    },
     clientmsgid: `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
   })
 
+  console.log('[MiniMax] raw result:', JSON.stringify(result))
   const resp = typeof result.data === 'string' ? JSON.parse(result.data) : (result.data || result)
   if (resp.base_resp && resp.base_resp.status_code !== 0) {
     throw new Error(`MiniMax错误(${resp.base_resp.status_code}): ${resp.base_resp.status_msg}`)
   }
   return resp.reply || (resp.choices && resp.choices[0] && resp.choices[0].messages && resp.choices[0].messages[0] && resp.choices[0].messages[0].text) || ''
+}
+
+// 极简测试：验证 serviceMarket 调用本身是否通
+async function testMiniMax() {
+  try {
+    const result = await cloud.openapi.serviceMarket.invokeService({
+      service: MINIMAX_SERVICE_ID,
+      api: MINIMAX_API_NAME,
+      data: {
+        model: MODEL,
+        tokens_to_generate: 50,
+        temperature: 0.9,
+        top_p: 0.95,
+        stream: false,
+        reply_constraints: { sender_type: 'BOT', sender_name: BOT_NAME },
+        messages: [{ sender_type: 'USER', sender_name: '用户', text: '你好' }],
+        bot_setting: [{ bot_name: BOT_NAME, content: '你是一个AI助手。' }]
+      },
+      clientmsgid: 'test_' + Date.now()
+    })
+    return { success: true, data: result }
+  } catch (err) {
+    return { success: false, error: err.message, detail: JSON.stringify(err) }
+  }
 }
 
 // 获取用户回忆录内容
@@ -139,12 +169,14 @@ exports.main = async (event, context) => {
   const { action } = event
 
   switch (action) {
-    case 'chat':         return chatWithAI(event, openid)
-    case 'guestChat':    return guestChatWithAI(event)
-    case 'completeText': return completeText(event)
-    case 'getHistory':   return getHistory(openid)
-    case 'clearHistory': return clearHistory(openid)
+    case 'chat':             return chatWithAI(event, openid)
+    case 'guestChat':        return guestChatWithAI(event)
+    case 'completeText':     return completeText(event)
+    case 'getCharacterInfo': return getCharacterInfo(openid)
+    case 'getHistory':       return getHistory(openid)
+    case 'clearHistory':     return clearHistory(openid)
     case 'getMemoirSummary': return getMemoirSummary(openid)
+    case 'testMiniMax':      return testMiniMax()
     default: return { success: false, error: '未知操作: ' + action }
   }
 }
@@ -229,5 +261,38 @@ async function clearHistory(openid) {
     return { success: true }
   } catch (err) {
     return { success: false, error: err.message }
+  }
+}
+
+function buildFallbackDesc(memories, name) {
+  if (!memories || memories.length === 0) return '我是小忆，你的AI回忆录助手。还没有回忆录内容，快去记录你的故事吧！'
+  const latest = memories[0]
+  const clean = (latest.content || '').replace(/\s+/g, '').slice(0, 24)
+  return clean ? `我是${name}，最近又想起《${latest.title}》：${clean}${clean.length >= 24 ? '…' : ''}` : `我是${name}，我的故事都写在回忆录里，欢迎和我聊聊。`
+}
+
+async function getCharacterInfo(openid) {
+  if (!openid) return { success: false, error: '用户未登录' }
+  const memories = await getUserMemoirContent(openid)
+  if (memories.length === 0) {
+    return { success: true, data: { name: '小忆', desc: buildFallbackDesc([], '小忆') } }
+  }
+  try {
+    const sample = memories.slice(0, 5).map(m => `【${m.type}】${m.title}：${m.content.substring(0, 150)}`).join('\n\n').substring(0, 800)
+    const messages = [
+      { role: 'system', content: '根据以下回忆录内容，用JSON格式输出两个字段：name（主人公姓名或称谓，不超过8字，无法确定用"小忆"）和desc（第一人称自我介绍，50字以内）。只输出JSON，示例：{"name":"张秀英","desc":"我是张秀英，生于农村，爱和家人过节。"}' },
+      { role: 'user', content: sample }
+    ]
+    const raw = await callMiniMax(messages, 200)
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (match) {
+      const parsed = JSON.parse(match[0])
+      const name = (parsed.name || '小忆').trim().replace(/["""''《》【】]/g, '')
+      const desc = (parsed.desc || '').trim() || buildFallbackDesc(memories, name)
+      return { success: true, data: { name, desc } }
+    }
+    return { success: true, data: { name: '小忆', desc: buildFallbackDesc(memories, '小忆') } }
+  } catch (err) {
+    return { success: true, data: { name: '小忆', desc: buildFallbackDesc(memories, '小忆') } }
   }
 }
