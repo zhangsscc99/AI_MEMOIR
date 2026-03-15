@@ -9,11 +9,17 @@
     data-path="{{item.pagePath}}"
     data-index="{{index}}"
   >
-    <image
-      class="tab-icon"
-      src="{{selected === index ? item.iconActive : item.icon}}"
-      mode="aspectFit"
-    />
-    <text class="tab-label {{selected === index ? 'active' : ''}}">{{item.text}}</text>
+    <view class="tab-icon-wrap">
+      <image
+        class="tab-icon {{item.iconClass}}"
+        src="{{selected === index ? item.iconActive : item.icon}}"
+        mode="aspectFit"
+      />
+    </view>
+    <view wx:if="{{item.splitLabel}}" class="tab-label tab-label-pair {{selected === index ? 'active' : ''}}">
+      <text class="tab-label-char">{{item.splitLabel[0]}}</text>
+      <text class="tab-label-char">{{item.splitLabel[1]}}</text>
+    </view>
+    <text wx:else class="tab-label {{selected === index ? 'active' : ''}}">{{item.text}}</text>
   </view>
 </view>
