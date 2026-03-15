@@ -1,44 +1,68 @@
 // 云函数：ai
 // 功能：AI对话、文本润色、图片分析
-// 使用通义千问 (DashScope) API
-// 环境变量需在微信云开发控制台配置：
-//   DASHSCOPE_API_KEY - 通义千问API密钥
-//   DASHSCOPE_MODEL   - 模型名称，默认 qwen-plus
+// 使用 MiniMax（微信服务市场）
 const cloud = require('wx-server-sdk')
-const axios = require('axios')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-const DASHSCOPE_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
-const DEFAULT_MODEL = 'qwen-plus'
+const MINIMAX_SERVICE_ID = 'wx1ef79fe5f143a445'
+const MINIMAX_API_NAME   = 'ChatCompletionPro'
+const MINIMAX_MODEL      = 'abab5.5-chat'
+const BOT_NAME           = 'MM智能助理'
 
-// 调用DashScope（通义千问）API
-async function callDashScope(messages, model, maxTokens = 1500) {
-  const apiKey = process.env.DASHSCOPE_API_KEY
-  if (!apiKey) {
-    throw new Error('DASHSCOPE_API_KEY 未配置，请在微信云开发控制台设置环境变量')
+// 把 OpenAI 格式 messages 转成 MiniMax 格式
+// system → bot_setting，user/assistant → messages 数组
+function convertToMiniMax(messages) {
+  let systemPrompt = '你是一个有用的AI助手。'
+  const converted = []
+
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      systemPrompt = typeof msg.content === 'string' ? msg.content : systemPrompt
+    } else if (msg.role === 'user') {
+      const text = typeof msg.content === 'string'
+        ? msg.content
+        : (Array.isArray(msg.content) ? (msg.content.find(c => c.type === 'text') || {}).text || '' : '')
+      converted.push({ sender_type: 'USER', sender_name: '用户', text })
+    } else if (msg.role === 'assistant') {
+      converted.push({ sender_type: 'BOT', sender_name: BOT_NAME, text: msg.content || '' })
+    }
   }
 
-  const response = await axios.post(
-    `${DASHSCOPE_BASE_URL}/chat/completions`,
-    {
-      model: model || process.env.DASHSCOPE_MODEL || DEFAULT_MODEL,
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.7,
-      stream: false
-    },
-    {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000
-    }
-  )
+  return { systemPrompt, converted }
+}
 
-  return response.data.choices[0].message.content
+// 调用 MiniMax（微信服务市场 invokeService）
+async function callMiniMax(messages, maxTokens = 1500) {
+  const { systemPrompt, converted } = convertToMiniMax(messages)
+
+  if (converted.length === 0) throw new Error('消息列表为空')
+
+  const requestData = {
+    model: MINIMAX_MODEL,
+    tokens_to_generate: maxTokens,
+    temperature: 0.9,
+    top_p: 0.95,
+    stream: false,
+    reply_constraints: { sender_type: 'BOT', sender_name: BOT_NAME },
+    messages: converted,
+    bot_setting: [{ bot_name: BOT_NAME, content: systemPrompt }]
+  }
+
+  const result = await cloud.openapi.servicemarket.invokeService({
+    service: MINIMAX_SERVICE_ID,
+    api: MINIMAX_API_NAME,
+    data: requestData,
+    clientmsgid: `${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+  })
+
+  const resp = result.data || result
+  if (resp.base_resp && resp.base_resp.status_code !== 0) {
+    throw new Error(`MiniMax错误(${resp.base_resp.status_code}): ${resp.base_resp.status_msg}`)
+  }
+
+  return resp.reply || (resp.choices && resp.choices[0] && resp.choices[0].messages && resp.choices[0].messages[0] && resp.choices[0].messages[0].text) || ''
 }
 
 // 获取用户回忆录内容（章节 + 随记）
@@ -82,7 +106,6 @@ async function getUserMemoirContent(openid) {
         const t = new Date(value).getTime()
         return Number.isNaN(t) ? 0 : t
       }
-      // 兼容云数据库日期对象
       if (value && typeof value === 'object' && typeof value.getTime === 'function') {
         const t = value.getTime()
         return Number.isNaN(t) ? 0 : t
@@ -137,7 +160,7 @@ async function saveConversation(openid, history) {
     const existing = await db.collection('ai_conversations').where({ openid }).get()
     const data = {
       openid,
-      history: history.slice(-20), // 只保留最近20条
+      history: history.slice(-20),
       updated_at: db.serverDate()
     }
     if (existing.data.length === 0) {
@@ -192,61 +215,39 @@ exports.main = async (event, context) => {
 async function chatWithAI(event, openid) {
   const { message, characterName = '用户' } = event
 
-  if (!message || !message.trim()) {
-    return { success: false, error: '消息内容不能为空' }
-  }
-
-  if (!openid) {
-    return { success: false, error: '用户未登录' }
-  }
+  if (!message || !message.trim()) return { success: false, error: '消息内容不能为空' }
+  if (!openid) return { success: false, error: '用户未登录' }
 
   try {
-    // 获取回忆录内容构建角色
     const memories = await getUserMemoirContent(openid)
     const systemPrompt = buildCharacterPrompt(memories, characterName)
-
-    // 获取历史对话
     const history = await getConversationHistory(openid)
-
-    // 添加用户消息
     const newHistory = [...history, { role: 'user', content: message }]
+    const messages = [{ role: 'system', content: systemPrompt }, ...newHistory]
 
-    // 构建完整消息列表
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...newHistory
-    ]
+    const aiResponse = await callMiniMax(messages, 1500)
 
-    // 调用AI
-    const aiResponse = await callDashScope(messages, null, 1500)
-
-    // 保存对话（含AI回复）
     const updatedHistory = [...newHistory, { role: 'assistant', content: aiResponse }]
     await saveConversation(openid, updatedHistory)
 
-    return {
-      success: true,
-      data: {
-        response: aiResponse,
-        memoryCount: memories.length
-      }
-    }
+    return { success: true, data: { response: aiResponse, memoryCount: memories.length } }
   } catch (err) {
     console.error('AI聊天失败:', err)
     return { success: false, error: 'AI服务暂时不可用: ' + err.message }
   }
 }
 
-// 游客AI聊天（介绍功能）
+// 游客AI聊天
 async function guestChatWithAI(event) {
   const { message } = event
 
-  if (!message || !message.trim()) {
-    return { success: false, error: '消息内容不能为空' }
-  }
+  if (!message || !message.trim()) return { success: false, error: '消息内容不能为空' }
 
   try {
-    const systemPrompt = `你是小忆，一个专业的AI回忆录助手。你的任务是：
+    const messages = [
+      {
+        role: 'system',
+        content: `你是小忆，一个专业的AI回忆录助手。你的任务是：
 1. 友好介绍回忆录记录的重要性和价值
 2. 介绍我们的回忆录功能，包括语音录制、文字记录、AI补全等
 3. 鼓励用户注册账号体验完整的个性化AI聊天功能
@@ -254,34 +255,29 @@ async function guestChatWithAI(event) {
 5. 保持自然、友好的对话，不要过于商业化
 
 请用温暖、专业的语调与用户交流。`
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
+      },
       { role: 'user', content: message }
     ]
 
-    const aiResponse = await callDashScope(messages, null, 800)
-
-    return {
-      success: true,
-      data: { response: aiResponse }
-    }
+    const aiResponse = await callMiniMax(messages, 800)
+    return { success: true, data: { response: aiResponse } }
   } catch (err) {
     console.error('游客AI聊天失败:', err)
     return { success: false, error: 'AI服务暂时不可用: ' + err.message }
   }
 }
 
-// AI文本润色（语音转文字后使用）
+// AI文本润色
 async function completeText(event) {
   const { text, chapterTitle } = event
 
-  if (!text || !text.trim()) {
-    return { success: false, error: '文本内容不能为空' }
-  }
+  if (!text || !text.trim()) return { success: false, error: '文本内容不能为空' }
 
   try {
-    const systemPrompt = `你是一名严谨的文本润色助手。当前用户的内容来自语音识别，可能包含错字、乱码或不通顺的句子。请按照以下要求处理：
+    const messages = [
+      {
+        role: 'system',
+        content: `你是一名严谨的文本润色助手。当前用户的内容来自语音识别，可能包含错字、乱码或不通顺的句子。请按照以下要求处理：
 1. 忠实原文：避免加入新的事实或情节，不要编造信息。
 2. 纠正错误：修复错别字、乱码、重复词、以及明显不合语法或语义的句子。
 3. 保持语气：在保持原有表达风格和情感的前提下，让句子通顺自然。
@@ -289,41 +285,29 @@ async function completeText(event) {
 5. 长度接近：最终文本长度应与原文相近，禁止大幅扩写或删减。
 
 输出经过校正后的完整文本，不要添加任何解释、点评或额外标记。`
-
-    const userPrompt = `请按照系统指引，对以下回忆录内容做轻量润色：
+      },
+      {
+        role: 'user',
+        content: `请按照系统指引，对以下回忆录内容做轻量润色：
 
 章节：${chapterTitle || '回忆录'}
 内容：${text}
 
 重点修正识别错误，让语句自然通顺，并保持原始含义。`
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      }
     ]
 
-    const completedText = await callDashScope(messages, null, 2000)
-
-    return {
-      success: true,
-      data: {
-        originalText: text,
-        completedText
-      }
-    }
+    const completedText = await callMiniMax(messages, 2000)
+    return { success: true, data: { originalText: text, completedText } }
   } catch (err) {
     console.error('文本润色失败:', err)
     return { success: false, error: 'AI服务暂时不可用: ' + err.message }
   }
 }
 
-// AI图片分析（生成回忆录文字）
+// AI图片分析（生成回忆录文字，基于文字描述上下文）
 async function analyzeImage(event, openid) {
-  const { imageUrl, chapterId, chapterTitle } = event
-
-  if (!imageUrl) {
-    return { success: false, error: '请提供图片地址' }
-  }
+  const { chapterTitle } = event
 
   try {
     const memories = openid ? await getUserMemoirContent(openid) : []
@@ -331,35 +315,25 @@ async function analyzeImage(event, openid) {
       ? memories.slice(0, 3).map((m, i) => `${i + 1}.《${m.title}》：${m.content.substring(0, 100)}`).join('\n')
       : '暂无回忆录内容'
 
-    const systemPrompt = `你是一位中文回忆录写作助手。请以图片中的主体为核心进行回忆，用第一人称叙事展开情感。写作要求：
-1. 先观察图片，明确最显眼的人物/物品/环境，再围绕这些主体写出情境细节；
-2. 续写时保持温暖、真诚的口吻，语句连贯，长度控制在2~4句（约80~140字）；
-3. 如果图片与回忆录摘要存在差异，请以图片为准，仍需与角色设定衔接；
-4. 禁止生硬列举或重复原文，禁止引入图片和摘要之外的全新人物或道具。`
-
-    const contextText = `以下是该用户回忆录的章节摘要（仅作辅助，参考语气即可）：\n${summaryText}\n\n当前章节：${chapterTitle || '回忆录'}\n\n请重点描写图片中的主体，并写出它引发的回忆或情绪。最终输出只需包含生成的段落，不要额外说明。`
-
-    const model = process.env.DASHSCOPE_VL_MODEL || 'qwen-vl-plus'
     const messages = [
-      { role: 'system', content: systemPrompt },
+      {
+        role: 'system',
+        content: `你是一位中文回忆录写作助手。请根据用户提供的章节背景，用第一人称写出一段温暖真实的回忆文字。写作要求：
+1. 用温暖、真诚的口吻，语句连贯，长度控制在2~4句（约80~140字）；
+2. 基于章节主题展开情感描写；
+3. 禁止生硬列举或重复原文。`
+      },
       {
         role: 'user',
-        content: [
-          { type: 'text', text: contextText },
-          { type: 'image_url', image_url: { url: imageUrl } }
-        ]
+        content: `以下是该用户回忆录的章节摘要（仅作辅助）：\n${summaryText}\n\n当前章节：${chapterTitle || '回忆录'}\n\n请写出一段与该章节相关的回忆文字。最终输出只需包含生成的段落，不要额外说明。`
       }
     ]
 
-    const aiResponse = await callDashScope(messages, model, 500)
-
-    return {
-      success: true,
-      data: { text: aiResponse.trim() }
-    }
+    const aiResponse = await callMiniMax(messages, 500)
+    return { success: true, data: { text: aiResponse.trim() } }
   } catch (err) {
     console.error('图片分析失败:', err)
-    return { success: false, error: 'AI图片分析失败: ' + err.message }
+    return { success: false, error: 'AI服务暂时不可用: ' + err.message }
   }
 }
 
@@ -386,21 +360,15 @@ async function clearHistory(openid) {
   }
 }
 
-// 从回忆录内容中提取人物姓名/称谓
+// 从回忆录内容中提取人物姓名
 async function getCharacterName(openid) {
   if (!openid) return { success: false, error: '用户未登录' }
 
   const memories = await getUserMemoirContent(openid)
-  if (memories.length === 0) {
-    return { success: true, data: { name: null } }
-  }
+  if (memories.length === 0) return { success: true, data: { name: null } }
 
   try {
-    const sampleContent = memories
-      .slice(0, 3)
-      .map(m => m.content)
-      .join('\n\n')
-      .substring(0, 600)
+    const sampleContent = memories.slice(0, 3).map(m => m.content).join('\n\n').substring(0, 600)
 
     const messages = [
       {
@@ -410,7 +378,7 @@ async function getCharacterName(openid) {
       { role: 'user', content: sampleContent }
     ]
 
-    const name = await callDashScope(messages, null, 30)
+    const name = await callMiniMax(messages, 30)
     const trimmed = name.trim().replace(/["""''《》【】]/g, '')
     return { success: true, data: { name: trimmed || null } }
   } catch (err) {
@@ -422,7 +390,6 @@ function buildFallbackCharacterDesc(memories, name = '小忆') {
   if (!memories || memories.length === 0) {
     return '我是小忆，你的AI回忆录助手。还没有回忆录内容，快去记录你的故事吧！'
   }
-
   const latest = memories[0]
   const clean = (latest.content || '').replace(/\s+/g, '').slice(0, 24)
   const title = latest.title || '最近的记忆'
@@ -432,7 +399,7 @@ function buildFallbackCharacterDesc(memories, name = '小忆') {
   return `我是${name}，我的故事都写在回忆录里，欢迎和我聊聊。`
 }
 
-// 从回忆录内容中提取角色名 + 生成角色简介
+// 提取角色名 + 生成角色简介
 async function getCharacterInfo(openid) {
   if (!openid) return { success: false, error: '用户未登录' }
 
@@ -460,7 +427,7 @@ async function getCharacterInfo(openid) {
       { role: 'user', content: sampleContent }
     ]
 
-    const raw = await callDashScope(messages, null, 200)
+    const raw = await callMiniMax(messages, 200)
     const jsonMatch = raw.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])

@@ -1,6 +1,8 @@
 {
   "permissions": {
-    "openapi": []
+    "openapi": [
+      "servicemarket.invokeService"
+    ]
   },
   "timeout": 60,
   "memorySize": 256
