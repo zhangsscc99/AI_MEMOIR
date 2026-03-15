@@ -1,5 +1,6 @@
 // pages/ai-chat/ai-chat.js
 const app = getApp()
+const { callMiniMax } = require('../../utils/minimax')
 
 const DEFAULT_NAME = '小忆'
 const DEFAULT_DESC = '我是小忆，你的AI回忆录助手。'
@@ -85,24 +86,34 @@ Page({
     try {
       var result = await wx.cloud.callFunction({
         name: 'ai',
-        data: { action: 'getCharacterInfo' }
+        data: { action: 'getMemoirSummary' }
       })
-      var data = result.result?.data
-      if (data) {
-        var updates = {}
-        if (data.name) updates.characterName = data.name
-        if (data.desc) updates.characterDesc = data.desc
-        if (Object.keys(updates).length > 0) {
-          this.setData(updates)
-          // 无历史时的欢迎语，随角色名自动更新
-          if (updates.characterName && this.data.messages.length === 1) {
-            var first = this.data.messages[0]
-            if (first.role === 'assistant' && first.content.indexOf('我拥有你回忆录中记录的所有记忆') > -1) {
-              var msg = Object.assign({}, first, {
-                content: '你好！我是' + updates.characterName + '。我拥有你回忆录中记录的所有记忆，有什么想聊的吗？'
-              })
-              this.setData({ messages: [msg] })
-            }
+      var data = result.result && result.result.data
+      if (!data || !data.hasMemoir) return
+
+      var messages = [{ role: 'user', content: data.summary }]
+      var systemPrompt = `根据以下回忆录内容，请用JSON格式输出两个字段：
+1. "name"：主人公的姓名或称谓（如"张秀英"、"爷爷"、"外婆"），不超过8个字，无法确定时用"小忆"
+2. "desc"：以第一人称写一段自我介绍，基于回忆录的真实内容，体现主人公的经历和性格，50字以内，不要套话
+
+只输出JSON，不要其他内容。示例：{"name":"张秀英","desc":"我是张秀英，生于1950年代的农村，经历了许多岁月变迁，最爱和家人一起过节。"}`
+
+      var raw = await callMiniMax(systemPrompt, messages, 200)
+      var match = raw.match(/\{[\s\S]*\}/)
+      if (!match) return
+      var parsed = JSON.parse(match[0])
+      var updates = {}
+      if (parsed.name) updates.characterName = parsed.name.trim().replace(/["""''《》【】]/g, '')
+      if (parsed.desc) updates.characterDesc = parsed.desc.trim()
+      if (Object.keys(updates).length > 0) {
+        this.setData(updates)
+        if (updates.characterName && this.data.messages.length === 1) {
+          var first = this.data.messages[0]
+          if (first.role === 'assistant' && first.content.indexOf('我拥有你回忆录中记录的所有记忆') > -1) {
+            var msg = Object.assign({}, first, {
+              content: '你好！我是' + updates.characterName + '。我拥有你回忆录中记录的所有记忆，有什么想聊的吗？'
+            })
+            this.setData({ messages: [msg] })
           }
         }
       }
@@ -129,22 +140,33 @@ Page({
         userInfo = await app.ensureUserInfo()
         if (userInfo) this.setData({ userInfo: userInfo })
       }
-      var result
+
+      var aiResponse
       if (!userInfo) {
-        result = await wx.cloud.callFunction({
-          name: 'ai',
-          data: { action: 'guestChat', message: message }
-        })
+        // 游客：直接用固定系统提示词
+        var guestResult = await wx.cloud.callFunction({ name: 'ai', data: { action: 'getGuestPrompt' } })
+        var guestPrompt = (guestResult.result && guestResult.result.data && guestResult.result.data.systemPrompt) || ''
+        aiResponse = await callMiniMax(guestPrompt, [{ role: 'user', content: message }], 800)
       } else {
-        result = await wx.cloud.callFunction({
+        // 已登录：获取回忆录上下文 + 历史
+        var ctxResult = await wx.cloud.callFunction({
           name: 'ai',
-          data: { action: 'chat', message: message, characterName: this.data.characterName }
+          data: { action: 'getContext', characterName: this.data.characterName }
         })
+        var ctx = (ctxResult.result && ctxResult.result.data) || {}
+        var systemPrompt = ctx.systemPrompt || ''
+        var history = ctx.history || []
+
+        // 追加本次用户消息
+        var newHistory = history.concat([{ role: 'user', content: message }])
+        aiResponse = await callMiniMax(systemPrompt, newHistory, 1500)
+
+        // 保存完整历史
+        var updatedHistory = newHistory.concat([{ role: 'assistant', content: aiResponse }])
+        wx.cloud.callFunction({ name: 'ai', data: { action: 'saveHistory', history: updatedHistory } })
       }
 
-      var res = result.result
-      if (!res.success) throw new Error(res.error)
-      this.addMessage('assistant', res.data.response)
+      this.addMessage('assistant', aiResponse)
     } catch (err) {
       this.addMessage('assistant', '抱歉，我现在无法回复，请稍后再试。')
     } finally {
