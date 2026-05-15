@@ -2,7 +2,7 @@
 <view class="page">
   <view class="memoir-card">
     <view class="memoir-book">
-      <image class="book-cover-img" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/memoirbook.png" mode="aspectFill" />
+      <image class="book-cover-img" src="{{imageBase}}/memoirbook.png" mode="aspectFill" />
     </view>
     <view class="memoir-info">
       <text class="memoir-title">回忆录</text>
@@ -24,7 +24,7 @@
   </view>
 
   <view class="diary-banner" bindtap="goDiary">
-    <image class="diary-banner-bg" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/winter.png" mode="aspectFill" />
+    <image class="diary-banner-bg" src="{{imageBase}}/winter.png" mode="aspectFill" />
     <view class="diary-banner-overlay"></view>
     <view class="diary-banner-content">
       <text class="diary-banner-title">随记</text>

@@ -1,8 +1,11 @@
 // pages/memoir/memoir.js
 const app = getApp()
+const { IMAGE_BASE } = require('../../config/index')
 
 Page({
-  data: {},
+  data: {
+    imageBase: IMAGE_BASE
+  },
 
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {

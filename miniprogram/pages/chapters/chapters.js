@@ -1,19 +1,18 @@
 // pages/chapters/chapters.js - 人生章节列表页
 const app = getApp()
-
-const CDN = 'https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la'
+const { IMAGE_BASE } = require('../../config/index')
 
 const CHAPTER_META = [
-  { id: 'background',    title: '家庭背景',  num: '第一章',  desc: '记录您的出生地、家庭环境和祖辈故事', image: `${CDN}/images/story1.png` },
-  { id: 'childhood',     title: '童年时光',  num: '第二章',  desc: '分享童年的美好回忆和成长经历',       image: `${CDN}/images/story2.png` },
-  { id: 'education',     title: '求学之路',  num: '第三章',  desc: '记录您的求学历程与校园生活',         image: `${CDN}/images/story3.png` },
-  { id: 'career',        title: '职业生涯',  num: '第四章',  desc: '记录您的工作历程与职业成就',         image: `${CDN}/images/story4.png` },
-  { id: 'love',          title: '爱情故事',  num: '第五章',  desc: '记录您的爱情与婚姻故事',             image: `${CDN}/images/story5.png` },
-  { id: 'family',        title: '家庭生活',  num: '第六章',  desc: '记录家庭的温馨时光',                 image: `${CDN}/images/story6.png` },
-  { id: 'travel',        title: '旅途记忆',  num: '第七章',  desc: '记录旅行中的风景与故事',             image: `${CDN}/images/story7.png` },
-  { id: 'relationships', title: '人际关系',  num: '第八章',  desc: '记录重要的人际故事',                 image: `${CDN}/images/story8.png` },
-  { id: 'laterlife',     title: '晚年时光',  num: '第九章',  desc: '记录晚年的生活感悟',                 image: `${CDN}/images/story9.png` },
-  { id: 'wisdom',        title: '人生智慧',  num: '第十章',  desc: '分享您的人生感悟与智慧',             image: `${CDN}/images/story10.png` }
+  { id: 'background',    title: '家庭背景',  num: '第一章',  desc: '记录您的出生地、家庭环境和祖辈故事', image: `${IMAGE_BASE}/story1.png` },
+  { id: 'childhood',     title: '童年时光',  num: '第二章',  desc: '分享童年的美好回忆和成长经历',       image: `${IMAGE_BASE}/story2.png` },
+  { id: 'education',     title: '求学之路',  num: '第三章',  desc: '记录您的求学历程与校园生活',         image: `${IMAGE_BASE}/story3.png` },
+  { id: 'career',        title: '职业生涯',  num: '第四章',  desc: '记录您的工作历程与职业成就',         image: `${IMAGE_BASE}/story4.png` },
+  { id: 'love',          title: '爱情故事',  num: '第五章',  desc: '记录您的爱情与婚姻故事',             image: `${IMAGE_BASE}/story5.png` },
+  { id: 'family',        title: '家庭生活',  num: '第六章',  desc: '记录家庭的温馨时光',                 image: `${IMAGE_BASE}/story6.png` },
+  { id: 'travel',        title: '旅途记忆',  num: '第七章',  desc: '记录旅行中的风景与故事',             image: `${IMAGE_BASE}/story7.png` },
+  { id: 'relationships', title: '人际关系',  num: '第八章',  desc: '记录重要的人际故事',                 image: `${IMAGE_BASE}/story8.png` },
+  { id: 'laterlife',     title: '晚年时光',  num: '第九章',  desc: '记录晚年的生活感悟',                 image: `${IMAGE_BASE}/story9.png` },
+  { id: 'wisdom',        title: '人生智慧',  num: '第十章',  desc: '分享您的人生感悟与智慧',             image: `${IMAGE_BASE}/story10.png` }
 ]
 
 Page({

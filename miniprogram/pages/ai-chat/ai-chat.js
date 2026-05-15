@@ -1,6 +1,7 @@
 // pages/ai-chat/ai-chat.js
 const app = getApp()
 const { callMiniMax } = require('../../utils/minimax')
+const { IMAGE_BASE } = require('../../config/index')
 
 const DEFAULT_NAME = '小忆'
 const DEFAULT_DESC = '我是小忆，你的AI回忆录助手。'
@@ -17,7 +18,8 @@ Page({
     editNameInput: '',
     scrollToView: '',
     historyLoaded: false,
-    historyLoading: false
+    historyLoading: false,
+    imageBase: IMAGE_BASE
   },
 
   onLoad: async function() {

@@ -4,7 +4,7 @@
   "cloudfunctionTemplateRoot": "cloudfunction-template/",
   "envList": [
     {
-      "envId": "cloud1-9gbxfuqjd1864b3c",
+      "envId": "foodfart-2gda506ke536d8f3",
       "alias": "正式环境"
     }
   ],

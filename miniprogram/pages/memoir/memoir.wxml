@@ -3,7 +3,7 @@
 
   <!-- 书籍封面 -->
   <view class="book-wrap">
-    <image class="book-image" src="https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/memoirbook.png" mode="aspectFit" />
+    <image class="book-image" src="{{imageBase}}/memoirbook.png" mode="aspectFit" />
   </view>
 
   <!-- 欢迎文字 -->

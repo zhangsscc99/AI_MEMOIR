@@ -1,9 +1,11 @@
 // pages/profile/profile.js
 const app = getApp()
+const { IMAGE_BASE } = require('../../config/index')
 
 Page({
   data: {
-    userInfo: null
+    userInfo: null,
+    imageBase: IMAGE_BASE
   },
 
   onShow() {

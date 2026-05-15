@@ -1,6 +1,7 @@
 // pages/chapter-edit/chapter-edit.js - 章节编辑页
 const app = getApp()
 const { callMiniMax } = require('../../utils/minimax')
+const { IMAGE_BASE } = require('../../config/index')
 
 const PROMPTS_MAP = {
   background:    ['您出生在哪里？那是一个什么样的地方？', '您的父母是做什么工作的？', '家里有哪些亲人？他们各自有什么特点？'],
@@ -37,7 +38,8 @@ Page({
     uploadingImage: false,
     prompts: [],
     dateStr: '',
-    statusBarHeight: 0
+    statusBarHeight: 0,
+    imageBase: IMAGE_BASE
   },
 
   onLoad(options) {

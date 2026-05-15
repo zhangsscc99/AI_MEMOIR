@@ -7,7 +7,7 @@ App({
     } else {
       wx.cloud.init({
         // 填入你的云开发环境ID，在微信开发者工具 > 云开发控制台中查看
-        env: 'cloud1-9gbxfuqjd1864b3c',
+        env: 'foodfart-2gda506ke536d8f3',
         traceUser: true
       })
     }

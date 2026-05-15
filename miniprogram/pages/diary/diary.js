@@ -1,5 +1,6 @@
 // pages/diary/diary.js
 const app = getApp()
+const { IMAGE_BASE } = require('../../config/index')
 
 Page({
   data: {
@@ -36,7 +37,7 @@ Page({
       diaries.push({
         _id: 'sample_1',
         title: '示例：春节福字的故事',
-        firstImage: 'https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/lion.png',
+        firstImage: IMAGE_BASE + '/lion.png',
         dateStr: '2025/08/25',
         content: '',
         isSample: true
@@ -49,7 +50,7 @@ Page({
         diaries: [{
           _id: 'sample_1',
           title: '示例：春节福字的故事',
-          firstImage: 'https://636c-cloud1-9gbxfuqjd1864b3c-1359119781.tcb.qcloud.la/images/lion.png',
+          firstImage: IMAGE_BASE + '/lion.png',
           dateStr: '2025/08/25',
           content: '',
           isSample: true
