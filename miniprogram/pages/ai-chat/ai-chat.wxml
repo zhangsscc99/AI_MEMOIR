@@ -54,23 +54,30 @@
   </scroll-view>
 
   <!-- 底部输入栏 -->
-  <view class="input-bar">
-    <input
-      class="msg-input"
-      placeholder="与小忆聊天..."
-      placeholder-class="input-ph"
-      value="{{inputText}}"
-      bindinput="onInput"
-      bindconfirm="sendMessage"
-      confirm-type="send"
-      cursor-spacing="16"
-      adjust-position
-    />
-    <view
-      class="send-btn {{(!inputText.trim() || loading) ? 'send-disabled' : 'send-active'}}"
-      bindtap="sendMessage"
-    >
-      <text class="send-text">发送</text>
+  <view class="chat-composer">
+    <view class="input-bar">
+      <input
+        class="msg-input"
+        placeholder="与小忆聊天..."
+        placeholder-class="input-ph"
+        value="{{inputText}}"
+        bindinput="onInput"
+        bindconfirm="sendMessage"
+        confirm-type="send"
+        cursor-spacing="16"
+        adjust-position
+      />
+      <view
+        class="send-btn {{(!inputText.trim() || loading) ? 'send-disabled' : 'send-active'}}"
+        bindtap="sendMessage"
+      >
+        <text class="send-text">发送</text>
+      </view>
+    </view>
+
+    <!-- AI 内容提示 -->
+    <view class="ai-disclaimer">
+      <text>内容由 AI 生成，仅供参考</text>
     </view>
   </view>
 

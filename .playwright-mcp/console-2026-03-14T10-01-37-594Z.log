@@ -1,0 +1,16 @@
+[     355ms] [ERROR] Failed to load resource: net::ERR_CERT_DATE_INVALID @ https://localsupport.ijinshan.com:8990/uuid?_=1773482497914&callback=axiosJsonpCallback1:0
+[   22175ms] [WARNING] NotSupportedError: Failed to execute 'define' on 'CustomElementRegistry': the name "modal-template" has already been used with this registry
+    at customElements.define (https://archive.org/details/sue_potnoodlesgame:47:38)
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:62:8483
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:62:8498
+    at L (https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:60:877)
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:2464:64
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:2748:2404 @ https://archive.org/details/sue_potnoodlesgame:48
+[   22175ms] [WARNING] NotSupportedError: Failed to execute 'define' on 'CustomElementRegistry': the name "modal-manager" has already been used with this registry
+    at customElements.define (https://archive.org/details/sue_potnoodlesgame:47:38)
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:62:8483
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:62:8498
+    at L (https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:60:877)
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:2501:255
+    at https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:2748:2404 @ https://archive.org/details/sue_potnoodlesgame:48
+[   22253ms] [WARNING] [npm] %cdeprecated%c bootstrap@3.4.1: This version of Bootstrap is no longer supported. Please upgrade to the latest version. color:red  @ https://archive.org/includes/build/js/details-carousel.min.js?v=b27a3b6e:4

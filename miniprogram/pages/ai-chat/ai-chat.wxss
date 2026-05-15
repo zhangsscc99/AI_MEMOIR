@@ -102,7 +102,7 @@
 }
 
 .messages-list {
-  padding: 16rpx 20rpx 20rpx;
+  padding: 16rpx 20rpx 28rpx;
   display: flex;
   flex-direction: column;
   gap: 16rpx;
@@ -178,26 +178,35 @@
   30% { transform: translateY(-6rpx); opacity: 1; }
 }
 
-/* 输入栏 */
+/* 底部输入区 */
+.chat-composer {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 18rpx 20rpx calc(12rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid rgba(230, 226, 220, 0.9);
+  box-shadow: 0 -8rpx 28rpx rgba(91, 69, 55, 0.06);
+  backdrop-filter: blur(12rpx);
+}
+
 .input-bar {
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 20rpx;
-  background: #FFFFFF;
-  border-top: 1rpx solid #e0e0e0;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  flex-shrink: 0;
 }
 
 .msg-input {
   flex: 1;
-  background: #f8f8f8;
+  background: #f7f4f1;
   border-radius: 48rpx;
   padding: 20rpx 28rpx;
   font-size: 28rpx;
   color: #333;
   min-height: 72rpx;
+  box-shadow: inset 0 0 0 1rpx rgba(232, 226, 220, 0.9);
 }
 
 .input-ph {
@@ -206,23 +215,42 @@
 }
 
 .send-btn {
-  border-radius: 16rpx;
+  border-radius: 24rpx;
   padding: 20rpx 32rpx;
   font-size: 28rpx;
   font-weight: 600;
   flex-shrink: 0;
+  box-shadow: 0 8rpx 18rpx rgba(255, 107, 71, 0.18);
 }
 
 .send-active {
-  background: #FF6B47;
+  background: linear-gradient(135deg, #ff8a65 0%, #ff6b47 100%);
   color: #FFFFFF;
 }
 
 .send-disabled {
-  background: #e0e0e0;
-  color: #999;
+  background: #e9e6e2;
+  color: #aaa39d;
+  box-shadow: none;
 }
 
 .send-text {
   font-size: 28rpx;
+}
+
+.ai-disclaimer {
+  align-self: center;
+  max-width: 86%;
+  margin: 12rpx auto 0;
+  padding: 10rpx 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #e0e0e0;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  color: #999;
+  font-size: 22rpx;
+  line-height: 1.4;
 }

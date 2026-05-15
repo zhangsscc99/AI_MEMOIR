@@ -1,0 +1,12 @@
+[    1328ms] [ERROR] Failed to load resource: net::ERR_CERT_DATE_INVALID @ https://localsupport.ijinshan.com:8990/uuid?_=1773477811746&callback=axiosJsonpCallback1:0
+[    8487ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ https://claudexai.com/pastel/#/:0
+[ 1454764ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://claudexai.com/frontend-api/vibe-code/quota:0
+[ 1514776ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://claudexai.com/frontend-api/vibe-code/quota:0
+[ 1580752ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://claudexai.com/frontend-api/vibe-code/quota:0
+[ 1611229ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ https://claudexai.com/pastel/#/vibe-code/dashboard?activeMenu=dashboard:0
+[ 1611806ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://aihuohua.online/public/uploads/20260131/dg2aza7ufbpmjytaku.png:0
+[ 1709738ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ https://claudexai.com/pastel/#/vibe-code/dashboard?activeMenu=dashboard:0
+[ 4943385ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ https://claudexai.com/pastel/#/vibe-code/dashboard?activeMenu=dashboard:0
+[11549480ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://claudexai.com/frontend-api/vibe-code/quota:0
+[11609473ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://claudexai.com/frontend-api/vibe-code/quota:0
+[11678480ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://claudexai.com/frontend-api/vibe-code/quota:0

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot"
+    ]
+  }
+}

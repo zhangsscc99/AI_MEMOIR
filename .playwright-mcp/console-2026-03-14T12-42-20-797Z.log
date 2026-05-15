@@ -1,0 +1,41 @@
+[     617ms] [ERROR] Failed to load resource: net::ERR_CERT_DATE_INVALID @ https://localsupport.ijinshan.com:8990/uuid?_=1773492141116&callback=axiosJsonpCallback1:0
+[    1014ms] [ERROR] Failed to load resource: net::ERR_CERT_DATE_INVALID @ https://localsupport.ijinshan.com:8990/uuid?_=1773492141771&callback=axiosJsonpCallback1:0
+[   17961ms] [WARNING] A parser-blocking, cross site (i.e. different eTLD+1) script, https://tam.cdn-go.cn/aegis-sdk/latest/aegis.min.js, is invoked via document.write. The network request for this script MAY be blocked by the browser in this or a future page load due to poor network connectivity. If blocked in this page load, it will be confirmed in a subsequent console message. See https://www.chromestatus.com/feature/5718547946799104 for more details. @ https://tcb.cloud.tencent.com/dev?:0
+[   17962ms] [WARNING] A parser-blocking, cross site (i.e. different eTLD+1) script, https://tam.cdn-go.cn/aegis-sdk/latest/aegis.min.js, is invoked via document.write. The network request for this script MAY be blocked by the browser in this or a future page load due to poor network connectivity. If blocked in this page load, it will be confirmed in a subsequent console message. See https://www.chromestatus.com/feature/5718547946799104 for more details. @ https://tcb.cloud.tencent.com/dev?:0
+[   19853ms] [ERROR] [LoginGuard] Error: [account/DescribeCurrentUserDetails][VERIFY_USER_FAILED] [VERIFY_USER_FAILED] NEED_UIN_AND_SKEY (RequestId: 59bb831b-6055-4e92-8c2f-449099937290)
+    at Nce (https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:57:51698)
+    at async Proxy.o (https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:57:42177)
+    at async NV (https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:84:23551)
+    at async Promise.all (index 0)
+    at async https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:84:25082
+    at async https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:57:79114 @ https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:83
+[   19856ms] [ERROR] [LoginGuard] Error: [account/DescribeCurrentUserDetails][VERIFY_USER_FAILED] [VERIFY_USER_FAILED] NEED_UIN_AND_SKEY (RequestId: 59bb831b-6055-4e92-8c2f-449099937290)
+    at Nce (https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:57:51698)
+    at async Proxy.o (https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:57:42177)
+    at async NV (https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:84:23551)
+    at async Promise.all (index 0)
+    at async https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:84:25082
+    at async https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:57:79114 @ https://tcb.cloud.tencent.com/dev-platform/1.14.0/assets/main.ad04004c.js:83
+[   20787ms] [WARNING] Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <div>
+Ancestor with aria-hidden: <div> @ https://tcb.cloud.tencent.com/login?_redirect_uri=https%3A%2F%2Ftcb.cloud.tencent.com%2Fdev%23%2Fscf:0
+[   28722ms] [ERROR] Access to fetch at 'https://yehe.woa.com/api/v1/yehe/Ping' from origin 'https://cloud.tencent.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://cloud.tencent.com/login?s_url=https%3A%2F%2Ftcb.cloud.tencent.com%2Fdev%23%2Fscf:0
+[   28722ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://yehe.woa.com/api/v1/yehe/Ping:0
+[   28728ms] [ERROR] Access to fetch at 'https://yehe.woa.com/api/v1/yehe/Ping' from origin 'https://cloud.tencent.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://cloud.tencent.com/login?s_url=https%3A%2F%2Ftcb.cloud.tencent.com%2Fdev%23%2Fscf:0
+[   28728ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://yehe.woa.com/api/v1/yehe/Ping:0
+[   44385ms] [WARNING] A parser-blocking, cross site (i.e. different eTLD+1) script, https://tam.cdn-go.cn/aegis-sdk/latest/aegis.min.js, is invoked via document.write. The network request for this script MAY be blocked by the browser in this or a future page load due to poor network connectivity. If blocked in this page load, it will be confirmed in a subsequent console message. See https://www.chromestatus.com/feature/5718547946799104 for more details. @ https://tcb.cloud.tencent.com/dev:0
+[   44385ms] [WARNING] A parser-blocking, cross site (i.e. different eTLD+1) script, https://tam.cdn-go.cn/aegis-sdk/latest/aegis.min.js, is invoked via document.write. The network request for this script MAY be blocked by the browser in this or a future page load due to poor network connectivity. If blocked in this page load, it will be confirmed in a subsequent console message. See https://www.chromestatus.com/feature/5718547946799104 for more details. @ https://tcb.cloud.tencent.com/dev:0
+[   50587ms] Failed to set the 'domain' property on 'Document': Assignment is forbidden for sandboxed iframes.
+[   51380ms] [ERROR] SecurityError: Failed to set the 'domain' property on 'Document': Assignment is forbidden for sandboxed iframes.
+    at Ju (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:94669)
+    at ys (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:115021)
+    at https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:111605
+    at S (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:132397)
+    at MessagePort.T (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:132931) @ https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:0
+[   51380ms] [ERROR] SecurityError: Failed to set the 'domain' property on 'Document': Assignment is forbidden for sandboxed iframes.
+    at Ju (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:94669)
+    at ys (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:115021)
+    at https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:111605
+    at S (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:132397)
+    at MessagePort.T (https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/framework-26c7ef1740bba62bfbe1.js:1:132931) @ https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/main-1f414af3347d8995ac17.js:0
+[   51380ms] [ERROR] A client-side exception has occurred, see here for more info: https://nextjs.org/docs/messages/client-side-exception-occurred @ https://slscache.tencent-cloud.cn/qcact-ssr/2hqBepFe67VbZyZ6DMS3v/_next/static/chunks/main-1f414af3347d8995ac17.js:0
