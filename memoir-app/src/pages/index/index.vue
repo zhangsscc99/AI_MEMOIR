@@ -3,13 +3,10 @@
     <!-- 岁月镜像卡片 -->
     <view class="memoir-card">
       <view class="memoir-card-left">
-        <LazyImage
-          src="/src/images/memoirbook.png"
-          width="160px"
-          height="210px"
+        <image
+          :src="getOptimalImagePath('/src/images/memoirbook.png')"
+          class="book-cover"
           mode="aspectFit"
-          image-class="book-cover"
-          :immediate="true"
         />
       </view>
       <view class="memoir-card-right">
@@ -33,12 +30,10 @@
 
     <!-- 随记卡片 -->
     <view class="diary-card" @click="goToDiary">
-      <LazyImage
-        src="/src/images/winter.png"
-        fill
+      <image
+        :src="getOptimalImagePath('/src/images/winter.png')"
+        class="diary-bg"
         mode="aspectFill"
-        image-class="diary-bg"
-        :immediate="true"
       />
       <view class="diary-overlay">
         <view class="diary-title">随记</view>
@@ -71,11 +66,10 @@
           >
             <!-- 背景图片 -->
             <view class="card-bg">
-              <LazyImage
-                :src="chapter.backgroundImage"
-                fill
+              <image
+                :src="getOptimalImagePath(chapter.backgroundImage)"
+                class="bg-image"
                 mode="aspectFill"
-                image-class="bg-image"
               />
               <view class="bg-overlay"></view>
             </view>
@@ -117,9 +111,6 @@ import imagePreloader from '@/utils/imagePreloader.js';
 // 导入图片路径优化工具
 import { getOptimalImagePath } from '@/utils/imageMapping.js';
 export default {
-  components: {
-    LazyImage: () => import('@/components/LazyImage.vue')
-  },
   data() {
     return {
       progressPercent: 0,

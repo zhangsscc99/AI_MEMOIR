@@ -57,6 +57,11 @@ export default {
 /*每个页面公共css */
 @import './common/font.css';
 
+/* uni-app H5 默认把 img 设为 opacity:0，加载异常时会一直看不见；强制显示 */
+uni-image > img {
+  opacity: 1 !important;
+}
+
 /* 兼容不同平台 */
 page {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

@@ -47,11 +47,10 @@
             >
               <!-- 背景图片 -->
               <view class="chapter-bg">
-                <LazyImage
-                  :src="chapter.backgroundImage"
-                  fill
+                <image
+                  :src="getOptimalImagePath(chapter.backgroundImage)"
+                  class="bg-image"
                   mode="aspectFill"
-                  image-class="bg-image"
                 />
                 <view class="bg-overlay"></view>
               </view>
@@ -89,9 +88,6 @@ import imagePreloader from '@/utils/imagePreloader.js';
 // 导入图片路径优化工具
 import { getOptimalImagePath } from '@/utils/imageMapping.js';
 export default {
-  components: {
-    LazyImage: () => import('@/components/LazyImage.vue')
-  },
   data() {
     return {
       chapters: [
