@@ -1,6 +1,10 @@
 // API 配置工具
 // 根据运行环境自动选择 API 地址
 
+const DEV_BACKEND_PORT = import.meta.env.VITE_BACKEND_PORT || '3200';
+const DEV_API_BASE = import.meta.env.VITE_API_BASE || `http://localhost:${DEV_BACKEND_PORT}/api`;
+const CAPACITOR_API_BASE = import.meta.env.VITE_CAPACITOR_API_BASE || 'http://103.146.125.208:3001/api';
+
 /**
  * 获取 API 基础地址
  * @returns {string} API 基础地址
@@ -17,7 +21,7 @@ export function getApiBase() {
   // 检查是否在移动应用中（Capacitor 环境）- 优先判断
   if (typeof window !== 'undefined' && window.Capacitor) {
     console.log('📱 [API Config] 检测到 Capacitor 环境，使用服务器地址');
-    const apiUrl = 'http://103.146.125.208:3001/api';
+    const apiUrl = CAPACITOR_API_BASE;
     console.log('🎯 [API Config] 最终 API 地址:', apiUrl);
     return apiUrl;
   }
@@ -31,7 +35,7 @@ export function getApiBase() {
     // 本地开发环境（仅在浏览器中）
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       console.log('💻 [API Config] 检测到本地开发环境，使用 localhost');
-      return 'http://localhost:3001/api';
+      return DEV_API_BASE;
     }
     
     // 生产环境（服务器域名）

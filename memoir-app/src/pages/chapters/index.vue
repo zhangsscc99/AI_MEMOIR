@@ -47,10 +47,11 @@
             >
               <!-- 背景图片 -->
               <view class="chapter-bg">
-                <image 
-                  :src="getOptimalImagePath(chapter.backgroundImage)" 
-                  class="bg-image"
+                <LazyImage
+                  :src="chapter.backgroundImage"
+                  fill
                   mode="aspectFill"
+                  image-class="bg-image"
                 />
                 <view class="bg-overlay"></view>
               </view>

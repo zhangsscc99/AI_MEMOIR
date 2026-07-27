@@ -26,6 +26,11 @@ const app = express();
 // 基础配置
 const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const FRONTEND_PORT = process.env.FRONTEND_PORT || 4100;
+const frontendDevOrigins = [
+  `http://localhost:${FRONTEND_PORT}`,
+  `http://127.0.0.1:${FRONTEND_PORT}`
+];
 
 // 安全中间件
 app.use(helmet({
@@ -35,16 +40,19 @@ app.use(helmet({
 // CORS 配置
 app.use(cors({
   origin: [
+    ...frontendDevOrigins,
     'http://localhost:5173',  // 前端开发服务器
     'http://localhost:3000',
     'http://localhost',       // Capacitor 默认地址
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1',      // Capacitor 默认地址
-    'http://103.146.125.208:5173',  // 服务器前端地址
-    'http://103.146.125.208:3000',
-    'http://103.146.125.208:8080',
-    'http://103.146.125.208:8081',
+    `http://103.146.124.206:${FRONTEND_PORT}`,
+    'http://103.146.124.206:3020',  // 服务器前端地址
+    'http://103.146.124.206:5173',
+    'http://103.146.124.206:3000',
+    'http://103.146.124.206:8080',
+    'http://103.146.124.206:8081',
     'capacitor://localhost',  // Capacitor 协议
     'ionic://localhost',      // Ionic 协议
     'http://localhost:8080',  // 其他可能端口
@@ -177,7 +185,7 @@ const startServer = async () => {
       console.log('   - POST /api/speech/transcribe - 转写音频文件');
       console.log('   - DELETE /api/speech/audio/:filename - 删除音频文件');
       console.log('');
-      console.log('🎯 前端访问地址: http://localhost:5173');
+      console.log(`🎯 前端访问地址: http://localhost:${FRONTEND_PORT}`);
       console.log('⚡ 准备接收请求...');
     });
     

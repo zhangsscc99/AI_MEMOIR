@@ -18,39 +18,90 @@ export const imageMapping = {
   "/src/images/zaomen.jpeg": "/src/images_webp/zaomen.webp"
 };
 
+const LEGACY_HOSTS = ['103.146.125.208', 'localhost', '127.0.0.1'];
+
+function getMediaBase() {
+  if (typeof window !== 'undefined') {
+    if (window.MEDIA_BASE) {
+      return String(window.MEDIA_BASE).replace(/\/$/, '');
+    }
+    if (window.API_BASE) {
+      return String(window.API_BASE).replace(/\/api\/?$/, '');
+    }
+  }
+  return '';
+}
+
+function isProductionBuild() {
+  return (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PROD) ||
+    process.env.NODE_ENV === 'production';
+}
+
+function toProductionStaticPath(originalPath) {
+  return originalPath.replace('/src/images/', '/images/');
+}
+
+function toProductionWebpPath(originalPath) {
+  return toProductionStaticPath(originalPath)
+    .replace('/images/', '/images_webp/')
+    .replace(/\.(png|jpe?g)$/i, '.webp');
+}
+
+export function resolveMediaUrl(path) {
+  if (!path) return '';
+
+  if (path.startsWith('blob:') || path.startsWith('data:')) {
+    return path;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    try {
+      const url = new URL(path);
+      if (LEGACY_HOSTS.includes(url.hostname)) {
+        const mediaBase = getMediaBase();
+        if (mediaBase) {
+          return `${mediaBase}${url.pathname}${url.search}${url.hash}`;
+        }
+      }
+      if (url.hostname === '103.146.125.208') {
+        url.hostname = '103.146.124.206';
+        return url.toString();
+      }
+    } catch (_error) {
+      return path;
+    }
+    return path;
+  }
+
+  if (path.startsWith('/uploads/')) {
+    const mediaBase = getMediaBase();
+    return mediaBase ? `${mediaBase}${path}` : path;
+  }
+
+  return path;
+}
+
 // 获取 WebP 路径
 export function getWebPPath(originalPath) {
-  // 检查是否是生产环境
-  const isProduction = process.env.NODE_ENV === 'production' || 
-                      (typeof window !== 'undefined' && 
-                       window.location.hostname !== 'localhost' && 
-                       window.location.hostname !== '127.0.0.1' &&
-                       !window.location.hostname.includes('localhost'));
-  
-  console.log('🔍 图片路径检测:', {
-    originalPath,
-    isProduction,
-    hostname: typeof window !== 'undefined' ? window.location.hostname : 'undefined',
-    nodeEnv: process.env.NODE_ENV
-  });
-  
-  if (isProduction) {
-    // 生产环境：将 /src/images/ 替换为 /images_webp/
-    const webpPath = originalPath.replace('/src/images/', '/images_webp/').replace(/\.(png|jpe?g)$/i, '.webp');
-    console.log('🎯 生产环境WebP路径:', webpPath);
-    return webpPath;
+  const resolvedPath = resolveMediaUrl(originalPath);
+  if (/^https?:\/\//i.test(resolvedPath) || resolvedPath.startsWith('/uploads/')) {
+    return resolvedPath;
   }
-  
-  // 开发环境：使用映射表
-  const devPath = imageMapping[originalPath] || originalPath;
-  console.log('🎯 开发环境路径:', devPath);
-  return devPath;
+
+  if (isProductionBuild()) {
+    if (/\.svg$/i.test(resolvedPath)) {
+      return toProductionStaticPath(resolvedPath);
+    }
+    return toProductionWebpPath(resolvedPath);
+  }
+
+  return imageMapping[originalPath] || originalPath;
 }
 
 // 检查是否支持 WebP
 export function supportsWebP() {
   if (typeof window === 'undefined') return false;
-  
+
   const canvas = document.createElement('canvas');
   canvas.width = 1;
   canvas.height = 1;
@@ -59,8 +110,24 @@ export function supportsWebP() {
 
 // 获取最优图片路径（支持 WebP 则返回 WebP，否则返回原图）
 export function getOptimalImagePath(originalPath) {
+  const resolvedPath = resolveMediaUrl(originalPath);
+  if (!resolvedPath) return '';
+
+  if (/^https?:\/\//i.test(resolvedPath) || resolvedPath.startsWith('/uploads/')) {
+    return resolvedPath;
+  }
+
+  if (/\.svg$/i.test(resolvedPath)) {
+    return isProductionBuild() ? toProductionStaticPath(resolvedPath) : resolvedPath;
+  }
+
   if (supportsWebP()) {
     return getWebPPath(originalPath);
   }
-  return originalPath;
+
+  if (isProductionBuild()) {
+    return toProductionStaticPath(resolvedPath);
+  }
+
+  return resolvedPath;
 }

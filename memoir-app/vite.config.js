@@ -62,8 +62,6 @@ export default defineConfig({
         ]
       }
     }),
-    // WebP 图片复制插件
-    copyWebPPlugin()
   ],
   build: {
     // 图片优化配置
@@ -84,6 +82,19 @@ export default defineConfig({
   },
   // 开发服务器配置
   server: {
+    host: '0.0.0.0',
+    port: Number(process.env.FRONTEND_PORT || 4100),
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: `http://127.0.0.1:${process.env.VITE_BACKEND_PORT || 3200}`,
+        changeOrigin: true
+      },
+      '/uploads': {
+        target: `http://127.0.0.1:${process.env.VITE_BACKEND_PORT || 3200}`,
+        changeOrigin: true
+      }
+    },
     // 启用gzip压缩
     compress: true
   }

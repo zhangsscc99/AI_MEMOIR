@@ -1,14 +1,10 @@
 <template>
-  <view class="lazy-image-container" :style="{ width: width, height: height }">
+  <view class="lazy-image-container" :class="{ 'lazy-image-fill': fill }" :style="containerStyle">
     <!-- 占位符 -->
     <view 
       v-if="!loaded" 
       class="image-placeholder"
-      :style="{ 
-        width: width, 
-        height: height,
-        backgroundColor: placeholderColor 
-      }"
+      :style="placeholderStyle"
     >
       <view class="loading-spinner" v-if="loading">
         <view class="spinner"></view>
@@ -21,7 +17,7 @@
       :src="optimizedSrc"
       :mode="mode"
       :class="imageClass"
-      :style="{ width: width, height: height }"
+      :style="imageStyle"
       @load="onImageLoad"
       @error="onImageError"
       :lazy-load="true"
@@ -69,6 +65,10 @@ export default {
     immediate: {
       type: Boolean,
       default: false
+    },
+    fill: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -79,16 +79,27 @@ export default {
     }
   },
   computed: {
-    optimizedSrc() {
-      if (!this.src) return ''
-      
-      // 如果是网络图片，直接返回
-      if (this.src.startsWith('http')) {
-        return this.src
+    containerStyle() {
+      if (this.fill) return {};
+      return { width: this.width, height: this.height };
+    },
+    imageStyle() {
+      if (this.fill) return { width: '100%', height: '100%' };
+      return { width: this.width, height: this.height };
+    },
+    placeholderStyle() {
+      if (this.fill) {
+        return { width: '100%', height: '100%', backgroundColor: this.placeholderColor };
       }
-      
-      // 使用图片映射工具获取最优路径
-      return getOptimalImagePath(this.src)
+      return {
+        width: this.width,
+        height: this.height,
+        backgroundColor: this.placeholderColor
+      };
+    },
+    optimizedSrc() {
+      if (!this.src) return '';
+      return getOptimalImagePath(this.src);
     }
   },
   mounted() {
@@ -157,7 +168,12 @@ export default {
 .lazy-image-container {
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
+}
+
+.lazy-image-container.lazy-image-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
 }
 
 .image-placeholder {
