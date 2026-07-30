@@ -262,61 +262,9 @@ Page({
     })
   },
 
-  // 语音转文字
+  // 语音转文字（Web 端使用阿里云实时识别）
   async transcribeRecording(fileID, index) {
-    wx.showLoading({ title: 'AI转文字中...' })
-    try {
-      // 获取临时下载链接
-      const fileRes = await wx.cloud.getTempFileURL({
-        fileList: [fileID]
-      })
-
-      const audioUrl = fileRes.fileList[0]?.tempFileURL
-      if (!audioUrl) throw new Error('获取音频链接失败')
-
-      // 下载音频文件转base64（小程序环境下）
-      const downloadRes = await new Promise((resolve, reject) => {
-        wx.downloadFile({
-          url: audioUrl,
-          success: resolve,
-          fail: reject
-        })
-      })
-
-      // 读取文件为base64
-      const fs = wx.getFileSystemManager()
-      const audioBase64 = fs.readFileSync(downloadRes.tempFilePath, 'base64')
-
-      // 调用speech云函数
-      const result = await wx.cloud.callFunction({
-        name: 'speech',
-        data: {
-          action: 'transcribeBaidu',
-          audioBase64,
-          format: 'mp3',
-          rate: 16000
-        }
-      })
-
-      const { success, data, error } = result.result
-      if (!success) throw new Error(error || '转文字失败')
-
-      const transcribedText = data.text
-      if (transcribedText) {
-        // 追加到内容
-        const newContent = this.data.content
-          ? this.data.content + '\n\n' + transcribedText
-          : transcribedText
-
-        this.setData({ content: newContent })
-        wx.showToast({ title: '转文字成功', icon: 'success' })
-      }
-    } catch (err) {
-      console.error('转文字失败:', err)
-      wx.showToast({ title: '转文字失败，请重试', icon: 'error' })
-    } finally {
-      wx.hideLoading()
-    }
+    wx.showToast({ title: '请使用网页端录音转写', icon: 'none' })
   },
 
   // 删除录音

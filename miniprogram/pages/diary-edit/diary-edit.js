@@ -280,38 +280,9 @@ Page({
     }
   },
 
-  // 语音转文字后追加到内容
+  // 语音转文字后追加到内容（Web 端使用阿里云实时识别）
   async transcribeAndAppend(tempFilePath) {
-    wx.showLoading({ title: 'AI转文字...' })
-    try {
-      const downloadRes = await new Promise((resolve, reject) => {
-        wx.downloadFile({ url: tempFilePath, success: resolve, fail: reject })
-      }).catch(() => ({ tempFilePath }))
-
-      const fs = wx.getFileSystemManager()
-      const audioBase64 = fs.readFileSync(downloadRes.tempFilePath || tempFilePath, 'base64')
-
-      const result = await wx.cloud.callFunction({
-        name: 'speech',
-        data: { action: 'transcribeBaidu', audioBase64, format: 'mp3', rate: 16000 }
-      })
-
-      const { success, data } = result.result
-      if (success && data?.text) {
-        const newContent = this.data.content
-          ? this.data.content + '\n' + data.text
-          : data.text
-        this.setData({ content: newContent })
-        wx.showToast({ title: '转文字成功', icon: 'success' })
-      } else {
-        wx.showToast({ title: '转文字失败', icon: 'error' })
-      }
-    } catch (err) {
-      console.error('语音转文字失败:', err)
-      wx.showToast({ title: '转文字失败', icon: 'error' })
-    } finally {
-      wx.hideLoading()
-    }
+    wx.showToast({ title: '请使用网页端录音转写', icon: 'none' })
   },
 
   // AI润色

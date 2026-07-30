@@ -198,10 +198,6 @@ export default {
       currentApiKey: null,
       speechProvider: 'aliyun',
       currentSpeechConfig: null,
-      baiduAppId: null,
-      baiduApiKey: null,
-      baiduDevPid: 15372,
-      baiduCuid: null,
       aliyunAppKey: null,
       aliyunRegion: null,
       aliyunWsUrl: null,
@@ -1066,37 +1062,6 @@ export default {
       }
     },
 
-    // 开始百度Web API录音 - 通过后端
-    async startBaiduWebRecording() {
-      try {
-        console.log('🌐 开始百度Web实时语音识别...');
-
-        console.log('🔐 检查Web录音权限...');
-        const hasPermission = await this.checkWebRecordingPermission();
-        if (!hasPermission) {
-          throw new Error('录音权限被拒绝');
-        }
-
-        console.log('🔑 获取百度语音识别配置...');
-        const config = await this.getBaiduSpeechConfig();
-        console.log('✅ 语音识别配置已获取');
-
-        await this.startWebRecording(config);
-
-        console.log('✅ 百度Web实时语音识别已开始');
-
-      } catch (error) {
-        console.error('❌ 百度Web实时语音识别启动失败:', error);
-        throw error;
-      }
-    },
-
-    // 开始百度移动端录音 - 使用原生Android SDK
-    async startBaiduMobileRecording() {
-      console.log('🎯 移动端环境使用Web录音方案进行识别 (阿里云)');
-      await this.startAliyunWebRecording();
-    },
-
     // 检查是否为Capacitor环境
     isCapacitorEnvironment() {
       return !!(window.Capacitor && window.Capacitor.isNativePlatform());
@@ -1134,70 +1099,6 @@ export default {
       }
     },
 
-    // 获取百度语音识别配置
-    async getBaiduSpeechConfig() {
-      try {
-        let token = uni.getStorageSync('token');
-        if (!token) {
-          console.log('🔐 用户未登录，尝试自动登录...');
-          // 尝试自动登录
-          await this.autoLogin();
-          token = uni.getStorageSync('token');
-          if (!token) {
-            throw new Error('用户未登录，无法进行语音识别');
-          }
-        }
-        
-        const tokenResponse = await uni.request({
-          url: apiUrl('/speech/token'),
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (tokenResponse.data.success) {
-          const data = tokenResponse.data.data || {};
-          const speechToken = data.token;
-          const appId = data.appId;
-          const apiKey = data.apiKey;
-          const devPid = data.devPid || 15372;
-          const sampleRate = data.sampleRate || this.pcmSampleRate;
-          const cuid = data.cuid || this.generateSessionId();
-
-          this.currentToken = speechToken;
-          this.currentApiKey = apiKey;
-          this.baiduAppId = appId;
-          this.baiduApiKey = apiKey;
-          this.baiduDevPid = devPid;
-          this.pcmSampleRate = sampleRate;
-          this.baiduCuid = cuid;
-
-          console.log('✅ 获取百度语音识别配置成功:', {
-            appId,
-            devPid,
-            sampleRate,
-            cuid
-          });
-
-          return {
-            token: speechToken,
-            appId,
-            apiKey,
-            devPid,
-            sampleRate,
-            cuid
-          };
-        } else {
-          throw new Error('获取语音识别Token失败: ' + tokenResponse.data.message);
-        }
-      } catch (error) {
-        console.error('❌ 获取百度语音识别配置失败:', error);
-        throw error;
-      }
-    },
-
     // 检查Web录音权限
     async checkWebRecordingPermission() {
       try {
@@ -1212,33 +1113,6 @@ export default {
         console.error('❌ 检查Web录音权限失败:', error);
         return false;
       }
-    },
-
-    // 检查百度权限
-    async checkBaiduPermission() {
-      console.log('🔐 默认授予录音权限（移动端插件未启用）');
-      return {
-        granted: true,
-        denied: false,
-        neverAsked: false
-      };
-    },
-
-    // 初始化百度SDK
-    async initializeBaiduSDK(apiKey, token) {
-      console.log('🔧 百度移动端SDK未启用，跳过初始化');
-      return true;
-    },
-
-    // 开始百度录音
-    async startBaiduRecording() {
-      console.log('🎤 使用Web录音替代原生插件 (阿里云)');
-      await this.startAliyunWebRecording();
-    },
-
-    // 设置百度监听器
-    setupBaiduListeners() {
-      console.log('ℹ️ 移动端监听器未启用');
     },
 
     // Capacitor 录音方法
@@ -1519,12 +1393,8 @@ export default {
           console.log('🎤 MediaRecorder 已开始录音');
           this.currentSpeechConfig = config;
 
-          if (this.speechProvider === 'aliyun') {
-            this.startAliyunWebSocketRecognition(config);
-          } else {
-            this.startBaiduWebSocketRecognition(config);
-            this.keepWebSocketAlive();
-          }
+          this.startAliyunWebSocketRecognition(config);
+          this.keepWebSocketAlive();
         };
         
         this.mediaRecorder.onpause = () => {
@@ -1604,20 +1474,20 @@ export default {
         }
 
         let config;
-        if (this.currentToken && this.baiduApiKey) {
+        if (this.currentToken && this.aliyunAppKey) {
           config = {
+            provider: 'aliyun',
             token: this.currentToken,
-            appId: this.baiduAppId,
-            apiKey: this.baiduApiKey,
-            devPid: this.baiduDevPid,
-            sampleRate: this.pcmSampleRate,
-            cuid: this.baiduCuid || this.generateSessionId()
+            appKey: this.aliyunAppKey,
+            websocketUrl: this.aliyunWsUrl,
+            region: this.aliyunRegion,
+            sampleRate: this.pcmSampleRate
           };
         } else {
-          config = await this.getBaiduSpeechConfig();
+          config = await this.getAliyunSpeechConfig();
         }
 
-        await this.startBaiduWebSocketRecognition(config);
+        await this.startAliyunWebSocketRecognition(config);
 
       } catch (error) {
         console.error('❌ 启动实时语音识别失败:', error);
@@ -1918,125 +1788,6 @@ export default {
       }
     },
 
-    // 百度WebSocket流式识别
-    async startBaiduWebSocketRecognition(config = {}) {
-      try {
-        const {
-          token,
-          appId,
-          apiKey,
-          devPid = this.baiduDevPid,
-          sampleRate = this.pcmSampleRate,
-          cuid = this.generateSessionId()
-        } = config;
-
-        if (!token || !apiKey || !appId) {
-          throw new Error('百度语音识别配置不完整');
-        }
-
-        console.log('🎤 开始百度WebSocket实时识别...');
-        console.log('🔑 Token前缀:', token.substring(0, 12) + '...');
-        console.log('🆔 AppID:', appId);
-        console.log('🧠 模型 dev_pid:', devPid);
-
-        this.currentToken = token;
-        this.currentApiKey = apiKey;
-        this.baiduAppId = appId;
-        this.baiduApiKey = apiKey;
-        this.baiduDevPid = devPid;
-        this.pcmSampleRate = sampleRate;
-        this.baiduCuid = cuid;
-
-        this.audioQueue = [];
-        this.audioProcessingPromise = Promise.resolve();
-        this.allowAudioStreaming = true;
-
-        const sn = this.generateMessageId();
-        const urlParams = new URLSearchParams({
-          sn,
-          appid: appId,
-          token
-        });
-        const wsUrl = `wss://vop.baidu.com/realtime_asr?${urlParams.toString()}`;
-        console.log('🌐 WebSocket URL:', wsUrl);
-
-        if (this.websocket) {
-          try {
-            this.websocket.close();
-          } catch (closeError) {
-            console.warn('⚠️ 关闭旧的WebSocket失败:', closeError);
-          }
-        }
-
-        this.websocket = new WebSocket(wsUrl);
-        this.websocket.binaryType = 'arraybuffer';
-
-        this.websocket.onopen = () => {
-          console.log('✅ WebSocket连接已建立');
-          const startFrame = {
-            type: 'START',
-            data: {
-              appid: Number(appId),
-              appkey: apiKey,
-              token,
-              dev_pid: Number(devPid),
-              cuid,
-              format: 'pcm',
-              sample: Number(sampleRate)
-            }
-          };
-          try {
-            this.websocket.send(JSON.stringify(startFrame));
-            console.log('📤 已发送百度START帧');
-          } catch (sendError) {
-            console.error('❌ 发送START帧失败:', sendError);
-          }
-        };
-
-        this.websocket.onmessage = (event) => {
-          this.handleWebSocketMessage(event);
-        };
-
-        this.websocket.onclose = (event) => {
-          console.log('🔌 WebSocket连接已关闭:', event.code, event.reason);
-          this.allowAudioStreaming = false;
-          if (this.isRecording) {
-            console.log('🔄 录音进行中，尝试重连百度WebSocket...');
-            this.reconnectWebSocket({
-              token,
-              appId,
-              apiKey,
-              devPid,
-              sampleRate,
-              cuid
-            });
-          }
-        };
-
-        this.websocket.onerror = (error) => {
-          console.error('❌ WebSocket连接错误:', error);
-          this.allowAudioStreaming = false;
-        };
-
-      } catch (error) {
-        console.error('❌ 启动百度WebSocket识别失败:', error);
-        this.allowAudioStreaming = false;
-        throw error;
-      }
-    },
-
-    // WebSocket重连方法
-    async reconnectWebSocket(config) {
-      try {
-        console.log('🔄 准备在2秒后重连百度WebSocket...');
-        setTimeout(() => {
-          this.startBaiduWebSocketRecognition(config);
-        }, 2000);
-      } catch (error) {
-        console.error('❌ WebSocket重连失败:', error);
-      }
-    },
-
     // 保持WebSocket连接活跃
     keepWebSocketAlive() {
       if (this.websocketKeepAliveTimer) {
@@ -2044,29 +1795,9 @@ export default {
         this.websocketKeepAliveTimer = null;
       }
 
-      if (this.speechProvider !== 'baidu') {
-        this.websocketKeepAliveTimer = setInterval(() => {
-          if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-            console.log('💓 WebSocket连接正常');
-          }
-        }, 5000);
-        return;
-      }
-
-      // 每5秒检查一次WebSocket连接状态
       this.websocketKeepAliveTimer = setInterval(() => {
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
           console.log('💓 WebSocket连接正常');
-        } else if (this.isRecording && this.currentToken && this.currentApiKey && this.baiduAppId) {
-          console.log('⚠️ WebSocket连接异常，尝试重连...');
-          this.reconnectWebSocket({
-            token: this.currentToken,
-            appId: this.baiduAppId,
-            apiKey: this.currentApiKey,
-            devPid: this.baiduDevPid,
-            sampleRate: this.pcmSampleRate,
-            cuid: this.baiduCuid || this.generateSessionId()
-          });
         }
       }, 5000);
     },
@@ -2088,25 +1819,20 @@ export default {
       }
 
       try {
-        if (this.speechProvider === 'aliyun') {
-          const stopMessage = {
-            header: {
-              message_id: this.generateMessageId(),
-              task_id: this.aliyunTaskId || this.generateMessageId(),
-              namespace: 'SpeechTranscriber',
-              name: 'StopTranscription',
-              appkey: this.aliyunAppKey || this.currentApiKey
-            },
-            payload: {}
-          };
-          this.websocket.send(JSON.stringify(stopMessage));
-          console.log('🛑 已发送阿里云StopTranscription指令');
-        } else {
-          this.websocket.send(JSON.stringify({ type: 'FINISH' }));
-          console.log('🛑 已发送百度FINISH帧');
-        }
+        const stopMessage = {
+          header: {
+            message_id: this.generateMessageId(),
+            task_id: this.aliyunTaskId || this.generateMessageId(),
+            namespace: 'SpeechTranscriber',
+            name: 'StopTranscription',
+            appkey: this.aliyunAppKey || this.currentApiKey
+          },
+          payload: {}
+        };
+        this.websocket.send(JSON.stringify(stopMessage));
+        console.log('🛑 已发送阿里云StopTranscription指令');
       } catch (error) {
-        console.error('❌ 发送FINISH帧失败:', error);
+        console.error('❌ 发送StopTranscription指令失败:', error);
       }
     },
 
@@ -2193,55 +1919,6 @@ export default {
         }
       } catch (error) {
         console.error('❌ 解析阿里云WebSocket消息失败:', error);
-      }
-    },
-
-    // 处理WebSocket消息
-    handleWebSocketMessage(event) {
-      if (this.speechProvider === 'aliyun') {
-        this.handleAliyunWebSocketMessage(event);
-        return;
-      }
-
-      try {
-        const message = JSON.parse(event.data);
-        console.log('📨 收到WebSocket消息:', message);
-
-        const { type, result, results, err_no: errNo, err_msg: errMsg } = message;
-
-        if (type === 'HEARTBEAT') {
-          console.log('💓 收到百度心跳帧');
-          return;
-        }
-
-        if (typeof errNo !== 'undefined' && errNo !== 0) {
-          console.error('❌ 百度识别返回错误:', errNo, errMsg);
-          return;
-        }
-
-        let text = '';
-        if (Array.isArray(results) && results.length > 0) {
-          text = results.map(item => item[0]?.words || item).join('');
-        } else if (typeof result === 'string') {
-          text = result;
-        }
-
-        if (!text) {
-          console.log('⚠️ 识别结果为空');
-          return;
-        }
-
-        if (type === 'MID_TEXT') {
-          console.log('🎯 百度中间识别结果:', text);
-          this.updateContentText(text, false);
-        } else if (type === 'FIN_TEXT') {
-          console.log('✅ 百度最终识别结果:', text);
-          this.updateContentText(text, true);
-        } else {
-          console.log('ℹ️ 收到未处理的消息类型:', type);
-        }
-      } catch (error) {
-        console.error('❌ 解析WebSocket消息失败:', error);
       }
     },
 
@@ -2370,223 +2047,6 @@ export default {
       return buffer;
     },
 
-    // 百度实时识别（保留原有方法作为备选）
-    async startAliyunRealtimeRecognition() {
-      // 获取用户Token
-      const token = uni.getStorageSync('token');
-      if (!token) {
-        console.error('❌ 用户未登录，无法进行实时识别');
-        return;
-      }
-
-      // 获取百度语音识别Token
-      const tokenResponse = await uni.request({
-        url: apiUrl('/speech/token'),
-        method: 'GET',
-        header: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
-        console.error('❌ 获取语音识别Token失败:', tokenResponse.data?.message);
-        return;
-      }
-
-      const speechToken = tokenResponse.data.data.token;
-      console.log('✅ 获取语音识别Token成功');
-      
-      // 设置实时识别定时器
-      this.realtimeRecognitionTimer = setInterval(() => {
-        this.performStreamingRecognition(speechToken);
-      }, 3000); // 每3秒进行一次识别
-    },
-
-    // 执行流式语音识别
-    async performStreamingRecognition(speechToken) {
-      if (!this.isRecording) {
-        return;
-      }
-
-      try {
-        console.log('🎤 执行流式语音识别...');
-        
-        // 对于Cordova录音，我们直接调用百度流式识别API
-        if (this.mediaRecorder && this.mediaRecorder.src) {
-          console.log('📁 使用Cordova录音文件进行流式识别:', this.mediaRecorder.src);
-          
-          // 检查文件是否已经识别过（避免重复识别）
-          const currentFile = this.mediaRecorder.src;
-          if (this.lastRecognizedFile === currentFile) {
-            console.log('⏭️ 文件已识别过，跳过');
-            return;
-          }
-          
-          // 调用百度流式识别API
-          await this.callStreamingRecognitionAPI(speechToken, this.mediaRecorder.src);
-          
-          // 记录已识别的文件
-          this.lastRecognizedFile = currentFile;
-        } else {
-          console.log('🎤 等待录音文件生成...');
-        }
-        
-      } catch (error) {
-        console.error('❌ 流式语音识别失败:', error);
-      }
-    },
-
-    // 执行实时语音识别（保留原有方法作为备选）
-    async performRealtimeRecognition(speechToken) {
-      if (!this.isRecording) {
-        return;
-      }
-
-      try {
-        console.log('🎤 执行实时语音识别...');
-        
-        // 对于Cordova录音，我们直接调用百度API进行识别
-        // 不需要处理音频数据块，因为Cordova录音文件已经生成
-        if (this.mediaRecorder && this.mediaRecorder.src) {
-          console.log('📁 使用Cordova录音文件进行识别:', this.mediaRecorder.src);
-          
-          // 检查文件是否已经识别过（避免重复识别）
-          const currentFile = this.mediaRecorder.src;
-          if (this.lastRecognizedFile === currentFile) {
-            console.log('⏭️ 文件已识别过，跳过');
-            return;
-          }
-          
-          // 直接调用百度识别API
-          await this.callAliyunRecognitionAPI(speechToken, this.mediaRecorder.src);
-          
-          // 记录已识别的文件
-          this.lastRecognizedFile = currentFile;
-        } else {
-          console.log('🎤 等待录音文件生成...');
-        }
-        
-      } catch (error) {
-        console.error('❌ 实时语音识别失败:', error);
-      }
-    },
-
-    // 调用百度流式识别API
-    async callStreamingRecognitionAPI(speechToken, filePath) {
-      try {
-        console.log('🎯 调用百度流式识别API...');
-        console.log('📁 文件路径:', filePath);
-        
-        // 获取用户Token
-        const token = uni.getStorageSync('token');
-        
-        // 读取音频文件
-        console.log('📖 读取音频文件...');
-        const audioData = await this.readAudioFile(filePath);
-        
-        if (!audioData) {
-          console.error('❌ 无法读取音频文件');
-          return;
-        }
-        
-        // 将音频数据转换为Base64
-        const base64AudioData = uni.arrayBufferToBase64(audioData);
-        
-        // 调用百度流式语音识别接口
-        const transcribeResponse = await uni.request({
-          url: apiUrl('/speech/streaming-recognize'),
-          method: 'POST',
-          header: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          data: {
-            audioData: base64AudioData,
-            format: 'wav',
-            sampleRate: 16000,
-            realtime: true
-          }
-        });
-
-        if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
-          const transcribedText = transcribeResponse.data.data.transcript;
-          if (transcribedText && transcribedText !== '识别完成但无结果' && transcribedText.length > 0) {
-            console.log('🎯 流式识别结果:', transcribedText);
-            
-            // 将识别结果添加到文本输入框
-            if (this.contentText) {
-              this.contentText += ' ' + transcribedText;
-            } else {
-              this.contentText = transcribedText;
-            }
-            // 强制更新UI
-            this.$forceUpdate();
-            console.log('📝 文本已更新:', this.contentText);
-          }
-        } else {
-          console.error('❌ 流式识别失败:', transcribeResponse.data?.message);
-        }
-        
-      } catch (error) {
-        console.error('❌ 百度流式识别API调用失败:', error);
-      }
-    },
-
-    // 调用百度识别API - 使用流式识别（保留原有方法作为备选）
-    async callAliyunRecognitionAPI(speechToken, filePath) {
-      try {
-        console.log('🎯 调用百度流式识别API...');
-        console.log('📁 文件路径:', filePath);
-        
-        // 获取用户Token
-        const token = uni.getStorageSync('token');
-        
-        // 读取音频文件
-        console.log('📖 读取音频文件...');
-        const audioData = await this.readAudioFile(filePath);
-        
-        if (!audioData) {
-          console.error('❌ 无法读取音频文件');
-          return;
-        }
-        
-        // 调用百度流式语音识别接口
-        const transcribeResponse = await uni.request({
-          url: apiUrl('/speech/transcribe'),
-          method: 'POST',
-          header: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          data: {
-            filename: filePath,
-            realtime: true,
-            streaming: true  // 标记为流式识别
-          }
-        });
-
-        if (transcribeResponse.statusCode === 200 && transcribeResponse.data.success) {
-          const transcribedText = transcribeResponse.data.data.transcript;
-          if (transcribedText && transcribedText !== '识别完成但无结果' && transcribedText.length > 0) {
-            console.log('🎯 流式识别结果:', transcribedText);
-            
-            // 将识别结果添加到文本输入框
-            if (this.contentText) {
-              this.contentText += ' ' + transcribedText;
-            } else {
-              this.contentText = transcribedText;
-            }
-          }
-        } else {
-          console.error('❌ 流式识别失败:', transcribeResponse.data?.message);
-        }
-        
-      } catch (error) {
-        console.error('❌ 百度流式识别API调用失败:', error);
-      }
-    },
-
     // 读取音频文件
     async readAudioFile(filePath) {
       try {
@@ -2706,16 +2166,17 @@ export default {
           this.audioQueue.push(pcmBuffer);
 
           if (!this.websocket || this.websocket.readyState === WebSocket.CLOSED) {
-            if ((this.isRecording || this.isProcessing) && this.currentToken && this.currentApiKey && this.baiduAppId) {
+            if ((this.isRecording || this.isProcessing) && this.currentToken && this.currentApiKey && this.aliyunAppKey) {
               console.log('🔄 尝试重连WebSocket...');
-              this.reconnectWebSocket({
+              const config = this.currentSpeechConfig || {
+                provider: 'aliyun',
                 token: this.currentToken,
-                appId: this.baiduAppId,
-                apiKey: this.currentApiKey,
-                devPid: this.baiduDevPid,
-                sampleRate: this.pcmSampleRate,
-                cuid: this.baiduCuid || this.generateSessionId()
-              });
+                appKey: this.aliyunAppKey || this.currentApiKey,
+                websocketUrl: this.aliyunWsUrl,
+                region: this.aliyunRegion,
+                sampleRate: this.pcmSampleRate
+              };
+              this.startAliyunWebSocketRecognition(config);
             }
           }
         }
@@ -2952,15 +2413,15 @@ export default {
       // 停止状态监控
       this.stopStatusMonitoring();
       
-      // 停止百度插件录音
+      // 停止阿里云插件录音
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AliyunSpeech) {
-        console.log('🎤 停止百度插件录音...');
+        console.log('🎤 停止阿里云插件录音...');
         try {
           window.Capacitor.Plugins.AliyunSpeech.stopRecording();
           window.Capacitor.Plugins.AliyunSpeech.removeAllListeners();
-          console.log('✅ 百度插件录音已停止');
+          console.log('✅ 阿里云插件录音已停止');
         } catch (error) {
-          console.error('❌ 停止百度插件录音失败:', error);
+          console.error('❌ 停止阿里云插件录音失败:', error);
         }
       }
       
@@ -3302,30 +2763,11 @@ export default {
           throw new Error('用户未登录');
         }
 
-        // 获取百度语音识别Token
-        console.log('正在获取百度语音识别Token...');
-        const tokenResponse = await uni.request({
-          url: apiUrl('/speech/token'),
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('Token响应:', tokenResponse);
-
-        // 检查认证错误
-        if (handleAuthError(tokenResponse)) {
-          return;
-        }
-
-        if (tokenResponse.statusCode !== 200 || !tokenResponse.data.success) {
-          throw new Error(tokenResponse.data?.message || '获取语音识别Token失败');
-        }
-
-        const speechToken = tokenResponse.data.data.token;
-        console.log('成功获取百度Token:', speechToken.substring(0, 20) + '...');
+        // 获取阿里云语音识别配置
+        console.log('正在获取阿里云语音识别配置...');
+        const speechConfig = await this.getAliyunSpeechConfig();
+        const speechToken = speechConfig.token;
+        console.log('成功获取阿里云Token:', speechToken.substring(0, 20) + '...');
 
         // 如果有录音文件，处理语音识别
         if (recording && recording.filePath) {
@@ -3338,7 +2780,7 @@ export default {
               // Web录音文件已经上传，直接调用转写
               await this.callTranscribeAPI(recording, speechToken, recording.filePath);
             } else {
-              console.log('📤 准备上传音频文件进行百度识别...');
+              console.log('📤 准备上传音频文件进行语音识别...');
               // App录音或其他情况，需要先上传
               const uploadResult = await this.uploadAudioFile(recording.filePath, token);
               console.log('✅ 音频文件上传成功:', uploadResult);
@@ -3416,7 +2858,7 @@ export default {
         // 获取用户Token
         const token = uni.getStorageSync('token');
         
-        // 调用真实的百度语音识别接口
+        // 调用语音识别转写接口
         const transcribeResponse = await uni.request({
           url: apiUrl('/speech/transcribe'),
           method: 'POST',
@@ -3448,7 +2890,7 @@ export default {
             icon: 'success'
           });
           
-          console.log('✅ 百度语音识别完成！');
+          console.log('✅ 语音识别完成！');
           console.log('📄 转录文本:', transcribedText);
           console.log('⏰ 转写时间:', transcribeResponse.data.data.transcribedAt);
           
@@ -3464,7 +2906,7 @@ export default {
 
     async callTranscribeAPI(recording, speechToken, filename) {
       try {
-        console.log('🎯 开始百度语音识别...');
+        console.log('🎯 开始语音识别...');
         console.log('📁 音频文件:', filename);
         console.log('🔑 Token:', speechToken.substring(0, 20) + '...');
         
@@ -3504,7 +2946,7 @@ export default {
             icon: 'success'
           });
           
-          console.log('✅ 百度语音识别完成！');
+          console.log('✅ 语音识别完成！');
           console.log('📄 转录文本:', transcribedText);
           console.log('⏰ 转写时间:', transcribeResponse.data.data.transcribedAt);
           
@@ -3515,7 +2957,7 @@ export default {
         }
         
       } catch (error) {
-        console.error('❌ 百度语音识别失败:', error);
+        console.error('❌ 语音识别失败:', error);
         throw error;
       }
     },
