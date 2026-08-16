@@ -12,8 +12,15 @@ const saveChapter = async (req, res) => {
     console.log('📋 请求体:', req.body);
     console.log('👤 用户ID:', req.user?.id);
     
-    const { chapterId, title, content, recordings, backgroundImage } = req.body;
+    const { chapterId, title, content, recordings, backgroundImage, images } = req.body;
     const userId = req.user.id;
+
+    const normalizedImages = Array.isArray(images)
+      ? images.filter(image => typeof image === 'string' && image.trim()).slice(0, 9)
+      : backgroundImage
+        ? [backgroundImage]
+        : [];
+    const coverImage = normalizedImages[0] || backgroundImage || null;
 
     // 验证章节ID（支持固定章节和自定义随记章节）
     const validChapterIds = ['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'];
@@ -40,8 +47,9 @@ const saveChapter = async (req, res) => {
     chapter.content = content || '';
     chapter.recordings = recordings || [];
 
-    if (backgroundImage !== undefined) {
-      chapter.background_image = backgroundImage;
+    if (images !== undefined || backgroundImage !== undefined) {
+      chapter.images = normalizedImages;
+      chapter.background_image = coverImage;
     }
       await chapter.updateStatus();
     } else {
@@ -52,7 +60,8 @@ const saveChapter = async (req, res) => {
         title: title || '未命名章节',
         content: content || '',
         recordings: recordings || [],
-        background_image: backgroundImage || null
+        background_image: coverImage,
+        images: normalizedImages
       });
       await chapter.updateStatus();
     }
@@ -68,6 +77,7 @@ const saveChapter = async (req, res) => {
           content: chapter.content,
           recordings: chapter.recordings,
           backgroundImage: chapter.background_image,
+          images: Array.isArray(chapter.images) ? chapter.images : (chapter.background_image ? [chapter.background_image] : []),
           status: chapter.status,
           wordCount: chapter.word_count,
           recordingCount: chapter.recording_count,
@@ -109,6 +119,7 @@ const getUserChapters = async (req, res) => {
       content: chapter.content,
       recordings: chapter.recordings,
       backgroundImage: chapter.background_image,
+      images: Array.isArray(chapter.images) ? chapter.images : (chapter.background_image ? [chapter.background_image] : []),
       status: chapter.status,
       wordCount: chapter.word_count,
       recordingCount: chapter.recording_count,
@@ -181,6 +192,7 @@ const getChapter = async (req, res) => {
           content: chapter.content,
           recordings: chapter.recordings,
           backgroundImage: chapter.background_image,
+          images: Array.isArray(chapter.images) ? chapter.images : (chapter.background_image ? [chapter.background_image] : []),
           status: chapter.status,
           wordCount: chapter.word_count,
           recordingCount: chapter.recording_count,

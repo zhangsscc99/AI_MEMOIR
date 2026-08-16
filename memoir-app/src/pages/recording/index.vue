@@ -124,30 +124,26 @@
         <view class="image-analysis-section">
           <view class="image-section-header">章节图片</view>
 
-          <view v-if="!selectedImage" class="image-upload" @click="chooseImage">
+          <view v-if="selectedImages.length < 9" class="image-upload" @click="chooseImage">
             <view class="upload-icon">
               <image src="/static/icons/camera.svg" class="upload-camera" mode="aspectFit"></image>
             </view>
-            <text class="upload-text">添加图片，丰富本章记忆</text>
+            <text class="upload-text">添加图片（{{ selectedImages.length }}/9）</text>
           </view>
 
-          <view v-else class="image-preview">
-            <image :src="imagePreviewUrl" class="preview-image" mode="aspectFill"></image>
-            <view class="image-actions">
-              <button class="image-action-btn" @click.stop="chooseImage">更换图片</button>
-              <button class="image-action-btn remove" @click.stop="removeImage">移除图片</button>
+          <view v-if="selectedImages.length" class="image-grid">
+            <view v-for="(image, index) in selectedImages" :key="image + index" class="image-preview">
+              <image :src="resolveImagePreview(image)" class="preview-image" mode="aspectFill"></image>
+              <view class="image-actions">
+                <button
+                  class="image-action-btn"
+                  :disabled="analyzingImageIndex !== -1"
+                  @click.stop="analyzeChapterImage(index)"
+                >{{ analyzingImageIndex === index ? '生成中...' : '生成文字' }}</button>
+                <button class="image-action-btn remove" @click.stop="removeImage(index)">删除</button>
+              </view>
             </view>
           </view>
-
-          <button
-            class="analyze-btn"
-            :class="{ loading: isAnalyzingImage, disabled: !selectedImage }"
-            :disabled="!selectedImage || isAnalyzingImage"
-            @click="analyzeChapterImage"
-          >
-            {{ isAnalyzingImage ? '解析中…' : '解析图片' }}
-          </button>
-          <text class="analyze-tip">解析结果将追加到正文末尾，保持故事语气一致。</text>
         </view>
       </view>
     </view>
@@ -209,9 +205,8 @@ export default {
       originalText: '',
       aiCompletedText: '',
       // 图片解析相关
-      selectedImage: '',
-      uploadedImageUrl: '',
-      isAnalyzingImage: false
+      selectedImages: [],
+      analyzingImageIndex: -1
     }
   },
   computed: {
@@ -223,25 +218,6 @@ export default {
     currentDate() {
       const now = new Date();
       return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
-    },
-    imagePreviewUrl() {
-      if (!this.selectedImage) {
-        return '';
-      }
-
-      const lower = this.selectedImage.toLowerCase();
-      if (
-        lower.startsWith('http://') ||
-        lower.startsWith('https://') ||
-        lower.startsWith('data:') ||
-        lower.startsWith('blob:') ||
-        lower.startsWith('file://') ||
-        lower.startsWith('wxfile://')
-      ) {
-        return this.selectedImage;
-      }
-
-      return this.resolveFileUrl(this.selectedImage);
     }
   },
   onLoad(options) {
@@ -314,16 +290,15 @@ export default {
     },
 
     chooseImage() {
+      const remaining = 9 - this.selectedImages.length;
+      if (remaining <= 0) return;
       uni.chooseImage({
-        count: 1,
+        count: remaining,
         sizeType: ['original', 'compressed'],
         sourceType: ['album', 'camera'],
         success: (res) => {
-          const path = (res.tempFiles && res.tempFiles[0] && res.tempFiles[0].path) || (res.tempFilePaths && res.tempFilePaths[0]);
-          if (path) {
-            this.selectedImage = path;
-            this.uploadedImageUrl = '';
-          }
+          const paths = (res.tempFilePaths || (res.tempFiles || []).map(file => file.path)).filter(Boolean);
+          this.selectedImages = [...this.selectedImages, ...paths].slice(0, 9);
         },
         fail: (err) => {
           console.error('选择图片失败:', err);
@@ -335,9 +310,18 @@ export default {
       });
     },
 
-    removeImage() {
-      this.selectedImage = '';
-      this.uploadedImageUrl = '';
+    removeImage(index) {
+      this.selectedImages.splice(index, 1);
+    },
+
+    resolveImagePreview(image) {
+      if (!image) return '';
+      const lower = image.toLowerCase();
+      return lower.startsWith('http://') || lower.startsWith('https://') ||
+        lower.startsWith('data:') || lower.startsWith('blob:') ||
+        lower.startsWith('file://') || lower.startsWith('wxfile://')
+        ? image
+        : this.resolveFileUrl(image);
     },
 
     async goBack() {
@@ -431,14 +415,13 @@ export default {
           const content = JSON.parse(savedContent);
           this.contentText = content.text || '';
           this.recordings = content.recordings || [];
-          if (content.image) {
-            this.selectedImage = content.image;
-            this.uploadedImageUrl = content.image;
-          }
-          hasContent = !!((this.contentText && this.contentText.trim().length > 0) || content.image);
+          this.selectedImages = Array.isArray(content.images)
+            ? content.images.slice(0, 9)
+            : (content.image ? [content.image] : []);
+          hasContent = !!((this.contentText && this.contentText.trim().length > 0) || this.selectedImages.length);
         }
 
-        if (hasContent && this.selectedImage) {
+        if (hasContent && this.selectedImages.length) {
           return;
         }
 
@@ -466,15 +449,17 @@ export default {
 
           this.contentText = chapter.content || '';
           this.recordings = Array.isArray(chapter.recordings) ? chapter.recordings : [];
-          this.selectedImage = chapter.backgroundImage || '';
-          this.uploadedImageUrl = chapter.backgroundImage || '';
+          this.selectedImages = Array.isArray(chapter.images) && chapter.images.length
+            ? chapter.images.slice(0, 9)
+            : (chapter.backgroundImage ? [chapter.backgroundImage] : []);
 
           const cachePayload = {
             text: this.contentText,
             recordings: this.recordings,
             lastModified: chapter.updatedAt || new Date().toISOString(),
             completed: this.contentText.length > 0 || this.recordings.length > 0,
-            image: this.uploadedImageUrl
+            image: this.selectedImages[0] || '',
+            images: this.selectedImages
           };
 
           uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(cachePayload));
@@ -536,28 +521,24 @@ export default {
       });
     },
 
-    async ensureImageUploaded() {
-      if (!this.selectedImage) {
-        this.uploadedImageUrl = '';
-        return null;
-      }
-
-      const lower = this.selectedImage.toLowerCase();
+    async ensureImageUploaded(index) {
+      const image = this.selectedImages[index];
+      if (!image) return null;
+      const lower = image.toLowerCase();
       const isRemote = lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('/uploads/');
 
-      if (isRemote) {
-        this.uploadedImageUrl = this.selectedImage;
-        return this.selectedImage;
-      }
-
-      if (this.uploadedImageUrl) {
-        return this.uploadedImageUrl;
-      }
-
-      const uploadedUrl = await this.uploadImageToServer(this.selectedImage);
-      this.uploadedImageUrl = uploadedUrl;
-      this.selectedImage = uploadedUrl;
+      if (isRemote) return image;
+      const uploadedUrl = await this.uploadImageToServer(image);
+      this.selectedImages.splice(index, 1, uploadedUrl);
       return uploadedUrl;
+    },
+
+    async ensureImagesUploaded() {
+      const uploaded = [];
+      for (let index = 0; index < this.selectedImages.length; index += 1) {
+        uploaded.push(await this.ensureImageUploaded(index));
+      }
+      return uploaded.filter(Boolean);
     },
 
     async saveChapter(options = {}) {
@@ -583,9 +564,9 @@ export default {
           });
         }
 
-        let backgroundImage = null;
+        let images = [];
         try {
-          backgroundImage = await this.ensureImageUploaded();
+          images = await this.ensureImagesUploaded();
         } catch (uploadError) {
           if (!silent) {
             uni.hideLoading();
@@ -602,7 +583,8 @@ export default {
           title: this.chapterTitle,
           content: this.contentText,
           recordings: this.recordings,
-          backgroundImage: backgroundImage || null
+          backgroundImage: images[0] || null,
+          images
         };
 
         // 调用后端API保存章节
@@ -634,7 +616,8 @@ export default {
             const cacheContent = {
               text: this.contentText,
               recordings: this.recordings,
-              image: backgroundImage || '',
+              image: images[0] || '',
+              images,
               lastModified: new Date().toISOString(),
               completed: this.contentText.length > 0 || this.recordings.length > 0
             };
@@ -684,7 +667,8 @@ export default {
               const cacheContent = {
                 text: this.contentText,
                 recordings: this.recordings,
-                image: backgroundImage || this.uploadedImageUrl || '',
+                image: this.selectedImages[0] || '',
+                images: this.selectedImages,
                 lastModified: new Date().toISOString(),
                 completed: this.contentText.length > 0 || this.recordings.length > 0,
                 needSync: true
@@ -729,8 +713,8 @@ export default {
       }
     },
 
-    async analyzeChapterImage() {
-      if (!this.selectedImage) {
+    async analyzeChapterImage(index) {
+      if (!this.selectedImages[index]) {
         uni.showToast({
           title: '请先添加图片',
           icon: 'none'
@@ -748,8 +732,8 @@ export default {
       }
 
       try {
-        this.isAnalyzingImage = true;
-        const imageUrl = await this.ensureImageUploaded();
+        this.analyzingImageIndex = index;
+        const imageUrl = await this.ensureImageUploaded(index);
 
         if (!imageUrl) {
           uni.showToast({
@@ -762,6 +746,7 @@ export default {
         const response = await uni.request({
           url: apiUrl('/ai/vision/analyze'),
           method: 'POST',
+          timeout: 180000,
           header: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -779,14 +764,17 @@ export default {
         if (response.statusCode === 200 && response.data.success) {
           const addition = (response.data.data?.text || '').trim();
           if (addition) {
-            const sanitizedExisting = this.contentText ? this.contentText.replace(/\s*$/, '') : '';
-            this.contentText = sanitizedExisting
-              ? `${sanitizedExisting}\n\n${addition}`
-              : addition;
-            await this.saveChapter({ autoNavigate: false, silent: true });
-            uni.showToast({
-              title: '解析完成',
-              icon: 'success'
+            uni.showModal({
+              title: '图片生成文字',
+              content: addition,
+              confirmText: '添加正文',
+              cancelText: '取消',
+              success: async (modalResult) => {
+                if (!modalResult.confirm) return;
+                const existing = this.contentText ? this.contentText.replace(/\s*$/, '') : '';
+                this.contentText = existing ? `${existing}\n\n${addition}` : addition;
+                await this.saveChapter({ autoNavigate: false, silent: true });
+              }
             });
           } else {
             uni.showToast({
@@ -804,7 +792,7 @@ export default {
           icon: 'error'
         });
       } finally {
-        this.isAnalyzingImage = false;
+        this.analyzingImageIndex = -1;
       }
     },
 
@@ -3526,22 +3514,29 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   background: #f5f7fb;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .preview-image {
   width: 100%;
-  height: 200px;
+  height: 160px;
 }
 
 .image-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 8px;
+  padding: 10px;
 }
 
 .image-action-btn {
   flex: 1;
-  padding: 10px 14px;
+  padding: 8px 6px;
   border-radius: 10px;
   background: #ffffff;
   color: #2c3e50;
@@ -3549,6 +3544,12 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.08);
   text-align: center;
   transition: all 0.2s ease;
+}
+
+@media (max-width: 420px) {
+  .image-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .image-action-btn:hover {

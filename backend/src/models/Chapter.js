@@ -63,6 +63,12 @@ const Chapter = sequelize.define('Chapter', {
     type: DataTypes.STRING(500),
     allowNull: true,
     comment: '章节背景图片路径'
+  },
+  images: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: [],
+    comment: '章节图片路径列表'
   }
 }, {
   tableName: 'chapters',

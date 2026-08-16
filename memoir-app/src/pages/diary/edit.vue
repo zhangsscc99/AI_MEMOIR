@@ -25,21 +25,24 @@
 
       <!-- 照片上传区域 -->
       <view class="photo-section">
-        <view class="photo-upload" @click="chooseImage" v-if="!selectedImage">
+        <view class="photo-upload" @click="chooseImage" v-if="selectedImages.length < 9">
           <view class="upload-icon">
             <image src="/static/icons/camera.svg" class="camera-icon" mode="aspectFit"></image>
           </view>
-          <text class="upload-text">上传图片 记录美好瞬间</text>
+          <text class="upload-text">添加图片（{{ selectedImages.length }}/9）</text>
         </view>
         
         <!-- 已选择的图片 -->
-        <view class="photo-preview" v-if="selectedImage">
-          <image :src="selectedImage.startsWith('http') ? selectedImage : getOptimalImagePath(selectedImage)" class="preview-image" mode="aspectFill"></image>
-          <view class="photo-overlay">
+        <view v-if="selectedImages.length" class="photo-grid">
+          <view v-for="(image, index) in selectedImages" :key="image + index" class="photo-preview">
+            <image :src="resolveImagePreview(image)" class="preview-image" mode="aspectFill"></image>
             <view class="photo-actions">
-              <view class="action-btn" @click="chooseImage">
-                <image src="/static/icons/camera.svg" class="action-camera-icon" mode="aspectFit"></image>
-              </view>
+              <button
+                class="photo-action-btn"
+                :disabled="analyzingImageIndex !== -1"
+                @click.stop="analyzeDiaryImage(index)"
+              >{{ analyzingImageIndex === index ? '生成中...' : '生成文字' }}</button>
+              <button class="photo-action-btn remove" @click.stop="removeImage(index)">删除</button>
             </view>
           </view>
         </view>
@@ -158,7 +161,8 @@ export default {
       editChapterId: '',
       diaryTitle: '',
       diaryContent: '',
-      selectedImage: '',
+      selectedImages: [],
+      analyzingImageIndex: -1,
       isRecording: false,
       recordingTime: 0,
       recordings: [],
@@ -249,7 +253,7 @@ export default {
         console.log('📖 加载样板案例数据');
         this.diaryTitle = '春节舞狮子';
         this.diaryContent = '舞狮子是中国传统民间艺术，在春节期间尤为盛行。狮子象征着威武和吉祥，舞狮表演寓意驱邪避害、祈求平安。表演者需要配合默契，通过精湛的技艺展现狮子的威武和灵动，为节日增添喜庆氛围。';
-        this.selectedImage = '/src/images/lion.png';
+        this.selectedImages = ['/src/images/lion.png'];
         this.recordings = [];
         console.log('✅ 样板案例数据加载完成');
         return;
@@ -266,7 +270,9 @@ export default {
           // 填充表单数据
           this.diaryTitle = localDiary.title || '随记';
           this.diaryContent = localDiary.content || '';
-          this.selectedImage = localDiary.image || '';
+          this.selectedImages = Array.isArray(localDiary.images) && localDiary.images.length
+            ? localDiary.images.slice(0, 9)
+            : (localDiary.image || localDiary.backgroundImage ? [localDiary.image || localDiary.backgroundImage] : []);
           
           // 如果有录音数据，恢复录音列表
           if (localDiary.recordings && Array.isArray(localDiary.recordings)) {
@@ -307,7 +313,9 @@ export default {
           // 填充表单数据
           this.diaryTitle = chapterData.title || '随记';
           this.diaryContent = chapterData.content || '';
-          this.selectedImage = chapterData.backgroundImage || '';
+          this.selectedImages = Array.isArray(chapterData.images) && chapterData.images.length
+            ? chapterData.images.slice(0, 9)
+            : (chapterData.backgroundImage ? [chapterData.backgroundImage] : []);
           
           // 如果有录音数据，恢复录音列表
           if (chapterData.recordings && Array.isArray(chapterData.recordings)) {
@@ -335,7 +343,7 @@ export default {
     },
     
     goBack() {
-      if (this.diaryTitle || this.diaryContent || this.selectedImage || this.recordings.length > 0) {
+      if (this.diaryTitle || this.diaryContent || this.selectedImages.length || this.recordings.length > 0) {
         uni.showModal({
           title: '提示',
           content: '当前内容尚未保存，确定要离开吗？',
@@ -352,12 +360,15 @@ export default {
 
     // 选择图片
     chooseImage() {
+      const remaining = 9 - this.selectedImages.length;
+      if (remaining <= 0) return;
       uni.chooseImage({
-        count: 1,
+        count: remaining,
         sizeType: ['original', 'compressed'],
         sourceType: ['album', 'camera'],
         success: (res) => {
-          this.selectedImage = res.tempFilePaths[0];
+          const paths = (res.tempFilePaths || (res.tempFiles || []).map(file => file.path)).filter(Boolean);
+          this.selectedImages = [...this.selectedImages, ...paths].slice(0, 9);
         },
         fail: (err) => {
           console.error('选择图片失败:', err);
@@ -367,6 +378,20 @@ export default {
           });
         }
       });
+    },
+
+    removeImage(index) {
+      this.selectedImages.splice(index, 1);
+    },
+
+    resolveImagePreview(image) {
+      if (!image) return '';
+      const lower = image.toLowerCase();
+      return lower.startsWith('http://') || lower.startsWith('https://') ||
+        lower.startsWith('blob:') || lower.startsWith('data:') ||
+        lower.startsWith('file://') || lower.startsWith('wxfile://')
+        ? image
+        : getOptimalImagePath(image);
     },
 
     // 初始化录音管理器
@@ -1371,49 +1396,103 @@ export default {
     },
 
     // 上传图片到服务器
-    async uploadImageToServer(blobUrl) {
-      try {
-        console.log('📤 开始上传图片:', blobUrl);
-        
-        // 将blob URL转换为File对象
-        const response = await fetch(blobUrl);
-        const blob = await response.blob();
-        
-        // 创建FormData
-        const formData = new FormData();
-        const fileName = `diary_image_${Date.now()}.jpg`;
-        // 确保blob有正确的MIME类型
-        const imageBlob = new Blob([blob], { type: 'image/jpeg' });
-        formData.append('image', imageBlob, fileName);
-        
-        // 获取token
+    uploadImageToServer(filePath) {
+      return new Promise((resolve, reject) => {
         const token = uni.getStorageSync('token');
         if (!token) {
-          throw new Error('用户未登录');
+          reject(new Error('请先登录'));
+          return;
         }
-        
-        // 上传到服务器
-        const uploadResponse = await fetch(apiUrl('/upload/image'), {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
+
+        uni.uploadFile({
+          url: apiUrl('/upload/image'),
+          filePath,
+          name: 'image',
+          timeout: 120000,
+          header: { 'Authorization': `Bearer ${token}` },
+          success: (res) => {
+            try {
+              const result = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+              if (res.statusCode !== 200 || !result.success) {
+                reject(new Error(result.message || '图片上传失败'));
+                return;
+              }
+              resolve(result.data?.url || result.url);
+            } catch (error) {
+              reject(new Error('解析上传结果失败'));
+            }
           },
-          body: formData
+          fail: reject
         });
-        
-        if (!uploadResponse.ok) {
-          throw new Error(`上传失败: ${uploadResponse.status}`);
+      });
+    },
+
+    async ensureImageUploaded(index) {
+      const image = this.selectedImages[index];
+      if (!image) return null;
+      const lower = image.toLowerCase();
+      if (lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('/uploads/')) {
+        return image;
+      }
+      const uploadedUrl = await this.uploadImageToServer(image);
+      this.selectedImages.splice(index, 1, uploadedUrl);
+      return uploadedUrl;
+    },
+
+    async ensureImagesUploaded() {
+      const uploaded = [];
+      for (let index = 0; index < this.selectedImages.length; index += 1) {
+        uploaded.push(await this.ensureImageUploaded(index));
+      }
+      return uploaded.filter(Boolean);
+    },
+
+    async analyzeDiaryImage(index) {
+      const token = uni.getStorageSync('token');
+      if (!token) {
+        uni.showToast({ title: '请先登录', icon: 'error' });
+        return;
+      }
+
+      try {
+        this.analyzingImageIndex = index;
+        const imageUrl = await this.ensureImageUploaded(index);
+        const response = await uni.request({
+          url: apiUrl('/ai/vision/analyze'),
+          method: 'POST',
+          timeout: 180000,
+          header: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: {
+            imageUrl,
+            chapterId: this.editChapterId || undefined
+          }
+        });
+
+        if (response.statusCode !== 200 || !response.data.success) {
+          throw new Error(response.data?.message || '生成失败');
         }
-        
-        const result = await uploadResponse.json();
-        console.log('✅ 图片上传成功:', result);
-        
-        // 返回服务器上的图片URL
-        return result.data.url || result.url;
-        
+        const addition = (response.data.data?.text || '').trim();
+        if (!addition) throw new Error('未生成有效文字');
+
+        uni.showModal({
+          title: '图片生成文字',
+          content: addition,
+          confirmText: '添加正文',
+          cancelText: '取消',
+          success: (result) => {
+            if (!result.confirm) return;
+            const existing = this.diaryContent ? this.diaryContent.replace(/\s*$/, '') : '';
+            this.diaryContent = existing ? `${existing}\n\n${addition}` : addition;
+          }
+        });
       } catch (error) {
-        console.error('❌ 图片上传失败:', error);
-        throw error;
+        console.error('图片生成文字失败:', error);
+        uni.showToast({ title: error.message || '生成失败', icon: 'none' });
+      } finally {
+        this.analyzingImageIndex = -1;
       }
     },
 
@@ -1434,7 +1513,7 @@ export default {
         return;
       }
 
-      if (!this.diaryContent.trim() && !this.selectedImage && this.recordings.length === 0) {
+      if (!this.diaryContent.trim() && !this.selectedImages.length && this.recordings.length === 0) {
         uni.showToast({
           title: '请添加内容、图片或录音',
           icon: 'none'
@@ -1484,22 +1563,8 @@ export default {
         }
         
         // 处理图片上传
-        let backgroundImage = '/src/images/default-diary.svg'; // 默认图片
-        if (this.selectedImage) {
-          try {
-            // 如果是blob URL，需要上传到服务器
-            if (this.selectedImage.startsWith('blob:')) {
-              backgroundImage = await this.uploadImageToServer(this.selectedImage);
-            } else {
-              // 如果是其他格式，直接使用
-              backgroundImage = this.selectedImage;
-            }
-          } catch (error) {
-            console.error('图片上传失败:', error);
-            // 如果上传失败，使用默认图片
-            backgroundImage = '/src/images/default-diary.svg';
-          }
-        }
+        const images = await this.ensureImagesUploaded();
+        const backgroundImage = images[0] || '/src/images/default-diary.svg';
 
         // 准备保存为回忆录章节的数据
         const chapterData = {
@@ -1507,7 +1572,8 @@ export default {
           title: this.diaryTitle.trim(),
           content: this.diaryContent.trim(),
           recordings: this.recordings,
-          backgroundImage: backgroundImage // 上传的图片作为章节背景图
+          backgroundImage,
+          images
         };
 
         console.log('📤 发送章节数据:', chapterData);
@@ -1544,7 +1610,8 @@ export default {
             chapterId: customChapterId,
             title: this.diaryTitle.trim(),
             description: '自定义随记章节',
-            backgroundImage: this.selectedImage || '/src/images/story1.png',
+            backgroundImage,
+            images,
             completed: true,
             isCustom: true, // 标记为自定义章节
             content: this.diaryContent.trim(),
@@ -1562,6 +1629,8 @@ export default {
             uni.setStorageSync(`chapter_${customChapterId}_${userId}`, JSON.stringify({
               text: this.diaryContent.trim(),
               recordings: this.recordings,
+              image: backgroundImage,
+              images,
               lastModified: new Date().toISOString(),
               completed: true
             }));
@@ -1612,7 +1681,8 @@ export default {
               id: customChapterId,
               title: this.diaryTitle.trim(),
               description: '自定义随记章节',
-              backgroundImage: this.selectedImage || '/src/images/story1.png',
+              backgroundImage: this.selectedImages[0] || '/src/images/story1.png',
+              images: this.selectedImages,
               completed: true,
               isCustom: true,
               content: this.diaryContent.trim(),
@@ -1630,6 +1700,8 @@ export default {
               uni.setStorageSync(`chapter_${customChapterId}_${userId}`, JSON.stringify({
                 text: this.diaryContent.trim(),
                 recordings: this.recordings,
+                image: this.selectedImages[0] || '',
+                images: this.selectedImages,
                 lastModified: new Date().toISOString(),
                 completed: true,
                 needSync: true
@@ -1804,54 +1876,50 @@ export default {
 }
 
 .photo-preview {
-  position: relative;
-  height: 200px;
-  border-radius: 16px;
+  border-radius: 8px;
   overflow: hidden;
+  background: white;
+  border: 1px solid #e0e0e0;
 }
 
 .preview-image {
   width: 100%;
-  height: 100%;
+  height: 180px;
 }
 
-.photo-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .photo-actions {
   display: flex;
-  gap: 20px;
+  gap: 8px;
+  padding: 10px;
 }
 
-.action-btn {
-  width: 50px;
-  height: 50px;
-  border-radius: 25px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.photo-action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 6px;
+  border-radius: 6px;
+  border: 1px solid #dedede;
+  background: white;
+  color: #333;
+  font-size: 14px;
 }
 
-.action-icon {
-  font-size: 24px;
+.photo-action-btn.remove {
+  background: #222;
+  border-color: #222;
+  color: white;
 }
 
-.action-camera-icon {
-  width: 24px;
-  height: 24px;
+@media (max-width: 420px) {
+  .photo-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .text-section {

@@ -7,6 +7,7 @@ require('dotenv').config();
 const client = new OpenAI({
   apiKey: process.env.DASHSCOPE_API_KEY,
   baseURL: process.env.DASHSCOPE_BASE_URL,
+  timeout: Number(process.env.DASHSCOPE_TIMEOUT_MS || 180000),
 });
 
 // 存储用户对话历史（生产环境建议使用Redis）
@@ -649,7 +650,7 @@ const analyzeChapterImage = async (req, res) => {
     const contextText = `以下是该用户回忆录的章节摘要（仅作辅助，参考语气即可）：\n${summaryText}\n\n当前章节提示：${focusHint}\n\n请重点描写图片中的主体，并写出它引发的回忆或情绪。最终输出只需包含生成的段落，不要额外说明。`;
 
     const completion = await client.chat.completions.create({
-      model: process.env.DASHSCOPE_VL_MODEL || process.env.DASHSCOPE_MODEL || 'qwen3-vl-plus',
+      model: process.env.DASHSCOPE_VL_MODEL || 'qwen3-vl-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         {
