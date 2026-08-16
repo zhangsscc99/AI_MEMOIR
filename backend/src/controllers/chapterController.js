@@ -1,6 +1,25 @@
 const Chapter = require('../models/Chapter');
 const User = require('../models/User');
 
+const normalizeImageAnalyses = (value, images) => {
+  if (!Array.isArray(value)) return [];
+
+  const allowedImages = new Set(images);
+  return value
+    .filter(item => item && allowedImages.has(item.imageUrl) && typeof item.text === 'string' && item.text.trim())
+    .slice(0, 9)
+    .map(item => ({
+      imageUrl: item.imageUrl,
+      text: item.text.trim().slice(0, 5000),
+      generatedAt: item.generatedAt || new Date().toISOString(),
+      addedToContentAt: item.addedToContentAt || null
+    }));
+};
+
+const formatImageAnalyses = chapter => Array.isArray(chapter.image_analyses)
+  ? chapter.image_analyses
+  : [];
+
 /**
  * @desc 保存章节内容
  * @route POST /api/chapters/save
@@ -12,7 +31,7 @@ const saveChapter = async (req, res) => {
     console.log('📋 请求体:', req.body);
     console.log('👤 用户ID:', req.user?.id);
     
-    const { chapterId, title, content, recordings, backgroundImage, images } = req.body;
+    const { chapterId, title, content, recordings, backgroundImage, images, imageAnalyses } = req.body;
     const userId = req.user.id;
 
     const normalizedImages = Array.isArray(images)
@@ -21,6 +40,7 @@ const saveChapter = async (req, res) => {
         ? [backgroundImage]
         : [];
     const coverImage = normalizedImages[0] || backgroundImage || null;
+    const normalizedImageAnalyses = normalizeImageAnalyses(imageAnalyses, normalizedImages);
 
     // 验证章节ID（支持固定章节和自定义随记章节）
     const validChapterIds = ['background', 'childhood', 'education', 'career', 'love', 'family', 'travel', 'relationships', 'laterlife', 'wisdom'];
@@ -51,6 +71,9 @@ const saveChapter = async (req, res) => {
       chapter.images = normalizedImages;
       chapter.background_image = coverImage;
     }
+    if (imageAnalyses !== undefined) {
+      chapter.image_analyses = normalizedImageAnalyses;
+    }
       await chapter.updateStatus();
     } else {
       // 创建新章节
@@ -61,7 +84,8 @@ const saveChapter = async (req, res) => {
         content: content || '',
         recordings: recordings || [],
         background_image: coverImage,
-        images: normalizedImages
+        images: normalizedImages,
+        image_analyses: normalizedImageAnalyses
       });
       await chapter.updateStatus();
     }
@@ -78,6 +102,7 @@ const saveChapter = async (req, res) => {
           recordings: chapter.recordings,
           backgroundImage: chapter.background_image,
           images: Array.isArray(chapter.images) ? chapter.images : (chapter.background_image ? [chapter.background_image] : []),
+          imageAnalyses: formatImageAnalyses(chapter),
           status: chapter.status,
           wordCount: chapter.word_count,
           recordingCount: chapter.recording_count,
@@ -120,6 +145,7 @@ const getUserChapters = async (req, res) => {
       recordings: chapter.recordings,
       backgroundImage: chapter.background_image,
       images: Array.isArray(chapter.images) ? chapter.images : (chapter.background_image ? [chapter.background_image] : []),
+      imageAnalyses: formatImageAnalyses(chapter),
       status: chapter.status,
       wordCount: chapter.word_count,
       recordingCount: chapter.recording_count,
@@ -193,6 +219,7 @@ const getChapter = async (req, res) => {
           recordings: chapter.recordings,
           backgroundImage: chapter.background_image,
           images: Array.isArray(chapter.images) ? chapter.images : (chapter.background_image ? [chapter.background_image] : []),
+          imageAnalyses: formatImageAnalyses(chapter),
           status: chapter.status,
           wordCount: chapter.word_count,
           recordingCount: chapter.recording_count,

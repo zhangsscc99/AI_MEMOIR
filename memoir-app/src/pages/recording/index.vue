@@ -133,7 +133,7 @@
 
           <view v-if="selectedImages.length" class="image-grid">
             <view v-for="(image, index) in selectedImages" :key="image + index" class="image-preview">
-              <image :src="resolveImagePreview(image)" class="preview-image" mode="aspectFill"></image>
+              <image :src="resolveImagePreview(image)" class="preview-image" mode="widthFix"></image>
               <view class="image-actions">
                 <button
                   class="image-action-btn"
@@ -141,6 +141,20 @@
                   @click.stop="analyzeChapterImage(index)"
                 >{{ analyzingImageIndex === index ? '生成中...' : '生成文字' }}</button>
                 <button class="image-action-btn remove" @click.stop="removeImage(index)">删除</button>
+              </view>
+              <view v-if="getImageAnalysis(image)" class="image-analysis-result">
+                <text class="analysis-label">图片识别文字</text>
+                <text class="analysis-text">{{ getImageAnalysis(image).text }}</text>
+                <view class="analysis-actions">
+                  <button
+                    class="analysis-action-btn"
+                    :disabled="getImageAnalysis(image).addedToContentAt"
+                    @click.stop="addImageAnalysisToContent(index)"
+                  >{{ getImageAnalysis(image).addedToContentAt ? '已添加到正文' : '添加到正文' }}</button>
+                  <button class="analysis-action-btn regenerate" :disabled="analyzingImageIndex !== -1" @click.stop="analyzeChapterImage(index)">
+                    {{ analyzingImageIndex === index ? '生成中...' : '重新生成' }}
+                  </button>
+                </view>
               </view>
             </view>
           </view>
@@ -206,6 +220,7 @@ export default {
       aiCompletedText: '',
       // 图片解析相关
       selectedImages: [],
+      imageAnalyses: [],
       analyzingImageIndex: -1
     }
   },
@@ -311,7 +326,13 @@ export default {
     },
 
     removeImage(index) {
+      const image = this.selectedImages[index];
       this.selectedImages.splice(index, 1);
+      this.imageAnalyses = this.imageAnalyses.filter(item => item.imageUrl !== image);
+    },
+
+    getImageAnalysis(image) {
+      return this.imageAnalyses.find(item => item.imageUrl === image) || null;
     },
 
     resolveImagePreview(image) {
@@ -418,6 +439,7 @@ export default {
           this.selectedImages = Array.isArray(content.images)
             ? content.images.slice(0, 9)
             : (content.image ? [content.image] : []);
+          this.imageAnalyses = Array.isArray(content.imageAnalyses) ? content.imageAnalyses : [];
           hasContent = !!((this.contentText && this.contentText.trim().length > 0) || this.selectedImages.length);
         }
 
@@ -452,6 +474,7 @@ export default {
           this.selectedImages = Array.isArray(chapter.images) && chapter.images.length
             ? chapter.images.slice(0, 9)
             : (chapter.backgroundImage ? [chapter.backgroundImage] : []);
+          this.imageAnalyses = Array.isArray(chapter.imageAnalyses) ? chapter.imageAnalyses : [];
 
           const cachePayload = {
             text: this.contentText,
@@ -459,7 +482,8 @@ export default {
             lastModified: chapter.updatedAt || new Date().toISOString(),
             completed: this.contentText.length > 0 || this.recordings.length > 0,
             image: this.selectedImages[0] || '',
-            images: this.selectedImages
+            images: this.selectedImages,
+            imageAnalyses: this.imageAnalyses
           };
 
           uni.setStorageSync(`chapter_${this.chapterId}_${userId}`, JSON.stringify(cachePayload));
@@ -584,7 +608,8 @@ export default {
           content: this.contentText,
           recordings: this.recordings,
           backgroundImage: images[0] || null,
-          images
+          images,
+          imageAnalyses: this.imageAnalyses
         };
 
         // 调用后端API保存章节
@@ -618,6 +643,7 @@ export default {
               recordings: this.recordings,
               image: images[0] || '',
               images,
+              imageAnalyses: this.imageAnalyses,
               lastModified: new Date().toISOString(),
               completed: this.contentText.length > 0 || this.recordings.length > 0
             };
@@ -669,6 +695,7 @@ export default {
                 recordings: this.recordings,
                 image: this.selectedImages[0] || '',
                 images: this.selectedImages,
+                imageAnalyses: this.imageAnalyses,
                 lastModified: new Date().toISOString(),
                 completed: this.contentText.length > 0 || this.recordings.length > 0,
                 needSync: true
@@ -764,18 +791,22 @@ export default {
         if (response.statusCode === 200 && response.data.success) {
           const addition = (response.data.data?.text || '').trim();
           if (addition) {
-            uni.showModal({
-              title: '图片生成文字',
-              content: addition,
-              confirmText: '添加正文',
-              cancelText: '取消',
-              success: async (modalResult) => {
-                if (!modalResult.confirm) return;
-                const existing = this.contentText ? this.contentText.replace(/\s*$/, '') : '';
-                this.contentText = existing ? `${existing}\n\n${addition}` : addition;
-                await this.saveChapter({ autoNavigate: false, silent: true });
-              }
-            });
+            const image = this.selectedImages[index];
+            const existing = this.getImageAnalysis(image);
+            const analysis = {
+              imageUrl: image,
+              text: addition,
+              generatedAt: new Date().toISOString(),
+              addedToContentAt: null
+            };
+            if (existing) {
+              const analysisIndex = this.imageAnalyses.indexOf(existing);
+              this.imageAnalyses.splice(analysisIndex, 1, analysis);
+            } else {
+              this.imageAnalyses.push(analysis);
+            }
+            await this.saveChapter({ autoNavigate: false, silent: true });
+            uni.showToast({ title: existing ? '已重新生成并保存' : '已生成并保存', icon: 'success' });
           } else {
             uni.showToast({
               title: '未解析到有效内容',
@@ -793,6 +824,22 @@ export default {
         });
       } finally {
         this.analyzingImageIndex = -1;
+      }
+    },
+
+    async addImageAnalysisToContent(index) {
+      const image = this.selectedImages[index];
+      const analysis = this.getImageAnalysis(image);
+      if (!analysis || analysis.addedToContentAt) return;
+
+      const existing = this.contentText ? this.contentText.replace(/\s*$/, '') : '';
+      this.contentText = existing ? `${existing}\n\n${analysis.text}` : analysis.text;
+      analysis.addedToContentAt = new Date().toISOString();
+      try {
+        await this.saveChapter({ autoNavigate: false, silent: true });
+        uni.showToast({ title: '已添加到正文', icon: 'success' });
+      } catch (error) {
+        analysis.addedToContentAt = null;
       }
     },
 
@@ -3525,7 +3572,8 @@ export default {
 
 .preview-image {
   width: 100%;
-  height: 160px;
+  height: auto;
+  display: block;
 }
 
 .image-actions {
@@ -3560,6 +3608,48 @@ export default {
   background: #000000;
   color: #ffffff;
   border-color: #000000;
+}
+
+.image-analysis-result {
+  padding: 12px;
+  background: #f7f8fa;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.analysis-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #6d7682;
+  font-size: 12px;
+}
+
+.analysis-text {
+  display: block;
+  color: #25313d;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.analysis-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.analysis-action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 6px;
+  border: 1px solid #dfe3e8;
+  border-radius: 6px;
+  background: #fff;
+  color: #263746;
+  font-size: 13px;
+}
+
+.analysis-action-btn.regenerate {
+  color: #8a4b2a;
 }
 
 .analyze-btn {

@@ -35,7 +35,7 @@
         <!-- 已选择的图片 -->
         <view v-if="selectedImages.length" class="photo-grid">
           <view v-for="(image, index) in selectedImages" :key="image + index" class="photo-preview">
-            <image :src="resolveImagePreview(image)" class="preview-image" mode="aspectFill"></image>
+            <image :src="resolveImagePreview(image)" class="preview-image" mode="widthFix"></image>
             <view class="photo-actions">
               <button
                 class="photo-action-btn"
@@ -43,6 +43,20 @@
                 @click.stop="analyzeDiaryImage(index)"
               >{{ analyzingImageIndex === index ? '生成中...' : '生成文字' }}</button>
               <button class="photo-action-btn remove" @click.stop="removeImage(index)">删除</button>
+            </view>
+            <view v-if="getImageAnalysis(image)" class="image-analysis-result">
+              <text class="analysis-label">图片识别文字</text>
+              <text class="analysis-text">{{ getImageAnalysis(image).text }}</text>
+              <view class="analysis-actions">
+                <button
+                  class="analysis-action-btn"
+                  :disabled="getImageAnalysis(image).addedToContentAt"
+                  @click.stop="addImageAnalysisToContent(index)"
+                >{{ getImageAnalysis(image).addedToContentAt ? '已添加到正文' : '添加到正文' }}</button>
+                <button class="analysis-action-btn regenerate" :disabled="analyzingImageIndex !== -1" @click.stop="analyzeDiaryImage(index)">
+                  {{ analyzingImageIndex === index ? '生成中...' : '重新生成' }}
+                </button>
+              </view>
             </view>
           </view>
         </view>
@@ -162,6 +176,7 @@ export default {
       diaryTitle: '',
       diaryContent: '',
       selectedImages: [],
+      imageAnalyses: [],
       analyzingImageIndex: -1,
       isRecording: false,
       recordingTime: 0,
@@ -273,6 +288,7 @@ export default {
           this.selectedImages = Array.isArray(localDiary.images) && localDiary.images.length
             ? localDiary.images.slice(0, 9)
             : (localDiary.image || localDiary.backgroundImage ? [localDiary.image || localDiary.backgroundImage] : []);
+          this.imageAnalyses = Array.isArray(localDiary.imageAnalyses) ? localDiary.imageAnalyses : [];
           
           // 如果有录音数据，恢复录音列表
           if (localDiary.recordings && Array.isArray(localDiary.recordings)) {
@@ -316,6 +332,7 @@ export default {
           this.selectedImages = Array.isArray(chapterData.images) && chapterData.images.length
             ? chapterData.images.slice(0, 9)
             : (chapterData.backgroundImage ? [chapterData.backgroundImage] : []);
+          this.imageAnalyses = Array.isArray(chapterData.imageAnalyses) ? chapterData.imageAnalyses : [];
           
           // 如果有录音数据，恢复录音列表
           if (chapterData.recordings && Array.isArray(chapterData.recordings)) {
@@ -381,7 +398,13 @@ export default {
     },
 
     removeImage(index) {
+      const image = this.selectedImages[index];
       this.selectedImages.splice(index, 1);
+      this.imageAnalyses = this.imageAnalyses.filter(item => item.imageUrl !== image);
+    },
+
+    getImageAnalysis(image) {
+      return this.imageAnalyses.find(item => item.imageUrl === image) || null;
     },
 
     resolveImagePreview(image) {
@@ -1447,6 +1470,47 @@ export default {
       return uploaded.filter(Boolean);
     },
 
+    ensureDiaryChapterId() {
+      if (!this.editChapterId || this.editChapterId.startsWith('sample_')) {
+        this.editChapterId = `diary_${Date.now()}`;
+        this.editMode = true;
+      }
+      return this.editChapterId;
+    },
+
+    async persistDiaryDraft() {
+      const token = uni.getStorageSync('token');
+      if (!token) throw new Error('请先登录');
+
+      const chapterId = this.ensureDiaryChapterId();
+      const images = await this.ensureImagesUploaded();
+      const response = await uni.request({
+        url: apiUrl('/chapters/save'),
+        method: 'POST',
+        timeout: 120000,
+        header: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        data: {
+          chapterId,
+          title: this.diaryTitle.trim() || '未命名随记',
+          content: this.diaryContent.trim(),
+          recordings: this.recordings,
+          backgroundImage: images[0] || null,
+          images,
+          imageAnalyses: this.imageAnalyses
+        }
+      });
+
+      if (response.statusCode !== 200 || !response.data.success) {
+        throw new Error(response.data?.message || '图片文字保存失败');
+      }
+
+      this.selectedImages = images;
+      return true;
+    },
+
     async analyzeDiaryImage(index) {
       const token = uni.getStorageSync('token');
       if (!token) {
@@ -1477,22 +1541,43 @@ export default {
         const addition = (response.data.data?.text || '').trim();
         if (!addition) throw new Error('未生成有效文字');
 
-        uni.showModal({
-          title: '图片生成文字',
-          content: addition,
-          confirmText: '添加正文',
-          cancelText: '取消',
-          success: (result) => {
-            if (!result.confirm) return;
-            const existing = this.diaryContent ? this.diaryContent.replace(/\s*$/, '') : '';
-            this.diaryContent = existing ? `${existing}\n\n${addition}` : addition;
-          }
-        });
+        const image = this.selectedImages[index];
+        const existing = this.getImageAnalysis(image);
+        const analysis = {
+          imageUrl: image,
+          text: addition,
+          generatedAt: new Date().toISOString(),
+          addedToContentAt: null
+        };
+        if (existing) {
+          this.imageAnalyses.splice(this.imageAnalyses.indexOf(existing), 1, analysis);
+        } else {
+          this.imageAnalyses.push(analysis);
+        }
+        await this.persistDiaryDraft();
+        uni.showToast({ title: existing ? '已重新生成并保存' : '已生成并保存', icon: 'success' });
       } catch (error) {
         console.error('图片生成文字失败:', error);
         uni.showToast({ title: error.message || '生成失败', icon: 'none' });
       } finally {
         this.analyzingImageIndex = -1;
+      }
+    },
+
+    async addImageAnalysisToContent(index) {
+      const image = this.selectedImages[index];
+      const analysis = this.getImageAnalysis(image);
+      if (!analysis || analysis.addedToContentAt) return;
+
+      const existing = this.diaryContent ? this.diaryContent.replace(/\s*$/, '') : '';
+      this.diaryContent = existing ? `${existing}\n\n${analysis.text}` : analysis.text;
+      analysis.addedToContentAt = new Date().toISOString();
+      try {
+        await this.persistDiaryDraft();
+        uni.showToast({ title: '已添加到正文', icon: 'success' });
+      } catch (error) {
+        analysis.addedToContentAt = null;
+        uni.showToast({ title: error.message || '保存失败', icon: 'none' });
       }
     },
 
@@ -1573,7 +1658,8 @@ export default {
           content: this.diaryContent.trim(),
           recordings: this.recordings,
           backgroundImage,
-          images
+          images,
+          imageAnalyses: this.imageAnalyses
         };
 
         console.log('📤 发送章节数据:', chapterData);
@@ -1612,6 +1698,7 @@ export default {
             description: '自定义随记章节',
             backgroundImage,
             images,
+            imageAnalyses: this.imageAnalyses,
             completed: true,
             isCustom: true, // 标记为自定义章节
             content: this.diaryContent.trim(),
@@ -1631,6 +1718,7 @@ export default {
               recordings: this.recordings,
               image: backgroundImage,
               images,
+              imageAnalyses: this.imageAnalyses,
               lastModified: new Date().toISOString(),
               completed: true
             }));
@@ -1683,6 +1771,7 @@ export default {
               description: '自定义随记章节',
               backgroundImage: this.selectedImages[0] || '/src/images/story1.png',
               images: this.selectedImages,
+              imageAnalyses: this.imageAnalyses,
               completed: true,
               isCustom: true,
               content: this.diaryContent.trim(),
@@ -1702,6 +1791,7 @@ export default {
                 recordings: this.recordings,
                 image: this.selectedImages[0] || '',
                 images: this.selectedImages,
+                imageAnalyses: this.imageAnalyses,
                 lastModified: new Date().toISOString(),
                 completed: true,
                 needSync: true
@@ -1884,7 +1974,8 @@ export default {
 
 .preview-image {
   width: 100%;
-  height: 180px;
+  height: auto;
+  display: block;
 }
 
 .photo-grid {
@@ -1914,6 +2005,48 @@ export default {
   background: #222;
   border-color: #222;
   color: white;
+}
+
+.image-analysis-result {
+  padding: 12px;
+  background: #f7f8fa;
+  border-top: 1px solid #eeeeee;
+}
+
+.analysis-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #777;
+  font-size: 12px;
+}
+
+.analysis-text {
+  display: block;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.analysis-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.analysis-action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 6px;
+  border: 1px solid #dedede;
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+}
+
+.analysis-action-btn.regenerate {
+  color: #8a4b2a;
 }
 
 @media (max-width: 420px) {

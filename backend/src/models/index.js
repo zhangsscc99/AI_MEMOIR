@@ -132,6 +132,19 @@ const addMissingColumns = async () => {
     } else {
       console.log('✅ images 字段已存在');
     }
+
+    if (!tableInfo.image_analyses) {
+      console.log('🔧 添加 image_analyses 字段到 chapters 表...');
+      await queryInterface.addColumn('chapters', 'image_analyses', {
+        type: sequelize.Sequelize.JSON,
+        allowNull: false,
+        defaultValue: [],
+        comment: '章节图片的AI识别文字与使用状态'
+      });
+      console.log('✅ image_analyses 字段添加成功');
+    } else {
+      console.log('✅ image_analyses 字段已存在');
+    }
   } catch (error) {
     console.log('ℹ️ 添加字段时出现错误（可能字段已存在）:', error.message);
   }

@@ -69,6 +69,12 @@ const Chapter = sequelize.define('Chapter', {
     allowNull: false,
     defaultValue: [],
     comment: '章节图片路径列表'
+  },
+  image_analyses: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: [],
+    comment: '章节图片的AI识别文字与使用状态'
   }
 }, {
   tableName: 'chapters',
